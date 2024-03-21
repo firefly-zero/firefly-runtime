@@ -42,6 +42,7 @@ where
     }
 
     pub fn run(mut self) -> Result<(), wasmi::Error> {
+        _ = self.device.display.clear(Color::BLACK);
         self.start()?;
         let ins = self.instance;
         let update = ins.get_typed_func::<(), ()>(&self.store, "update").ok();

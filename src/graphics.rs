@@ -1,9 +1,14 @@
 use crate::state::State;
-use embedded_graphics::pixelcolor::Gray2;
+use embedded_graphics::pixelcolor::{Gray2, Rgb888};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
 
 type C<'a> = wasmi::Caller<'a, State>;
+
+pub(crate) fn set_color(mut caller: C, index: u32, r: u32, g: u32, b: u32) {
+    let state = caller.data_mut();
+    state.palette[index as usize] = Rgb888::new(r as u8, g as u8, b as u8)
+}
 
 pub(crate) fn draw_line(
     mut caller: C,
