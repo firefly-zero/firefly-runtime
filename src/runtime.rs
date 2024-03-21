@@ -21,6 +21,7 @@ where
     Delay: Fn(u32),
     Storage: embedded_storage::Storage,
 {
+    /// Create a new runtime with the wasm module loaded and instantiated.
     pub fn new(
         device: Device<Display, Color, Delay, Storage>,
         stream: impl wasmi::Read,
@@ -41,6 +42,7 @@ where
         Ok(runtime)
     }
 
+    /// Run the game until exited or an error occurs.
     pub fn run(mut self) -> Result<(), wasmi::Error> {
         _ = self.device.display.clear(Color::BLACK);
         self.start()?;
@@ -49,6 +51,7 @@ where
         let render = ins.get_typed_func::<(), ()>(&self.store, "render").ok();
         loop {
             if let Some(update) = update {
+                // TODO: continue execution even if an update fails.
                 update.call(&mut self.store, ())?;
             }
             if let Some(render) = render {
@@ -58,17 +61,16 @@ where
     }
 
     /// Call init functions in the module.
-    ///
-    /// The `_initialize` and `_start` functions are defined by wasip1.
-    /// The `boot` function is defined by our spec.
     fn start(&mut self) -> Result<(), wasmi::Error> {
         let ins = self.instance;
+        // The `_initialize` and `_start` functions are defined by wasip1.
         if let Ok(start) = ins.get_typed_func::<(), ()>(&self.store, "_initialize") {
             start.call(&mut self.store, ())?;
         }
         if let Ok(start) = ins.get_typed_func::<(), ()>(&self.store, "_start") {
             start.call(&mut self.store, ())?;
         }
+        // The `boot` function is defined by our spec.
         if let Ok(start) = ins.get_typed_func::<(), ()>(&self.store, "boot") {
             start.call(&mut self.store, ())?;
         }

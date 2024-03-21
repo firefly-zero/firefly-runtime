@@ -1,4 +1,5 @@
 use crate::state::State;
+use core::convert::Infallible;
 use embedded_graphics::pixelcolor::{Gray2, Rgb888};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
@@ -9,7 +10,7 @@ type C<'a> = wasmi::Caller<'a, State>;
 pub(crate) fn clear(mut caller: C, color: u32) {
     let state = caller.data_mut();
     let color = Gray2::new(color as u8);
-    log_error(state.frame.clear(color));
+    never_fails(state.frame.clear(color));
 }
 
 /// Set the given palette color.
@@ -57,12 +58,39 @@ pub(crate) fn draw_line(
     let line = Line::new(start, end);
     let color = Gray2::new(color as u8);
     let style = PrimitiveStyle::with_stroke(color, stroke_width);
-    log_error(line.draw_styled(&style, &mut state.frame));
+    never_fails(line.draw_styled(&style, &mut state.frame));
 }
 
-fn log_error<T, E: core::fmt::Debug>(res: Result<T, E>) {
-    if let Err(err) = res {
-        // TODO: don't panic, write into serial
-        panic!("{err:?}")
+/// Statically ensure that the given Result cannot have an error.
+fn never_fails(_: Result<(), Infallible>) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::State;
+
+    #[test]
+    fn test_clear() {
+        let engine = wasmi::Engine::default();
+        let state = State::new();
+        let mut store = <wasmi::Store<State>>::new(&engine, state);
+        let func = wasmi::Func::wrap(&mut store, clear);
+
+        // ensure that the frame buffer is empty
+        let state = store.data();
+        for byte in state.frame.data() {
+            assert_eq!(byte, &0b_0000_0000);
+        }
+
+        let inputs = [wasmi::Value::I32(1)];
+        let mut outputs = Vec::new();
+        func.call(&mut store, &inputs, &mut outputs).unwrap();
+        assert_eq!(outputs.len(), 0);
+
+        // check that all pixel in the frame buffer are set to 1.
+        let state = store.data();
+        for byte in state.frame.data() {
+            assert_eq!(byte, &0b_0101_0101);
+        }
     }
 }
