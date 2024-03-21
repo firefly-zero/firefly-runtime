@@ -1,25 +1,26 @@
 use crate::device::Device;
 use crate::linking::link;
 use crate::state::State;
-use embedded_graphics::draw_target::DrawTarget;
 
-pub struct Runtime<Display, Delay>
+pub struct Runtime<Display, Delay, Storage>
 where
-    Display: DrawTarget,
+    Display: embedded_graphics::draw_target::DrawTarget,
     Delay: Fn(u32),
+    Storage: embedded_storage::Storage,
 {
-    device:   Device<Display, Delay>,
+    device:   Device<Display, Delay, Storage>,
     instance: wasmi::Instance,
     store:    wasmi::Store<State>,
 }
 
-impl<Display, Delay> Runtime<Display, Delay>
+impl<Display, Delay, Storage> Runtime<Display, Delay, Storage>
 where
-    Display: DrawTarget,
+    Display: embedded_graphics::draw_target::DrawTarget,
     Delay: Fn(u32),
+    Storage: embedded_storage::Storage,
 {
     pub fn new(
-        device: Device<Display, Delay>,
+        device: Device<Display, Delay, Storage>,
         stream: impl wasmi::Read,
     ) -> Result<Self, wasmi::Error> {
         let engine = wasmi::Engine::default();
