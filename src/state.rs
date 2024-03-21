@@ -1,39 +1,19 @@
-use crate::Graphics;
-use embedded_graphics::geometry::Point;
+use embedded_graphics::framebuffer::{buffer_size, Framebuffer};
+use embedded_graphics::pixelcolor::raw::{LittleEndian, RawU2};
+use embedded_graphics::pixelcolor::Gray2;
 
-type C<'a> = wasmi::Caller<'a, State>;
+const WIDTH: usize = 320;
+const HEIGHT: usize = 240;
+const BUFFER_SIZE: usize = buffer_size::<Gray2>(WIDTH, HEIGHT);
 
 pub struct State {
-    graphics: Graphics,
+    pub(crate) frame: Framebuffer<Gray2, RawU2, LittleEndian, WIDTH, HEIGHT, BUFFER_SIZE>,
 }
 
 impl State {
     pub fn new() -> Self {
         Self {
-            graphics: Graphics::new(),
+            frame: Framebuffer::new(),
         }
-    }
-
-    pub fn link(linker: &mut wasmi::Linker<Self>) -> Result<(), wasmi::errors::LinkerError> {
-        linker.func_wrap(
-            "graphics",
-            "draw_line",
-            move |mut caller: C,
-                  x1: i32,
-                  y1: i32,
-                  x2: i32,
-                  y2: i32,
-                  color: u32,
-                  stroke_width: u32| {
-                let state = caller.data_mut();
-                state.graphics.draw_line(
-                    Point::new(x1, y1),
-                    Point::new(x2, y2),
-                    color as u8,
-                    stroke_width,
-                );
-            },
-        )?;
-        Ok(())
     }
 }

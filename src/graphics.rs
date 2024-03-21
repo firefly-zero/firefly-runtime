@@ -1,34 +1,31 @@
-use embedded_graphics::framebuffer::{buffer_size, Framebuffer};
-use embedded_graphics::pixelcolor::raw::{LittleEndian, RawU2};
+use crate::state::State;
 use embedded_graphics::pixelcolor::Gray2;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
 
-const WIDTH: usize = 320;
-const HEIGHT: usize = 240;
-const BUFFER_SIZE: usize = buffer_size::<Gray2>(WIDTH, HEIGHT);
+type C<'a> = wasmi::Caller<'a, State>;
 
-pub(crate) struct Graphics {
-    frame: Framebuffer<Gray2, RawU2, LittleEndian, WIDTH, HEIGHT, BUFFER_SIZE>,
-}
-
-impl Graphics {
-    pub(crate) fn new() -> Self {
-        Self {
-            frame: Framebuffer::new(),
-        }
-    }
-
-    pub(crate) fn draw_line(&mut self, start: Point, end: Point, color: u8, stroke_width: u32) {
-        let line = Line::new(start, end);
-        let color = Gray2::new(color);
-        let style = PrimitiveStyle::with_stroke(color, stroke_width);
-        log_error(line.draw_styled(&style, &mut self.frame));
-    }
+pub(crate) fn draw_line(
+    mut caller: C,
+    p1_x: i32,
+    p1_y: i32,
+    p2_x: i32,
+    p2_y: i32,
+    color: u32,
+    stroke_width: u32,
+) {
+    let state = caller.data_mut();
+    let start = Point::new(p1_x, p1_y);
+    let end = Point::new(p2_x, p2_y);
+    let line = Line::new(start, end);
+    let color = Gray2::new(color as u8);
+    let style = PrimitiveStyle::with_stroke(color, stroke_width);
+    log_error(line.draw_styled(&style, &mut state.frame));
 }
 
 fn log_error<T, E: core::fmt::Debug>(res: Result<T, E>) {
     if let Err(err) = res {
+        // TODO: don't panic, write into serial
         panic!("{err:?}")
     }
 }

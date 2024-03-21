@@ -3,7 +3,8 @@
 #![allow(clippy::new_without_default)]
 
 mod graphics;
+mod linking;
 mod state;
 
-use graphics::Graphics;
+pub use linking::link;
 pub use state::State;
