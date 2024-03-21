@@ -7,5 +7,4 @@ mod linking;
 mod runtime;
 mod state;
 
-pub use linking::link;
 pub use runtime::Runtime;
