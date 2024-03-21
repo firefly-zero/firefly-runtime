@@ -1,15 +1,27 @@
+use crate::device::Device;
 use crate::linking::link;
 use crate::state::State;
 use embedded_graphics::draw_target::DrawTarget;
 
-pub struct Runtime<D: DrawTarget<Color = C>, C> {
-    display:  D,
+pub struct Runtime<Display, Delay>
+where
+    Display: DrawTarget,
+    Delay: Fn(u32),
+{
+    device:   Device<Display, Delay>,
     instance: wasmi::Instance,
     store:    wasmi::Store<State>,
 }
 
-impl<D: DrawTarget<Color = C>, C> Runtime<D, C> {
-    pub fn new(display: D, stream: impl wasmi::Read) -> Result<Self, wasmi::Error> {
+impl<Display, Delay> Runtime<Display, Delay>
+where
+    Display: DrawTarget,
+    Delay: Fn(u32),
+{
+    pub fn new(
+        device: Device<Display, Delay>,
+        stream: impl wasmi::Read,
+    ) -> Result<Self, wasmi::Error> {
         let engine = wasmi::Engine::default();
         let module = wasmi::Module::new(&engine, stream)?;
         let state = State::new();
@@ -19,7 +31,7 @@ impl<D: DrawTarget<Color = C>, C> Runtime<D, C> {
         let instance_pre = linker.instantiate(&mut store, &module)?;
         let instance = instance_pre.start(&mut store)?;
         let runtime = Self {
-            display,
+            device,
             instance,
             store,
         };

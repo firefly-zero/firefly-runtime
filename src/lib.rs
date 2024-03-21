@@ -2,6 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::new_without_default)]
 
+mod device;
 mod graphics;
 mod linking;
 mod runtime;
