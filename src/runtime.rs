@@ -3,11 +3,13 @@ use crate::state::State;
 use embedded_graphics::draw_target::DrawTarget;
 
 pub struct Runtime<D: DrawTarget<Color = C>, C> {
-    pub display: D,
+    display:  D,
+    instance: wasmi::Instance,
+    store:    wasmi::Store<State>,
 }
 
 impl<D: DrawTarget<Color = C>, C> Runtime<D, C> {
-    pub fn run(self, stream: impl wasmi::Read) -> Result<(), wasmi::Error> {
+    pub fn new(display: D, stream: impl wasmi::Read) -> Result<Self, wasmi::Error> {
         let engine = wasmi::Engine::default();
         let module = wasmi::Module::new(&engine, stream)?;
         let state = State::new();
@@ -16,29 +18,44 @@ impl<D: DrawTarget<Color = C>, C> Runtime<D, C> {
         link(&mut linker)?;
         let instance_pre = linker.instantiate(&mut store, &module)?;
         let instance = instance_pre.start(&mut store)?;
+        let runtime = Self {
+            display,
+            instance,
+            store,
+        };
+        Ok(runtime)
+    }
 
-        // Call init functions in the module.
-        // The `_initialize` and `_start` functions are defined by wasip1.
-        // The `boot` function is defined by our spec.
-        if let Ok(start) = instance.get_typed_func::<(), ()>(&store, "_initialize") {
-            start.call(&mut store, ())?;
-        }
-        if let Ok(start) = instance.get_typed_func::<(), ()>(&store, "_start") {
-            start.call(&mut store, ())?;
-        }
-        if let Ok(start) = instance.get_typed_func::<(), ()>(&store, "boot") {
-            start.call(&mut store, ())?;
-        }
-
-        let update = instance.get_typed_func::<(), ()>(&store, "update").ok();
-        let render = instance.get_typed_func::<(), ()>(&store, "render").ok();
+    pub fn run(mut self) -> Result<(), wasmi::Error> {
+        self.start()?;
+        let ins = self.instance;
+        let update = ins.get_typed_func::<(), ()>(&self.store, "update").ok();
+        let render = ins.get_typed_func::<(), ()>(&self.store, "render").ok();
         loop {
             if let Some(update) = update {
-                update.call(&mut store, ())?;
+                update.call(&mut self.store, ())?;
             }
             if let Some(render) = render {
-                render.call(&mut store, ())?;
+                render.call(&mut self.store, ())?;
             }
         }
+    }
+
+    /// Call init functions in the module.
+    ///
+    /// The `_initialize` and `_start` functions are defined by wasip1.
+    /// The `boot` function is defined by our spec.
+    fn start(&mut self) -> Result<(), wasmi::Error> {
+        let ins = self.instance;
+        if let Ok(start) = ins.get_typed_func::<(), ()>(&self.store, "_initialize") {
+            start.call(&mut self.store, ())?;
+        }
+        if let Ok(start) = ins.get_typed_func::<(), ()>(&self.store, "_start") {
+            start.call(&mut self.store, ())?;
+        }
+        if let Ok(start) = ins.get_typed_func::<(), ()>(&self.store, "boot") {
+            start.call(&mut self.store, ())?;
+        }
+        Ok(())
     }
 }
