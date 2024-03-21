@@ -4,7 +4,8 @@
 
 mod graphics;
 mod linking;
+mod runtime;
 mod state;
 
 pub use linking::link;
-pub use state::State;
+pub use runtime::Runtime;

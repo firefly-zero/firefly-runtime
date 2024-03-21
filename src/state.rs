@@ -6,12 +6,12 @@ const WIDTH: usize = 320;
 const HEIGHT: usize = 240;
 const BUFFER_SIZE: usize = buffer_size::<Gray2>(WIDTH, HEIGHT);
 
-pub struct State {
+pub(crate) struct State {
     pub(crate) frame: Framebuffer<Gray2, RawU2, LittleEndian, WIDTH, HEIGHT, BUFFER_SIZE>,
 }
 
 impl State {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             frame: Framebuffer::new(),
         }
