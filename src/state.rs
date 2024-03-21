@@ -17,10 +17,10 @@ impl State {
             frame:   Framebuffer::new(),
             palette: [
                 // https://lospec.com/palette-list/kirokaze-gameboy
-                Rgb888::new(0xe2, 0xf3, 0xe4),
                 Rgb888::new(0x33, 0x2c, 0x50),
-                Rgb888::new(0x94, 0xe3, 0x44),
                 Rgb888::new(0x46, 0x87, 0x8f),
+                Rgb888::new(0x94, 0xe3, 0x44),
+                Rgb888::new(0xe2, 0xf3, 0xe4),
             ],
         }
     }
