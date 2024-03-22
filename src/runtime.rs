@@ -1,6 +1,7 @@
 use crate::device::{Device, Timer};
 use crate::linking::link;
 use crate::state::State;
+use embedded_graphics::image::ImageDrawable;
 
 pub struct Runtime<D, C, T, S>
 where
@@ -46,6 +47,8 @@ where
         let ins = self.instance;
         let update = ins.get_typed_func::<(), ()>(&self.store, "update").ok();
         let render = ins.get_typed_func::<(), ()>(&self.store, "render").ok();
+        let mut prev_time = self.device.timer.uptime();
+        let per_frame = 1000 / 30;
         loop {
             if let Some(update) = update {
                 // TODO: continue execution even if an update fails.
@@ -54,6 +57,17 @@ where
             if let Some(render) = render {
                 render.call(&mut self.store, ())?;
             }
+
+            // delay the screen flashing to adjust the frame rate
+            let now = self.device.timer.uptime();
+            let elapsed = now - prev_time;
+            if elapsed < per_frame {
+                let delay = per_frame - elapsed;
+                self.device.timer.sleep(delay);
+            }
+            prev_time = self.device.timer.uptime();
+
+            self.flash_frame();
         }
     }
 
@@ -72,5 +86,12 @@ where
             start.call(&mut self.store, ())?;
         }
         Ok(())
+    }
+
+    fn flash_frame(&self) {
+        // let mut state = self.store.data_mut();
+        // let image = state.frame.as_image();
+        // image.draw(&mut self.device.display);
+        todo!();
     }
 }

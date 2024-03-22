@@ -11,6 +11,9 @@ where
 }
 
 pub trait Timer {
-    fn sleep(ms: u32);
-    fn uptime() -> u32;
+    /// Pause the game execution (in ms).
+    fn sleep(&self, ms: u64);
+
+    /// Time passed since the last reboot (in ms).
+    fn uptime(&self) -> u64;
 }

@@ -5,16 +5,17 @@ use embedded_graphics::pixelcolor::{Gray2, Rgb888};
 const WIDTH: usize = 320;
 const HEIGHT: usize = 240;
 const BUFFER_SIZE: usize = buffer_size::<Gray2>(WIDTH, HEIGHT);
+pub(crate) type Frame = Framebuffer<Gray2, RawU2, LittleEndian, WIDTH, HEIGHT, BUFFER_SIZE>;
 
 pub(crate) struct State {
-    pub frame:   Framebuffer<Gray2, RawU2, LittleEndian, WIDTH, HEIGHT, BUFFER_SIZE>,
+    pub frame: Frame,
     pub palette: [Rgb888; 4],
 }
 
 impl State {
     pub(crate) fn new() -> Self {
         Self {
-            frame:   Framebuffer::new(),
+            frame: Framebuffer::new(),
             palette: [
                 // https://lospec.com/palette-list/kirokaze-gameboy
                 Rgb888::new(0x33, 0x2c, 0x50),
