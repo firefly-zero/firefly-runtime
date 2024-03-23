@@ -42,6 +42,17 @@ pub(crate) fn set_colors(
     state.palette[3] = Rgb888::new(c4_r as u8, c4_g as u8, c4_b as u8);
 }
 
+/// Draw a single point.
+///
+/// Without scailing, sets a single pixel.
+pub(crate) fn draw_point(mut caller: C, x: i32, y: i32, color: u32) {
+    let state = caller.data_mut();
+    let point = Point::new(x, y);
+    let color = Gray2::new(color as u8);
+    let pixel = Pixel(point, color);
+    never_fails(pixel.draw(&mut state.frame));
+}
+
 /// Draw a line between two points.
 pub(crate) fn draw_line(
     mut caller: C,
@@ -59,6 +70,94 @@ pub(crate) fn draw_line(
     let color = Gray2::new(color as u8);
     let style = PrimitiveStyle::with_stroke(color, stroke_width);
     never_fails(line.draw_styled(&style, &mut state.frame));
+}
+
+/// Draw a rectangle.
+pub(crate) fn draw_rect(
+    mut caller: C,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    fill_color: u32,
+    stroke_color: u32,
+    stroke_width: u32,
+) {
+    let state = caller.data_mut();
+    let point = Point::new(x, y);
+    let size = Size::new(width as u32, height as u32);
+    let rect = Rectangle::new(point, size);
+    let style = get_shape_style(fill_color, stroke_color, stroke_width);
+    never_fails(rect.draw_styled(&style, &mut state.frame));
+}
+
+/// Draw a circle.
+pub(crate) fn draw_circle(
+    mut caller: C,
+    x: i32,
+    y: i32,
+    diameter: i32,
+    fill_color: u32,
+    stroke_color: u32,
+    stroke_width: u32,
+) {
+    let state = caller.data_mut();
+    let top_left = Point::new(x, y);
+    let style = get_shape_style(fill_color, stroke_color, stroke_width);
+    let circle = Circle::new(top_left, diameter as u32);
+    never_fails(circle.draw_styled(&style, &mut state.frame));
+}
+
+/// Draw an ellipse.
+pub(crate) fn draw_ellipse(
+    mut caller: C,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    fill_color: u32,
+    stroke_color: u32,
+    stroke_width: u32,
+) {
+    let state = caller.data_mut();
+    let top_left = Point::new(x, y);
+    let size = Size::new(width as u32, height as u32);
+    let style = get_shape_style(fill_color, stroke_color, stroke_width);
+    let ellipse = Ellipse::new(top_left, size);
+    never_fails(ellipse.draw_styled(&style, &mut state.frame));
+}
+
+/// Draw a line between two points.
+pub(crate) fn draw_triangle(
+    mut caller: C,
+    p1_x: i32,
+    p1_y: i32,
+    p2_x: i32,
+    p2_y: i32,
+    p3_x: i32,
+    p3_y: i32,
+    fill_color: u32,
+    stroke_color: u32,
+    stroke_width: u32,
+) {
+    let state = caller.data_mut();
+    let vertex1 = Point::new(p1_x, p1_y);
+    let vertex2 = Point::new(p2_x, p2_y);
+    let vertex3 = Point::new(p3_x, p3_y);
+    let style = get_shape_style(fill_color, stroke_color, stroke_width);
+    let triangle = Triangle::new(vertex1, vertex2, vertex3);
+    never_fails(triangle.draw_styled(&style, &mut state.frame));
+}
+
+fn get_shape_style(fill_color: u32, stroke_color: u32, stroke_width: u32) -> PrimitiveStyle<Gray2> {
+    let fill_color = Gray2::new(fill_color as u8);
+    let mut style = PrimitiveStyle::with_fill(fill_color);
+    if stroke_width != 0 {
+        let stroke_color = Gray2::new(stroke_color as u8);
+        style.stroke_color = Some(stroke_color);
+        style.stroke_width = stroke_width;
+    }
+    style
 }
 
 /// Statically ensure that the given Result cannot have an error.
