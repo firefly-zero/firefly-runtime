@@ -6,6 +6,7 @@ use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::image::ImageDrawable;
 use embedded_graphics::pixelcolor::RgbColor;
+use fugit::ExtU32;
 
 pub struct Runtime<D, C, T, S, R>
 where
@@ -56,8 +57,8 @@ where
         let ins = self.instance;
         let update = ins.get_typed_func::<(), ()>(&self.store, "update").ok();
         let render = ins.get_typed_func::<(), ()>(&self.store, "render").ok();
-        let mut prev_time = self.device.timer.uptime();
-        let per_frame = 1000 / 30;
+        let mut prev_time = self.device.timer.now();
+        let per_frame = (1000 / 30).millis();
         loop {
             if let Some(update) = update {
                 // TODO: continue execution even if an update fails.
@@ -68,13 +69,13 @@ where
             }
 
             // delay the screen flashing to adjust the frame rate
-            let now = self.device.timer.uptime();
+            let now = self.device.timer.now();
             let elapsed = now - prev_time;
             if elapsed < per_frame {
                 let delay = per_frame - elapsed;
-                self.device.timer.sleep(delay);
+                self.device.timer.delay(delay);
             }
-            prev_time = self.device.timer.uptime();
+            prev_time = self.device.timer.now();
 
             self.flash_frame();
         }

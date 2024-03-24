@@ -3,6 +3,7 @@ use core::marker::PhantomData;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
+use fugit::{Instant, MillisDurationU32};
 
 pub struct Device<D, C, T, S, R>
 where
@@ -19,18 +20,30 @@ where
 }
 
 pub trait Timer {
-    /// Pause the game execution (in ms).
-    fn sleep(&self, ms: u64);
+    /// The current time.
+    ///
+    /// Should be precise enough for adjusting the delay between frames.
+    ///
+    /// Usually implemented as [rtic_time.Monotonic].
+    ///
+    /// [rtic_time.Monotonic]: https://docs.rs/rtic-time/latest/rtic_time/trait.Monotonic.html
+    fn now(&self) -> Instant<u32, 1, 1_000>;
 
-    /// Time passed since the last reboot (in ms).
-    fn uptime(&self) -> u64;
+    /// Suspends the current thread for the given duration.
+    ///
+    /// Should be precise enough for adjusting the delay between frames.
+    ///
+    /// Usually implemented as [embedded_hal.DelayNs].
+    ///
+    /// [embedded_hal.DelayNs]: https://docs.rs/embedded-hal/1.0.0/embedded_hal/delay/trait.DelayNs.html
+    fn delay(&self, d: MillisDurationU32);
 }
 
 /// File system abstraction.
 ///
 /// Designed to work nicely with [embedded_sdmmc] and the stdlib filesystem.
 ///
-/// embedded_sdmmc: https://github.com/rust-embedded-community/embedded-sdmmc-rs
+/// [embedded_sdmmc]: https://github.com/rust-embedded-community/embedded-sdmmc-rs
 pub trait Storage<R: embedded_io::Read> {
     /// Open a file for reading.
     ///
