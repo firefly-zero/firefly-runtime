@@ -1,20 +1,22 @@
 use crate::color::FromRGB;
 use core::marker::PhantomData;
 use embedded_graphics::draw_target::DrawTarget;
-use embedded_graphics::geometry::OriginDimensions;
+use embedded_graphics::geometry::{OriginDimensions, Point};
 use embedded_graphics::pixelcolor::RgbColor;
 use fugit::{Instant, MillisDurationU32};
 
-pub struct Device<D, C, T, S, R>
+pub struct Device<D, C, T, I, S, R>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
     T: Timer,
+    I: Input,
     S: Storage<R>,
     R: embedded_io::Read + wasmi::Read,
 {
     pub display: D,
     pub timer:   T,
+    pub input:   I,
     pub storage: S,
     pub reader:  PhantomData<R>,
 }
@@ -57,4 +59,15 @@ pub trait Storage<R: embedded_io::Read + wasmi::Read> {
     ///
     /// The runtime ensures that the path is relative and never goes up the tree.
     fn open_file(&self, path: &[&str]) -> Option<R>;
+}
+
+pub trait Input {
+    fn read_state(&self) -> InputState;
+}
+
+pub struct InputState {
+    pub left:  Point,
+    pub right: Point,
+    pub menu:  bool,
+    pub lock:  bool,
 }

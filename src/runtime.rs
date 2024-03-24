@@ -1,5 +1,5 @@
 use crate::color::{ColorAdapter, FromRGB};
-use crate::device::{Device, Storage, Timer};
+use crate::device::*;
 use crate::linking::link;
 use crate::state::State;
 use embedded_graphics::draw_target::DrawTarget;
@@ -8,29 +8,31 @@ use embedded_graphics::image::ImageDrawable;
 use embedded_graphics::pixelcolor::RgbColor;
 use fugit::ExtU32;
 
-pub struct Runtime<D, C, T, S, R>
+pub struct Runtime<D, C, T, I, S, R>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
     T: Timer,
+    I: Input,
     S: Storage<R>,
     R: embedded_io::Read + wasmi::Read,
 {
-    device:   Device<D, C, T, S, R>,
+    device:   Device<D, C, T, I, S, R>,
     instance: wasmi::Instance,
     store:    wasmi::Store<State>,
 }
 
-impl<D, C, T, S, R> Runtime<D, C, T, S, R>
+impl<D, C, T, I, S, R> Runtime<D, C, T, I, S, R>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
     T: Timer,
+    I: Input,
     S: Storage<R>,
     R: embedded_io::Read + wasmi::Read,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
-    pub fn new(device: Device<D, C, T, S, R>, cart_id: &str) -> Result<Self, wasmi::Error> {
+    pub fn new(device: Device<D, C, T, I, S, R>, cart_id: &str) -> Result<Self, wasmi::Error> {
         let engine = wasmi::Engine::default();
         // TODO: validate ID to ensure it doesn't mess with the path.
         // Using `/` or `..` in ID may lead to arbitrary file read.
