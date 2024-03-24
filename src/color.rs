@@ -11,7 +11,7 @@ where
     C: RgbColor + FromRGB,
     D: DrawTarget<Color = C> + OriginDimensions,
 {
-    pub state: &'a State,
+    pub state:  &'a State,
     pub target: &'a mut D,
 }
 

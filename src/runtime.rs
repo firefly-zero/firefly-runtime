@@ -1,5 +1,4 @@
-use crate::color::ColorAdapter;
-use crate::color::FromRGB;
+use crate::color::{ColorAdapter, FromRGB};
 use crate::device::{Device, Timer};
 use crate::linking::link;
 use crate::state::State;
@@ -15,9 +14,9 @@ where
     T: Timer,
     S: embedded_storage::Storage,
 {
-    device: Device<D, C, T, S>,
+    device:   Device<D, C, T, S>,
     instance: wasmi::Instance,
-    store: wasmi::Store<State>,
+    store:    wasmi::Store<State>,
 }
 
 impl<D, C, T, S> Runtime<D, C, T, S>
