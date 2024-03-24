@@ -9,5 +9,5 @@ mod linking;
 mod runtime;
 mod state;
 
-pub use device::Device;
+pub use device::*;
 pub use runtime::Runtime;

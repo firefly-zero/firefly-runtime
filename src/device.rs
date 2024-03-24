@@ -50,8 +50,11 @@ pub trait Storage<R: embedded_io::Read + wasmi::Read> {
     /// Open a file for reading.
     ///
     /// The file path is given as a slice of path components.
-    /// There are at least 2 components: the first one is the root directory
-    /// (either "roms" or "data"), the last one is the file name,
-    /// and everything in between are directory names if the file is nested.
+    /// There are at least 3 components: the first one is the root directory
+    /// (either "roms" or "data"), the second is game ID, and the last is file name.
+    /// Everything in between game ID and file name are directory names
+    /// if the file is nested.
+    ///
+    /// The runtime ensures that the path is relative and never goes up the tree.
     fn open_file(&self, path: &[&str]) -> Option<R>;
 }

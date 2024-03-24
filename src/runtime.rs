@@ -32,6 +32,8 @@ where
     /// Create a new runtime with the wasm module loaded and instantiated.
     pub fn new(device: Device<D, C, T, S, R>, cart_id: &str) -> Result<Self, wasmi::Error> {
         let engine = wasmi::Engine::default();
+        // TODO: validate ID to ensure it doesn't mess with the path.
+        // Using `/` or `..` in ID may lead to arbitrary file read.
         let path = &["roms", cart_id, "cart.wasm"];
         // TODO: handle "file not found".
         let stream = device.storage.open_file(path).unwrap();
