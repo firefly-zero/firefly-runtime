@@ -5,6 +5,9 @@ use embedded_graphics::geometry::{OriginDimensions, Point};
 use embedded_graphics::pixelcolor::RgbColor;
 use fugit::{Instant, MillisDurationU32};
 
+pub type Time = Instant<u32, 1, 1000>;
+pub type Delay = MillisDurationU32;
+
 pub struct Device<D, C, T, I, S, R>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
@@ -31,7 +34,7 @@ pub trait Timer {
     ///
     /// [rtic_time.Monotonic]: https://docs.rs/rtic-time/latest/rtic_time/trait.Monotonic.html
     /// [rtic_monotonic.Monotonic]: https://docs.rs/rtic-monotonic/latest/rtic_monotonic/trait.Monotonic.html
-    fn now(&self) -> Instant<u32, 1, 1000>;
+    fn now(&self) -> Time;
 
     /// Suspends the current thread for the given duration.
     ///
@@ -40,7 +43,7 @@ pub trait Timer {
     /// Usually implemented as [embedded_hal.DelayNs].
     ///
     /// [embedded_hal.DelayNs]: https://docs.rs/embedded-hal/1.0.0/embedded_hal/delay/trait.DelayNs.html
-    fn delay(&self, d: MillisDurationU32);
+    fn delay(&self, d: Delay);
 }
 
 /// File system abstraction.
