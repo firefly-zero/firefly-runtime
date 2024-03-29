@@ -67,9 +67,12 @@ where
         Ok(runtime)
     }
 
+    pub fn display(&self) -> &D {
+        &self.device.display
+    }
+
     /// Run the game until exited or an error occurs.
     pub fn run(mut self) -> Result<(), wasmi::Error> {
-        _ = self.device.display.clear(C::BLACK);
         self.start()?;
         loop {
             self.update()?;
@@ -78,6 +81,8 @@ where
 
     /// Call init functions in the module.
     pub fn start(&mut self) -> Result<(), wasmi::Error> {
+        _ = self.device.display.clear(C::BLACK);
+
         let ins = self.instance;
         // The `_initialize` and `_start` functions are defined by wasip1.
         if let Ok(start) = ins.get_typed_func::<(), ()>(&self.store, "_initialize") {
