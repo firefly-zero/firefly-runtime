@@ -20,6 +20,14 @@ where
     device:   Device<D, C, T, I, S, R>,
     instance: wasmi::Instance,
     store:    wasmi::Store<State>,
+    update:   Option<wasmi::TypedFunc<(), ()>>,
+    render:   Option<wasmi::TypedFunc<(), ()>>,
+
+    /// Time to render a single frame to match the expected FPS.
+    per_frame: Delay,
+
+    /// The last time when the frame was updated.
+    prev_time: Time,
 }
 
 impl<D, C, T, I, S, R> Runtime<D, C, T, I, S, R>
@@ -46,10 +54,15 @@ where
         link(&mut linker)?;
         let instance_pre = linker.instantiate(&mut store, &module)?;
         let instance = instance_pre.start(&mut store)?;
+        let now = device.timer.now();
         let runtime = Self {
             device,
             instance,
             store,
+            update: None,
+            render: None,
+            per_frame: (1000 / 30).millis(),
+            prev_time: now,
         };
         Ok(runtime)
     }
@@ -58,35 +71,13 @@ where
     pub fn run(mut self) -> Result<(), wasmi::Error> {
         _ = self.device.display.clear(C::BLACK);
         self.start()?;
-        let ins = self.instance;
-        let update = ins.get_typed_func::<(), ()>(&self.store, "update").ok();
-        let render = ins.get_typed_func::<(), ()>(&self.store, "render").ok();
-        let mut prev_time = self.device.timer.now();
-        let per_frame = (1000 / 30).millis();
         loop {
-            if let Some(update) = update {
-                // TODO: continue execution even if an update fails.
-                update.call(&mut self.store, ())?;
-            }
-            if let Some(render) = render {
-                render.call(&mut self.store, ())?;
-            }
-
-            // delay the screen flashing to adjust the frame rate
-            let now = self.device.timer.now();
-            let elapsed = now - prev_time;
-            if elapsed < per_frame {
-                let delay = per_frame - elapsed;
-                self.device.timer.delay(delay);
-            }
-            prev_time = self.device.timer.now();
-
-            self.flash_frame();
+            self.update()?;
         }
     }
 
     /// Call init functions in the module.
-    fn start(&mut self) -> Result<(), wasmi::Error> {
+    pub fn start(&mut self) -> Result<(), wasmi::Error> {
         let ins = self.instance;
         // The `_initialize` and `_start` functions are defined by wasip1.
         if let Ok(start) = ins.get_typed_func::<(), ()>(&self.store, "_initialize") {
@@ -99,11 +90,41 @@ where
         if let Ok(start) = ins.get_typed_func::<(), ()>(&self.store, "boot") {
             start.call(&mut self.store, ())?;
         }
+
+        // Other functions defined by our spec.
+        self.update = ins.get_typed_func(&self.store, "update").ok();
+        self.render = ins.get_typed_func(&self.store, "render").ok();
+        Ok(())
+    }
+
+    /// Update the game state and flush the frame on the display.
+    ///
+    /// If there is not enough time passed since the last update,
+    /// the update will be delayed to keep the expected frame rate.
+    pub fn update(&mut self) -> Result<(), wasmi::Error> {
+        if let Some(update) = self.update {
+            // TODO: continue execution even if an update fails.
+            update.call(&mut self.store, ())?;
+        }
+        if let Some(render) = self.render {
+            render.call(&mut self.store, ())?;
+        }
+
+        // delay the screen flashing to adjust the frame rate
+        let now = self.device.timer.now();
+        let elapsed = now - self.prev_time;
+        if elapsed < self.per_frame {
+            let delay = self.per_frame - elapsed;
+            self.device.timer.delay(delay);
+        }
+        self.prev_time = self.device.timer.now();
+
+        self.flush_frame();
         Ok(())
     }
 
     /// Draw the frame buffer on the actual screen.
-    fn flash_frame(&mut self) {
+    fn flush_frame(&mut self) {
         let state = self.store.data();
         let mut adapter = ColorAdapter {
             state,
