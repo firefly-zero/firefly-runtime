@@ -5,6 +5,9 @@ use core::str::Bytes;
 /// The ID must contain the author ID and the short app ID separated by dot.
 /// Both parts should have at least one character and may contain only
 /// alphanumeric ASCII characters and hyphen.
+///
+/// Without ID validation, an app may use a malformed ID (like "../../../")
+/// to gain access to arbitrary files of other apps, including secrets.
 pub(crate) fn valid_full_id(s: &str) -> bool {
     let mut b = s.bytes();
     // validate author ID
@@ -24,6 +27,7 @@ pub(crate) fn valid_full_id(s: &str) -> bool {
 
 fn valid_id_part(b: &mut Bytes<'_>) -> bool {
     let mut alpha_found = false;
+    let mut prev_is_hyphen = false;
     for c in b {
         // stop consuming when dot is encountered
         if c == b'.' {
@@ -34,15 +38,21 @@ fn valid_id_part(b: &mut Bytes<'_>) -> bool {
             if !alpha_found {
                 return false;
             }
+            // forbid two consecutive hyphens
+            if prev_is_hyphen {
+                return false;
+            }
+            prev_is_hyphen = true;
             continue;
         }
+        prev_is_hyphen = false;
         if !c.is_ascii_lowercase() && !c.is_ascii_digit() {
             return false;
         }
         alpha_found = true;
     }
-    // forbid hyphen-only names
-    alpha_found
+    // forbid hyphen-only, empty names, or ending with hyphen
+    alpha_found && !prev_is_hyphen
 }
 
 #[cfg(test)]
@@ -55,6 +65,8 @@ mod tests {
         assert!(valid_full_id("some-user.some-app"));
         assert!(valid_full_id("user-name.app"));
         assert!(valid_full_id("user.app-name"));
+        assert!(valid_full_id("user.relatively-long-app-name"));
+        assert!(valid_full_id("relatively-long-user-name.app-name"));
         assert!(valid_full_id("a.b"));
 
         assert!(!valid_full_id("user.name.app")); // too many dots
@@ -73,5 +85,10 @@ mod tests {
         assert!(!valid_full_id("author.game.")); // ends with dot
         assert!(!valid_full_id(".author.game")); // starts with dot
         assert!(!valid_full_id("author.name.game")); // too many dots
+        assert!(!valid_full_id("author--name.game")); // two consecutive hyphens
+        assert!(!valid_full_id("author-.game")); // ends with hyphen
+        assert!(!valid_full_id("author.game-")); // ends with hyphen
+        assert!(!valid_full_id("-author.game")); // starts with hyphen
+        assert!(!valid_full_id("author.-game")); // starts with hyphen
     }
 }
