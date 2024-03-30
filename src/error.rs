@@ -3,6 +3,7 @@ use core::fmt::Display;
 pub enum Error {
     Wasmi(wasmi::Error),
     FileNotFound,
+    InvalidID,
 }
 
 impl Display for Error {
@@ -10,6 +11,7 @@ impl Display for Error {
         match self {
             Error::Wasmi(err) => write!(f, "wasm error: {err}"),
             Error::FileNotFound => write!(f, "file not found"),
+            Error::InvalidID => write!(f, "invalid app ID"),
         }
     }
 }

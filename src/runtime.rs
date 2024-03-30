@@ -2,6 +2,7 @@ use crate::color::{ColorAdapter, FromRGB};
 use crate::device::*;
 use crate::linking::link;
 use crate::state::State;
+use crate::validators::valid_full_id;
 use crate::Error;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
@@ -44,11 +45,12 @@ where
     R: embedded_io::Read + wasmi::Read,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
-    pub fn new(device: Device<D, C, T, I, S, R>, cart_id: &str) -> Result<Self, Error> {
+    pub fn new(device: Device<D, C, T, I, S, R>, app_id: &str) -> Result<Self, Error> {
         let engine = wasmi::Engine::default();
-        // TODO: validate ID to ensure it doesn't mess with the path.
-        // Using `/` or `..` in ID may lead to arbitrary file read.
-        let path = &["roms", cart_id, "cart.wasm"];
+        if !valid_full_id(app_id) {
+            return Err(Error::InvalidID);
+        }
+        let path = &["roms", app_id, "cart.wasm"];
         let Some(stream) = device.storage.open_file(path) else {
             return Err(Error::FileNotFound);
         };
