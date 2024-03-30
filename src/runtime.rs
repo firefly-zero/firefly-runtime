@@ -2,6 +2,7 @@ use crate::color::{ColorAdapter, FromRGB};
 use crate::device::*;
 use crate::linking::link;
 use crate::state::State;
+use crate::Error;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::image::ImageDrawable;
@@ -40,17 +41,18 @@ where
     R: embedded_io::Read + wasmi::Read,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
-    pub fn new(device: Device<D, C, T, I, S, R>, cart_id: &str) -> Result<Self, wasmi::Error> {
+    pub fn new(device: Device<D, C, T, I, S, R>, cart_id: &str) -> Result<Self, Error> {
         let engine = wasmi::Engine::default();
         // TODO: validate ID to ensure it doesn't mess with the path.
         // Using `/` or `..` in ID may lead to arbitrary file read.
         let path = &["roms", cart_id, "cart.wasm"];
-        // TODO: handle "file not found".
-        let stream = device.storage.open_file(path).unwrap();
+        let Some(stream) = device.storage.open_file(path) else {
+            return Err(Error::FileNotFound);
+        };
         let module = wasmi::Module::new(&engine, stream)?;
         let state = State::new();
-        let mut store = <wasmi::Store<State>>::new(&engine, state);
-        let mut linker = <wasmi::Linker<State>>::new(&engine);
+        let mut store = wasmi::Store::<State>::new(&engine, state);
+        let mut linker = wasmi::Linker::<State>::new(&engine);
         link(&mut linker)?;
         let instance_pre = linker.instantiate(&mut store, &module)?;
         let instance = instance_pre.start(&mut store)?;

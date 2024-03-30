@@ -2,7 +2,7 @@ use crate::graphics;
 use crate::state::State;
 
 /// Register all host-defined functions in the linker.
-pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::errors::LinkerError> {
+pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error> {
     linker.func_wrap("graphics", "clear", graphics::clear)?;
     linker.func_wrap("graphics", "set_color", graphics::set_color)?;
     linker.func_wrap("graphics", "set_colors", graphics::set_colors)?;

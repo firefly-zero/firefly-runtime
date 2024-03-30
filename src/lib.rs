@@ -4,10 +4,12 @@
 
 mod color;
 mod device;
+mod error;
 mod graphics;
 mod linking;
 mod runtime;
 mod state;
 
 pub use device::*;
+pub use error::Error;
 pub use runtime::Runtime;
