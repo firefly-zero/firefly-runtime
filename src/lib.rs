@@ -13,3 +13,4 @@ mod state;
 pub use device::*;
 pub use error::Error;
 pub use runtime::Runtime;
+pub use state::{HEIGHT, WIDTH};
