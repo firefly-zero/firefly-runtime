@@ -1,10 +1,14 @@
-use crate::state::State;
+use crate::state::{State, HEIGHT, WIDTH};
 use core::convert::Infallible;
 use embedded_graphics::pixelcolor::{Gray2, Rgb888};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
 
 type C<'a> = wasmi::Caller<'a, State>;
+
+pub(crate) fn get_screen_size(mut _caller: C) -> i32 {
+    ((WIDTH as i32) << 16) | (HEIGHT as i32)
+}
 
 /// Set every pixel of the frame buffer to the given color.
 pub(crate) fn clear(mut caller: C, color: u32) {
