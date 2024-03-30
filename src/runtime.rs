@@ -9,6 +9,9 @@ use embedded_graphics::image::ImageDrawable;
 use embedded_graphics::pixelcolor::RgbColor;
 use fugit::ExtU32;
 
+/// Default frames per second.
+const FPS: u32 = 30;
+
 pub struct Runtime<D, C, T, I, S, R>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
@@ -63,7 +66,7 @@ where
             store,
             update: None,
             render: None,
-            per_frame: (1000 / 30).millis(),
+            per_frame: (1000 / FPS).millis(),
             prev_time: now,
         };
         Ok(runtime)
