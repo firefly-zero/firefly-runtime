@@ -68,7 +68,10 @@ mod tests {
         assert!(valid_full_id("user.relatively-long-app-name"));
         assert!(valid_full_id("relatively-long-user-name.app-name"));
         assert!(valid_full_id("a.b"));
+    }
 
+    #[test]
+    fn test_invalid_full_id() {
         assert!(!valid_full_id("user.name.app")); // too many dots
         assert!(!valid_full_id("user_name.app")); // underscore is not allowed
         assert!(!valid_full_id("user name.app")); // whitespace is not allowed
@@ -90,5 +93,9 @@ mod tests {
         assert!(!valid_full_id("author.game-")); // ends with hyphen
         assert!(!valid_full_id("-author.game")); // starts with hyphen
         assert!(!valid_full_id("author.-game")); // starts with hyphen
+        assert!(!valid_full_id("author..game"));
+        assert!(!valid_full_id("author./game"));
+        assert!(!valid_full_id("author.game/sub"));
+        assert!(!valid_full_id("sub/author.game"));
     }
 }

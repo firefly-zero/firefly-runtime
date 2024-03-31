@@ -61,6 +61,43 @@ where
     }
 }
 
+// Do not write pixels of a certain color.
+pub(crate) struct TransparencyAdapter<'a, D>
+where
+    D: DrawTarget<Color = Gray2> + OriginDimensions,
+{
+    pub target: &'a mut D,
+
+    /// The color to skip.
+    pub transparent: Gray2,
+}
+
+/// Required by the DrawTarget trait.
+impl<'a, D> OriginDimensions for TransparencyAdapter<'a, D>
+where
+    D: DrawTarget<Color = Gray2> + OriginDimensions,
+{
+    fn size(&self) -> embedded_graphics::prelude::Size {
+        self.target.size()
+    }
+}
+
+impl<'a, D> DrawTarget for TransparencyAdapter<'a, D>
+where
+    D: DrawTarget<Color = Gray2> + OriginDimensions,
+{
+    type Color = Gray2;
+    type Error = D::Error;
+
+    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = Pixel<Self::Color>>,
+    {
+        let iter = pixels.into_iter().filter(|p| p.1 != self.transparent);
+        self.target.draw_iter(iter)
+    }
+}
+
 /// Create RGB (or BGR) color from R, G, and B components.
 ///
 /// All RGB colors implemented in embedded_graphics provide exactly the same
