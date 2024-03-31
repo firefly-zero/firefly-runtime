@@ -1,5 +1,7 @@
+use crate::color::TransparencyAdapter;
 use crate::state::{State, HEIGHT, WIDTH};
 use core::convert::Infallible;
+use embedded_graphics::image::{Image, ImageRawLE};
 use embedded_graphics::pixelcolor::{Gray2, Rgb888};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
@@ -151,6 +153,42 @@ pub(crate) fn draw_triangle(
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let triangle = Triangle::new(vertex1, vertex2, vertex3);
     never_fails(triangle.draw_styled(&style, &mut state.frame));
+}
+
+pub(crate) fn draw_image(
+    mut caller: C,
+    x: i32,
+    y: i32,
+    ptr: i32,
+    len: i32,
+    width: i32,
+    transp: i32,
+) {
+    // retrieve the raw data from memory
+    let state = caller.data_mut();
+    let Some(memory) = state.memory else {
+        // TODO: log "no memory found" error
+        return;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let ptr = ptr as usize;
+    let len = len as usize;
+    let image_bytes = &data[ptr..len];
+
+    let point = Point::new(x, y);
+    let image_raw = ImageRawLE::<Gray2>::new(image_bytes, width as u32);
+    let image = Image::new(&image_raw, point);
+    if transp >= 4 {
+        // Draw without transparency.
+        never_fails(image.draw(&mut state.frame));
+    } else {
+        // Draw with transparency using adapter.
+        let mut adapter = TransparencyAdapter {
+            target:      &mut state.frame,
+            transparent: Gray2::new(transp as u8),
+        };
+        never_fails(image.draw(&mut adapter));
+    };
 }
 
 fn get_shape_style(fill_color: u32, stroke_color: u32, stroke_width: u32) -> PrimitiveStyle<Gray2> {

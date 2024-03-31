@@ -89,6 +89,7 @@ where
     /// Call init functions in the module.
     pub fn start(&mut self) -> Result<(), Error> {
         _ = self.device.display.clear(C::BLACK);
+        self.set_memory();
 
         let ins = self.instance;
         // The `_initialize` and `_start` functions are defined by wasip1.
@@ -145,5 +146,12 @@ where
         let image = state.frame.as_image();
         // TODO: handle error
         _ = image.draw(&mut adapter);
+    }
+
+    /// Find exported memory in the instance and add it into the state.
+    fn set_memory(&mut self) {
+        let memory = self.instance.get_memory(&self.store, "memory");
+        let state = self.store.data_mut();
+        state.memory = memory;
     }
 }

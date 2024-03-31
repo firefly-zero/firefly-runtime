@@ -10,6 +10,7 @@ pub(crate) type Frame = Framebuffer<Gray2, RawU2, LittleEndian, WIDTH, HEIGHT, B
 pub(crate) struct State {
     pub frame:   Frame,
     pub palette: [Rgb888; 4],
+    pub memory:  Option<wasmi::Memory>,
 }
 
 impl State {
@@ -23,6 +24,7 @@ impl State {
                 Rgb888::new(0x94, 0xe3, 0x44),
                 Rgb888::new(0xe2, 0xf3, 0xe4),
             ],
+            memory:  None,
         }
     }
 }

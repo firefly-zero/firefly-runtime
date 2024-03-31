@@ -13,6 +13,7 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error
     linker.func_wrap("graphics", "draw_circle", graphics::draw_circle)?;
     linker.func_wrap("graphics", "draw_ellipse", graphics::draw_ellipse)?;
     linker.func_wrap("graphics", "draw_triangle", graphics::draw_triangle)?;
+    linker.func_wrap("graphics", "draw_image", graphics::draw_image)?;
     Ok(())
 }
 
