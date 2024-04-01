@@ -15,7 +15,7 @@ pub(crate) fn get_screen_size(mut _caller: C) -> i32 {
 /// Set every pixel of the frame buffer to the given color.
 pub(crate) fn clear(mut caller: C, color: u32) {
     let state = caller.data_mut();
-    let color = Gray2::new(color as u8);
+    let color = Gray2::new(color as u8 - 1);
     never_fails(state.frame.clear(color));
 }
 
@@ -54,7 +54,7 @@ pub(crate) fn set_colors(
 pub(crate) fn draw_point(mut caller: C, x: i32, y: i32, color: u32) {
     let state = caller.data_mut();
     let point = Point::new(x, y);
-    let color = Gray2::new(color as u8);
+    let color = Gray2::new(color as u8 - 1);
     let pixel = Pixel(point, color);
     never_fails(pixel.draw(&mut state.frame));
 }
@@ -73,7 +73,7 @@ pub(crate) fn draw_line(
     let start = Point::new(p1_x, p1_y);
     let end = Point::new(p2_x, p2_y);
     let line = Line::new(start, end);
-    let color = Gray2::new(color as u8);
+    let color = Gray2::new(color as u8 - 1);
     let style = PrimitiveStyle::with_stroke(color, stroke_width);
     never_fails(line.draw_styled(&style, &mut state.frame));
 }
@@ -276,13 +276,13 @@ pub(crate) fn draw_image_inner(
     let image_bytes = &data[ptr..len];
 
     let point = Point::new(x, y);
-    let is_transp = transp < 4;
+    let is_transp = transp != 0;
     match (bpp, is_transp) {
         // 1BPP, transparent
         (1, true) => {
             let mut adapter = TransparencyAdapter {
                 target:      &mut state.frame,
-                transparent: Gray2::new(transp as u8),
+                transparent: Gray2::new(transp as u8 - 1),
             };
             draw_1bpp(image_bytes, width, point, sub, &mut adapter);
         }
@@ -294,7 +294,7 @@ pub(crate) fn draw_image_inner(
         (2, true) => {
             let mut adapter = TransparencyAdapter {
                 target:      &mut state.frame,
-                transparent: Gray2::new(transp as u8),
+                transparent: Gray2::new(transp as u8 - 1),
             };
             draw_2bpp(image_bytes, width, point, sub, &mut adapter);
         }
@@ -357,10 +357,13 @@ fn draw_2bpp<T>(
 }
 
 fn get_shape_style(fill_color: u32, stroke_color: u32, stroke_width: u32) -> PrimitiveStyle<Gray2> {
-    let fill_color = Gray2::new(fill_color as u8);
-    let mut style = PrimitiveStyle::with_fill(fill_color);
-    if stroke_width != 0 {
-        let stroke_color = Gray2::new(stroke_color as u8);
+    let mut style = PrimitiveStyle::new();
+    if fill_color != 0 {
+        let fill_color = Gray2::new(fill_color as u8 - 1);
+        style.fill_color = Some(fill_color);
+    }
+    if stroke_color != 0 && stroke_width != 0 {
+        let stroke_color = Gray2::new(stroke_color as u8 - 1);
         style.stroke_color = Some(stroke_color);
         style.stroke_width = stroke_width;
     }
@@ -390,7 +393,7 @@ mod tests {
             assert_eq!(byte, &0b_0000_0000);
         }
 
-        let inputs = [I32(1)];
+        let inputs = [I32(2)];
         let mut outputs = Vec::new();
         func.call(&mut store, &inputs, &mut outputs).unwrap();
         assert_eq!(outputs.len(), 0);
@@ -415,7 +418,7 @@ mod tests {
             assert_eq!(byte, &0b_0000_0000);
         }
 
-        let inputs = [I32(2), I32(1), I32(4), I32(3), I32(2), I32(1)];
+        let inputs = [I32(2), I32(1), I32(4), I32(3), I32(3), I32(1)];
         let mut outputs = Vec::new();
         func.call(&mut store, &inputs, &mut outputs).unwrap();
         assert_eq!(outputs.len(), 0);
