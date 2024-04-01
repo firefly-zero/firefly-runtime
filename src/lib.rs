@@ -6,6 +6,7 @@ mod color;
 mod device;
 mod error;
 mod graphics;
+mod input;
 mod linking;
 mod runtime;
 mod state;

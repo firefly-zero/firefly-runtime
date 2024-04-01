@@ -1,5 +1,5 @@
-use crate::graphics;
 use crate::state::State;
+use crate::{graphics, input};
 
 /// Register all host-defined functions in the linker.
 pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error> {
@@ -18,6 +18,10 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error
     linker.func_wrap("graphics", "draw_sector", graphics::draw_sector)?;
     linker.func_wrap("graphics", "draw_image", graphics::draw_image)?;
     linker.func_wrap("graphics", "draw_sub_image", graphics::draw_sub_image)?;
+
+    linker.func_wrap("input", "read_left", input::read_left)?;
+    linker.func_wrap("input", "read_right", input::read_right)?;
+    linker.func_wrap("input", "read_buttons", input::read_buttons)?;
     Ok(())
 }
 
