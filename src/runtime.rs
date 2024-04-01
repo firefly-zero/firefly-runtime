@@ -22,7 +22,8 @@ where
     S: Storage<R>,
     R: embedded_io::Read + wasmi::Read,
 {
-    device:   Device<D, C, T, I, S, R>,
+    device:   Device<T, I, S, R>,
+    display:  D,
     instance: wasmi::Instance,
     store:    wasmi::Store<State>,
     update:   Option<wasmi::TypedFunc<(), ()>>,
@@ -46,7 +47,8 @@ where
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
     pub fn new(
-        device: Device<D, C, T, I, S, R>,
+        device: Device<T, I, S, R>,
+        display: D,
         author_id: &str,
         app_id: &str,
     ) -> Result<Self, Error> {
@@ -70,6 +72,7 @@ where
         let instance = instance_pre.start(&mut store)?;
         let now = device.timer.now();
         let runtime = Self {
+            display,
             device,
             instance,
             store,
@@ -82,7 +85,7 @@ where
     }
 
     pub fn display(&self) -> &D {
-        &self.device.display
+        &self.display
     }
 
     /// Run the app until exited or an error occurs.
@@ -95,7 +98,7 @@ where
 
     /// Call init functions in the module.
     pub fn start(&mut self) -> Result<(), Error> {
-        _ = self.device.display.clear(C::BLACK);
+        _ = self.display.clear(C::BLACK);
         self.set_memory();
 
         let ins = self.instance;
@@ -148,7 +151,7 @@ where
         let state = self.store.data();
         let mut adapter = ColorAdapter {
             state,
-            target: &mut self.device.display,
+            target: &mut self.display,
         };
         let image = state.frame.as_image();
         // TODO: handle error

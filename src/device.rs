@@ -1,23 +1,17 @@
-use crate::color::FromRGB;
 use core::marker::PhantomData;
-use embedded_graphics::draw_target::DrawTarget;
-use embedded_graphics::geometry::{OriginDimensions, Point};
-use embedded_graphics::pixelcolor::RgbColor;
+use embedded_graphics::geometry::Point;
 use fugit::{Instant, MillisDurationU32};
 
 pub type Time = Instant<u32, 1, 1000>;
 pub type Delay = MillisDurationU32;
 
-pub struct Device<D, C, T, I, S, R>
+pub struct Device<T, I, S, R>
 where
-    D: DrawTarget<Color = C> + OriginDimensions,
-    C: RgbColor + FromRGB,
     T: Timer,
     I: Input,
     S: Storage<R>,
     R: embedded_io::Read + wasmi::Read,
 {
-    pub display: D,
     pub timer:   T,
     pub input:   I,
     pub storage: S,
