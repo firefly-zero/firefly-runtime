@@ -378,12 +378,14 @@ mod tests {
     use super::*;
     use crate::state::State;
     use embedded_graphics::mock_display::MockDisplay;
+    use firefly_device::*;
     use wasmi::Value::*;
 
     #[test]
     fn test_clear() {
         let engine = wasmi::Engine::default();
-        let state = State::new();
+        let device = DeviceImpl::new("/tmp");
+        let state = State::new(device);
         let mut store = <wasmi::Store<State>>::new(&engine, state);
         let func = wasmi::Func::wrap(&mut store, clear);
 
@@ -408,7 +410,8 @@ mod tests {
     #[test]
     fn test_draw_line() {
         let engine = wasmi::Engine::default();
-        let state = State::new();
+        let device = DeviceImpl::new("/tmp");
+        let state = State::new(device);
         let mut store = <wasmi::Store<State>>::new(&engine, state);
         let func = wasmi::Func::wrap(&mut store, draw_line);
 

@@ -13,12 +13,11 @@ use fugit::ExtU32;
 /// Default frames per second.
 const FPS: u32 = 30;
 
-pub struct Runtime<'a, D, C>
+pub struct Runtime<D, C>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
 {
-    device:   DeviceImpl<'a>,
     display:  D,
     instance: wasmi::Instance,
     store:    wasmi::Store<State>,
@@ -32,14 +31,14 @@ where
     prev_time: Time,
 }
 
-impl<'a, D, C> Runtime<'a, D, C>
+impl<D, C> Runtime<D, C>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
     pub fn new(
-        device: DeviceImpl<'a>,
+        device: DeviceImpl<'static>,
         display: D,
         author_id: &str,
         app_id: &str,
@@ -56,16 +55,15 @@ where
             return Err(Error::FileNotFound);
         };
         let module = wasmi::Module::new(&engine, stream)?;
-        let state = State::new();
+        let now = device.now();
+        let state = State::new(device);
         let mut store = wasmi::Store::<State>::new(&engine, state);
         let mut linker = wasmi::Linker::<State>::new(&engine);
         link(&mut linker)?;
         let instance_pre = linker.instantiate(&mut store, &module)?;
         let instance = instance_pre.start(&mut store)?;
-        let now = device.now();
         let runtime = Self {
             display,
-            device,
             instance,
             store,
             update: None,
@@ -126,13 +124,14 @@ where
         }
 
         // delay the screen flashing to adjust the frame rate
-        let now = self.device.now();
+        let state = self.store.data();
+        let now = state.device.now();
         let elapsed = now - self.prev_time;
         if elapsed < self.per_frame {
             let delay = self.per_frame - elapsed;
-            self.device.delay(delay);
+            state.device.delay(delay);
         }
-        self.prev_time = self.device.now();
+        self.prev_time = state.device.now();
 
         self.flush_frame();
         Ok(())
