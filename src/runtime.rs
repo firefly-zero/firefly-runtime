@@ -1,5 +1,4 @@
 use crate::color::{ColorAdapter, FromRGB};
-use crate::device::*;
 use crate::linking::link;
 use crate::state::State;
 use crate::Error;
@@ -7,22 +6,19 @@ use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::image::ImageDrawable;
 use embedded_graphics::pixelcolor::RgbColor;
+use firefly_device::*;
 use firefly_meta::valid_id;
 use fugit::ExtU32;
 
 /// Default frames per second.
 const FPS: u32 = 30;
 
-pub struct Runtime<D, C, T, I, S, R>
+pub struct Runtime<'a, D, C>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
-    T: Timer,
-    I: Input,
-    S: Storage<R>,
-    R: embedded_io::Read + wasmi::Read,
 {
-    device:   Device<T, I, S, R>,
+    device:   DeviceImpl<'a>,
     display:  D,
     instance: wasmi::Instance,
     store:    wasmi::Store<State>,
@@ -36,18 +32,14 @@ where
     prev_time: Time,
 }
 
-impl<D, C, T, I, S, R> Runtime<D, C, T, I, S, R>
+impl<'a, D, C> Runtime<'a, D, C>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
-    T: Timer,
-    I: Input,
-    S: Storage<R>,
-    R: embedded_io::Read + wasmi::Read,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
     pub fn new(
-        device: Device<T, I, S, R>,
+        device: DeviceImpl<'a>,
         display: D,
         author_id: &str,
         app_id: &str,
@@ -60,7 +52,7 @@ where
             return Err(Error::InvalidAppID);
         }
         let path = &["roms", author_id, app_id, "cart.wasm"];
-        let Some(stream) = device.storage.open_file(path) else {
+        let Some(stream) = device.open_file(path) else {
             return Err(Error::FileNotFound);
         };
         let module = wasmi::Module::new(&engine, stream)?;
@@ -70,7 +62,7 @@ where
         link(&mut linker)?;
         let instance_pre = linker.instantiate(&mut store, &module)?;
         let instance = instance_pre.start(&mut store)?;
-        let now = device.timer.now();
+        let now = device.now();
         let runtime = Self {
             display,
             device,
@@ -134,13 +126,13 @@ where
         }
 
         // delay the screen flashing to adjust the frame rate
-        let now = self.device.timer.now();
+        let now = self.device.now();
         let elapsed = now - self.prev_time;
         if elapsed < self.per_frame {
             let delay = self.per_frame - elapsed;
-            self.device.timer.delay(delay);
+            self.device.delay(delay);
         }
-        self.prev_time = self.device.timer.now();
+        self.prev_time = self.device.now();
 
         self.flush_frame();
         Ok(())

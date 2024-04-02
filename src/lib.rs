@@ -3,7 +3,6 @@
 #![allow(clippy::new_without_default)]
 
 mod color;
-mod device;
 mod error;
 mod graphics;
 mod input;
@@ -11,7 +10,6 @@ mod linking;
 mod runtime;
 mod state;
 
-pub use device::*;
 pub use error::Error;
 pub use runtime::Runtime;
 pub use state::{HEIGHT, WIDTH};
