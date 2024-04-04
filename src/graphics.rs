@@ -5,6 +5,7 @@ use embedded_graphics::image::{Image, ImageRawLE};
 use embedded_graphics::pixelcolor::{BinaryColor, Gray2, Rgb888};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
+use firefly_device::Device;
 
 type C<'a> = wasmi::Caller<'a, State>;
 
@@ -222,8 +223,8 @@ pub(crate) fn draw_sector(
 
 pub(crate) fn draw_sub_image(
     caller: C,
-    ptr: i32,
-    len: i32,
+    ptr: u32,
+    len: u32,
     x: i32,
     y: i32,
     width: u32,
@@ -244,8 +245,8 @@ pub(crate) fn draw_image(
     caller: C,
     x: i32,
     y: i32,
-    ptr: i32,
-    len: i32,
+    ptr: u32,
+    len: u32,
     width: u32,
     transp: i32,
     bpp: i32,
@@ -255,8 +256,8 @@ pub(crate) fn draw_image(
 
 pub(crate) fn draw_image_inner(
     mut caller: C,
-    ptr: i32,
-    len: i32,
+    ptr: u32,
+    len: u32,
     x: i32,
     y: i32,
     width: u32,
@@ -265,15 +266,9 @@ pub(crate) fn draw_image_inner(
     sub: Option<Rectangle>,
 ) {
     // retrieve the raw data from memory
-    let state = caller.data_mut();
-    let Some(memory) = state.memory else {
-        // TODO: log "no memory found" error
+    let Some((state, image_bytes)) = get_bytes(&mut caller, ptr, len) else {
         return;
     };
-    let (data, state) = memory.data_and_store_mut(&mut caller);
-    let ptr = ptr as usize;
-    let len = len as usize;
-    let image_bytes = &data[ptr..len];
 
     let point = Point::new(x, y);
     let is_transp = transp != 0;
@@ -368,6 +363,27 @@ fn get_shape_style(fill_color: u32, stroke_color: u32, stroke_width: u32) -> Pri
         style.stroke_width = stroke_width;
     }
     style
+}
+
+/// Get State from Store and a slice of bytes from Memory in the given range.
+fn get_bytes<'b>(
+    caller: &'b mut wasmi::Caller<'_, State>,
+    ptr: u32,
+    len: u32,
+) -> Option<(&'b mut State, &'b [u8])> {
+    let state = caller.data();
+    let Some(memory) = state.memory else {
+        state.device.log_error("graphics", "memory not found");
+        return None;
+    };
+    let (data, state) = memory.data_and_store_mut(caller);
+    let ptr = ptr as usize;
+    let len = len as usize;
+    let Some(bytes) = &data.get(ptr..len) else {
+        state.device.log_error("graphics", "slice out of range");
+        return None;
+    };
+    Some((state, bytes))
 }
 
 /// Statically ensure that the given Result cannot have an error.
