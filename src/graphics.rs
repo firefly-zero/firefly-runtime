@@ -229,6 +229,7 @@ pub(crate) fn draw_sector(
     never_fails(arc.draw_styled(&style, &mut state.frame));
 }
 
+/// Draw a text message using the given font.
 pub(crate) fn draw_text(
     mut caller: C,
     text_ptr: u32,
@@ -239,8 +240,6 @@ pub(crate) fn draw_text(
     y: i32,
     color: i32,
 ) {
-    // TODO: ensure that ranges don't intersect.
-
     let state = caller.data();
     let Some(memory) = state.memory else {
         state.device.log_error("graphics", "memory not found");
@@ -252,11 +251,26 @@ pub(crate) fn draw_text(
     let text_len = text_len as usize;
     let font_ptr = font_ptr as usize;
     let font_len = font_len as usize;
-    let data_start = data.as_ptr();
-    // TODO: check ranges are within memory
-    let text_bytes = unsafe { core::slice::from_raw_parts(data_start.add(text_ptr), text_len) };
-    let font_bytes = unsafe { core::slice::from_raw_parts(data_start.add(font_ptr), font_len) };
 
+    // The slices must not intersect and must be within memory.
+    if text_ptr == font_ptr {
+        let msg = "text and font point to the same slice";
+        state.device.log_error("graphics.draw_text", msg);
+        return;
+    }
+    if text_ptr < font_ptr && text_ptr + text_len >= font_ptr {
+        let msg = "text and font slices intersect";
+        state.device.log_error("graphics.draw_text", msg);
+        return;
+    }
+    if font_ptr < text_ptr && font_ptr + font_len >= text_ptr {
+        let msg = "text and font slices intersect";
+        state.device.log_error("graphics.draw_text", msg);
+        return;
+    }
+
+    let text_bytes = &data.get(text_ptr..(text_ptr + text_len)).unwrap();
+    let font_bytes = &data.get(font_ptr..(font_ptr + font_len)).unwrap();
     let Some(font) = parse_font(font_bytes) else {
         return;
     };
@@ -430,7 +444,7 @@ fn get_bytes<'b>(
     let (data, state) = memory.data_and_store_mut(caller);
     let ptr = ptr as usize;
     let len = len as usize;
-    let Some(bytes) = &data.get(ptr..len) else {
+    let Some(bytes) = &data.get(ptr..(ptr + len)) else {
         state.device.log_error("graphics", "slice out of range");
         return None;
     };
