@@ -2,9 +2,11 @@ use crate::color::{BPPAdapter, TransparencyAdapter};
 use crate::state::{State, HEIGHT, WIDTH};
 use core::convert::Infallible;
 use embedded_graphics::image::{Image, ImageRawLE};
+use embedded_graphics::mono_font::{MonoFont, MonoTextStyle};
 use embedded_graphics::pixelcolor::{BinaryColor, Gray2, Rgb888};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
+use embedded_graphics::text::Text;
 use firefly_device::Device;
 
 type C<'a> = wasmi::Caller<'a, State>;
@@ -15,6 +17,9 @@ pub(crate) fn get_screen_size(mut _caller: C) -> i32 {
 
 /// Set every pixel of the frame buffer to the given color.
 pub(crate) fn clear(mut caller: C, color: u32) {
+    if color == 0 {
+        return;
+    }
     let state = caller.data_mut();
     let color = Gray2::new(color as u8 - 1);
     never_fails(state.frame.clear(color));
@@ -53,6 +58,9 @@ pub(crate) fn set_colors(
 ///
 /// Without scailing, sets a single pixel.
 pub(crate) fn draw_point(mut caller: C, x: i32, y: i32, color: u32) {
+    if color == 0 {
+        return;
+    }
     let state = caller.data_mut();
     let point = Point::new(x, y);
     let color = Gray2::new(color as u8 - 1);
@@ -221,6 +229,49 @@ pub(crate) fn draw_sector(
     never_fails(arc.draw_styled(&style, &mut state.frame));
 }
 
+pub(crate) fn draw_text(
+    mut caller: C,
+    text_ptr: u32,
+    text_len: u32,
+    font_ptr: u32,
+    font_len: u32,
+    x: i32,
+    y: i32,
+    color: i32,
+) {
+    // TODO: ensure that ranges don't intersect.
+
+    let state = caller.data();
+    let Some(memory) = state.memory else {
+        state.device.log_error("graphics", "memory not found");
+        return;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+
+    let text_ptr = text_ptr as usize;
+    let text_len = text_len as usize;
+    let font_ptr = font_ptr as usize;
+    let font_len = font_len as usize;
+    let data_start = data.as_ptr();
+    // TODO: check ranges are within memory
+    let text_bytes = unsafe { core::slice::from_raw_parts(data_start.add(text_ptr), text_len) };
+    let font_bytes = unsafe { core::slice::from_raw_parts(data_start.add(font_ptr), font_len) };
+
+    let Some(font) = parse_font(font_bytes) else {
+        return;
+    };
+    let color = Gray2::new(color as u8 - 1);
+    let style = MonoTextStyle::new(&font, color);
+    let point = Point::new(x, y);
+    let Ok(text) = core::str::from_utf8(text_bytes) else {
+        let msg = "the given text is not valid UTF-8";
+        state.device.log_error("graphics.draw_text", msg);
+        return;
+    };
+    let text = Text::new(text, point, style);
+    never_fails(text.draw(&mut state.frame));
+}
+
 pub(crate) fn draw_sub_image(
     caller: C,
     ptr: u32,
@@ -243,10 +294,10 @@ pub(crate) fn draw_sub_image(
 
 pub(crate) fn draw_image(
     caller: C,
-    x: i32,
-    y: i32,
     ptr: u32,
     len: u32,
+    x: i32,
+    y: i32,
     width: u32,
     transp: i32,
     bpp: i32,
@@ -386,8 +437,21 @@ fn get_bytes<'b>(
     Some((state, bytes))
 }
 
+fn parse_font(font_bytes: &[u8]) -> Option<MonoFont> {
+    let font = MonoFont {
+        image:             todo!(),
+        character_size:    todo!(),
+        character_spacing: todo!(),
+        baseline:          todo!(),
+        strikethrough:     todo!(),
+        underline:         todo!(),
+        glyph_mapping:     todo!(),
+    };
+    Some(font)
+}
+
 /// Statically ensure that the given Result cannot have an error.
-fn never_fails(_: Result<(), Infallible>) {}
+fn never_fails<T>(_: Result<T, Infallible>) {}
 
 #[cfg(test)]
 mod tests {
