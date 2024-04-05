@@ -1,5 +1,5 @@
 use crate::state::State;
-use crate::{fs, graphics, input};
+use crate::{fs, graphics, input, misc};
 
 /// Register all host-defined functions in the linker.
 pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error> {
@@ -25,6 +25,9 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error
     linker.func_wrap("input", "read_buttons", input::read_buttons)?;
 
     linker.func_wrap("fs", "load_rom_file", fs::load_rom_file)?;
+
+    linker.func_wrap("misc", "log_debug", misc::log_debug)?;
+
     Ok(())
 }
 

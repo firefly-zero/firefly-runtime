@@ -8,6 +8,7 @@ mod fs;
 mod graphics;
 mod input;
 mod linking;
+mod misc;
 mod runtime;
 mod state;
 
