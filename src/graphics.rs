@@ -507,7 +507,7 @@ fn read_u8(bytes: &[u8], s: usize) -> u8 {
 
 /// Read little-endian u32 from the slice at the given index.
 fn read_u16(bytes: &[u8], s: usize) -> u16 {
-    u16::from_le_bytes(bytes[s..].try_into().unwrap())
+    u16::from_le_bytes([bytes[s], bytes[s + 1]])
 }
 
 /// Statically ensure that the given Result cannot have an error.
