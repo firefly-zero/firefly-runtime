@@ -4,6 +4,7 @@
 
 mod color;
 mod error;
+mod fs;
 mod graphics;
 mod input;
 mod linking;

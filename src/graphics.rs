@@ -269,8 +269,12 @@ pub(crate) fn draw_text(
         return;
     }
 
-    let text_bytes = &data.get(text_ptr..(text_ptr + text_len)).unwrap();
-    let font_bytes = &data.get(font_ptr..(font_ptr + font_len)).unwrap();
+    let Some(text_bytes) = &data.get(text_ptr..(text_ptr + text_len)) else {
+        return;
+    };
+    let Some(font_bytes) = &data.get(font_ptr..(font_ptr + font_len)) else {
+        return;
+    };
     let Some(font) = parse_font(font_bytes) else {
         return;
     };
