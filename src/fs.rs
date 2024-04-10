@@ -54,6 +54,11 @@ pub(crate) fn load_rom_file(
         state.device.log_error("fs", msg);
         return 0;
     };
+    if file_size != buf_len {
+        let msg = "buffer size for file does not match the file size";
+        state.device.log_error("fs", msg);
+        return 0;
+    }
     file_size as u32
 }
 
