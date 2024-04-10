@@ -1,7 +1,7 @@
 use crate::state::State;
 use embedded_io::Read;
 use firefly_device::Device;
-use firefly_meta::valid_path_part;
+use firefly_meta::validate_path_part;
 
 type C<'a> = wasmi::Caller<'a, State>;
 
@@ -75,7 +75,7 @@ fn get_file_name<'a>(
         state.device.log_error("fs", msg);
         return None;
     };
-    if !valid_path_part(name) {
+    if validate_path_part(name).is_err() {
         let msg = "file name is not allowed";
         state.device.log_error("fs", msg);
         return None;

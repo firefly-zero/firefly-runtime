@@ -7,7 +7,7 @@ use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::image::ImageDrawable;
 use embedded_graphics::pixelcolor::RgbColor;
 use firefly_device::*;
-use firefly_meta::valid_id;
+use firefly_meta::validate_id;
 use fugit::ExtU32;
 
 /// Default frames per second.
@@ -44,11 +44,11 @@ where
         app_id: &str,
     ) -> Result<Self, Error> {
         let engine = wasmi::Engine::default();
-        if !valid_id(author_id) {
-            return Err(Error::InvalidAuthorID);
+        if let Err(err) = validate_id(author_id) {
+            return Err(Error::InvalidAuthorID(err));
         }
-        if !valid_id(app_id) {
-            return Err(Error::InvalidAppID);
+        if let Err(err) = validate_id(app_id) {
+            return Err(Error::InvalidAppID(err));
         }
         let path = &["roms", author_id, app_id, "cart.wasm"];
         let Some(stream) = device.open_file(path) else {
