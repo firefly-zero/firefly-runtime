@@ -25,6 +25,7 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error
 
     linker.func_wrap("fs", "get_rom_file_size", fs::get_rom_file_size)?;
     linker.func_wrap("fs", "load_rom_file", fs::load_rom_file)?;
+    linker.func_wrap("fs", "get_file_size", fs::get_file_size)?;
     linker.func_wrap("fs", "load_file", fs::load_file)?;
 
     linker.func_wrap("misc", "log_debug", misc::log_debug)?;
