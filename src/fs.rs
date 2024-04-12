@@ -145,6 +145,25 @@ pub(crate) fn dump_file(
     file_size as u32
 }
 
+pub(crate) fn remove_file(mut caller: C, path_ptr: u32, path_len: u32) {
+    let state = caller.data_mut();
+    let Some(memory) = state.memory else {
+        state.device.log_error("fs", "memory not found");
+        return;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let Some(name) = get_file_name(state, data, path_ptr, path_len) else {
+        return;
+    };
+
+    let path = &["data", &state.author_id, &state.app_id, name];
+    let ok = state.device.remove_file(path);
+    if !ok {
+        let msg = "cannot remove file";
+        state.device.log_error("fs.remove_file", msg);
+    };
+}
+
 /// Load, parse, and validate the file name
 fn get_file_name<'a>(
     state: &State,
