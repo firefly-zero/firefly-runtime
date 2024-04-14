@@ -1,7 +1,6 @@
 use crate::color::FromRGB;
 use core::convert::Infallible;
 use core::marker::PhantomData;
-use embedded_graphics::image::GetPixel;
 use embedded_graphics::pixelcolor::{Gray2, Rgb888};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
@@ -48,27 +47,6 @@ impl FrameBuffer {
 impl OriginDimensions for FrameBuffer {
     fn size(&self) -> Size {
         Size::new(WIDTH as u32, HEIGHT as u32)
-    }
-}
-
-impl GetPixel for FrameBuffer {
-    type Color = Gray2;
-
-    fn pixel(&self, point: Point) -> Option<Self::Color> {
-        if point.x < 0 || point.y < 0 {
-            return None;
-        }
-        let x = point.x as usize;
-        let y = point.y as usize;
-        if x >= WIDTH || y >= HEIGHT {
-            return None;
-        }
-        let pixel_index = y * WIDTH + x;
-        let byte_index = pixel_index / PPB;
-        let byte = self.data[byte_index];
-        let shift = pixel_index % PPB;
-        let luma = (byte >> (shift * BPP)) & 0b11;
-        Some(Gray2::new(luma))
     }
 }
 
