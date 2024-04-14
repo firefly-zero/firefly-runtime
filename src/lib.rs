@@ -4,6 +4,7 @@
 
 mod color;
 mod error;
+mod frame_buffer;
 mod fs;
 mod graphics;
 mod input;
