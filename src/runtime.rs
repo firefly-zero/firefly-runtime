@@ -1,10 +1,9 @@
-use crate::color::{ColorAdapter, FromRGB};
+use crate::color::FromRGB;
 use crate::linking::link;
 use crate::state::State;
 use crate::Error;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
-use embedded_graphics::image::ImageDrawable;
 use embedded_graphics::pixelcolor::RgbColor;
 use firefly_device::*;
 use firefly_meta::validate_id;
@@ -140,13 +139,8 @@ where
     /// Draw the frame buffer on the actual screen.
     fn flush_frame(&mut self) {
         let state = self.store.data();
-        let mut adapter = ColorAdapter {
-            state,
-            target: &mut self.display,
-        };
-        let image = state.frame.as_image();
         // TODO: handle error
-        _ = image.draw(&mut adapter);
+        _ = state.frame.draw(&mut self.display);
     }
 
     /// Find exported memory in the instance and add it into the state.

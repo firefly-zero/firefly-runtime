@@ -17,8 +17,23 @@ const PPB: usize = 8 / BPP;
 const BUFFER_SIZE: usize = WIDTH * HEIGHT / PPB;
 
 pub(crate) struct FrameBuffer {
-    data:    [u8; BUFFER_SIZE],
-    palette: [Rgb888; 4],
+    pub(crate) data:    [u8; BUFFER_SIZE],
+    pub(crate) palette: [Rgb888; 4],
+}
+
+impl FrameBuffer {
+    pub(crate) fn new() -> Self {
+        Self {
+            data:    [0; BUFFER_SIZE],
+            palette: [
+                // https://lospec.com/palette-list/kirokaze-gameboy
+                Rgb888::new(0x33, 0x2c, 0x50),
+                Rgb888::new(0x46, 0x87, 0x8f),
+                Rgb888::new(0x94, 0xe3, 0x44),
+                Rgb888::new(0xe2, 0xf3, 0xe4),
+            ],
+        }
+    }
 }
 
 impl OriginDimensions for FrameBuffer {
@@ -42,7 +57,9 @@ impl GetPixel for FrameBuffer {
         let pixel_index = y * WIDTH + x;
         let byte_index = pixel_index / PPB;
         let byte = self.data[byte_index];
-        todo!()
+        let shift = pixel_index % PPB;
+        let luma = (byte >> (shift * BPP)) & 0b11;
+        Some(Gray2::new(luma))
     }
 }
 
@@ -118,9 +135,9 @@ where
         let byte_index = self.index / PPB;
         let byte = self.data.get(byte_index)?;
         let shift = self.index % PPB;
-        let gray = (byte >> (shift * BPP)) & 0b11;
-        debug_assert!(gray < 4);
-        let rgb888 = self.palette[gray as usize];
+        let luma = (byte >> (shift * BPP)) & 0b11;
+        debug_assert!(luma < 4);
+        let rgb888 = self.palette[luma as usize];
         let r = rgb888.r() as u32 * C::MAX_R as u32 / Rgb888::MAX_R as u32;
         let g = rgb888.g() as u32 * C::MAX_G as u32 / Rgb888::MAX_G as u32;
         let b = rgb888.b() as u32 * C::MAX_B as u32 / Rgb888::MAX_B as u32;
