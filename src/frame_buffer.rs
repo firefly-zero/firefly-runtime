@@ -123,6 +123,14 @@ impl FrameBuffer {
         self.dirty_to = 0;
     }
 
+    /// Mark all lines as dirty.
+    ///
+    /// If called, the next frame will render all lines.
+    pub(crate) fn mark_dirty(&mut self) {
+        self.dirty_from = 0;
+        self.dirty_to = HEIGHT;
+    }
+
     /// Set color of a single pixel at the given coordinates.
     fn set_pixel(&mut self, pixel: Pixel<Gray2>) {
         let Pixel(point, color) = pixel;
