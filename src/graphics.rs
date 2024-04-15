@@ -537,6 +537,12 @@ mod tests {
     use std::path::PathBuf;
     use wasmi::Value::*;
 
+    // const N: i32 = 0;
+    // const W: i32 = 1;
+    const G: i32 = 2;
+    const R: i32 = 3;
+    // const B: i32 = 4;
+
     #[test]
     fn test_clear() {
         let mut store = make_store();
@@ -572,7 +578,7 @@ mod tests {
         }
 
         store.data_mut().frame.mark_clean();
-        let inputs = wrap_input(&[2, 1, 4, 3, 3, 1]);
+        let inputs = wrap_input(&[2, 1, 4, 3, R, 1]);
         func.call(&mut store, &inputs, &mut []).unwrap();
 
         let state = store.data_mut();
@@ -583,6 +589,34 @@ mod tests {
                 "WWRWWW", // y=1
                 "WWWRWW", // y=2
                 "WWWWRW", // y=3
+            ],
+        );
+    }
+
+    /// Drawing a line out of screen bounds
+    /// should simply cut the line at the boundary.
+    #[test]
+    fn test_draw_line_out_of_bounds() {
+        let mut store = make_store();
+        let func = wasmi::Func::wrap(&mut store, draw_line);
+
+        // ensure that the frame buffer is empty
+        let state = store.data();
+        for byte in &state.frame.data {
+            assert_eq!(byte, &0b_0000_0000);
+        }
+
+        store.data_mut().frame.mark_clean();
+        let inputs = wrap_input(&[-1, -2, 4, 3, G, 1]);
+        func.call(&mut store, &inputs, &mut []).unwrap();
+
+        let state = store.data_mut();
+        check_display(
+            &mut state.frame,
+            &[
+                "WGWWWW", // y=0
+                "WWGWWW", // y=1
+                "WWWGWW", // y=2
             ],
         );
     }
@@ -601,9 +635,9 @@ mod tests {
         let mut sub_display = display.clipped(&area);
         frame.palette = [
             Rgb888::new(255, 255, 255),
-            Rgb888::new(0, 0, 0),
+            Rgb888::new(0, 255, 0),
             Rgb888::new(255, 0, 0),
-            Rgb888::new(0, 0, 0),
+            Rgb888::new(0, 0, 255),
         ];
         frame.draw(&mut sub_display).unwrap();
         display.assert_pattern(pattern);
