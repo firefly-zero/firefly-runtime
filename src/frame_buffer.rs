@@ -66,21 +66,11 @@ impl DrawTarget for FrameBuffer {
     }
 
     fn clear(&mut self, color: Self::Color) -> Result<(), Self::Error> {
-        let mut new_byte = 0;
-        let luma = color.into_storage();
-        for _ in 0..PPB {
-            new_byte = (new_byte << BPP) | luma;
-        }
+        let new_byte = color_to_byte(&color);
         for y in 0..HEIGHT {
-            let line_start = WIDTH * y / PPB;
-            let line_end = line_start + y / PPB;
-            let line = &self.data[line_start..=line_end];
-            for old_byte in line {
-                if &new_byte != old_byte {
-                    self.dirty_from = self.dirty_from.min(y);
-                    self.dirty_to = self.dirty_to.max(y);
-                    break;
-                }
+            if check_line_dirty(&self.data, y, &new_byte) {
+                self.dirty_from = self.dirty_from.min(y);
+                self.dirty_to = self.dirty_to.max(y);
             }
         }
         self.data.fill(new_byte);
@@ -214,4 +204,27 @@ where
     debug_assert!(g < 256);
     debug_assert!(b < 256);
     C::from_rgb(r as u8, g as u8, b as u8)
+}
+
+/// Duplicate the color 4 times and pack into 1 byte.
+fn color_to_byte(c: &Gray2) -> u8 {
+    let mut new_byte = 0;
+    let luma = c.into_storage();
+    for _ in 0..PPB {
+        new_byte = (new_byte << BPP) | luma;
+    }
+    new_byte
+}
+
+/// Check the whole horizontal line if it should be marked dirty.
+fn check_line_dirty(data: &[u8], y: usize, new_byte: &u8) -> bool {
+    let line_start = WIDTH * y / PPB;
+    let line_end = line_start + y / PPB;
+    let line = &data[line_start..=line_end];
+    for old_byte in line {
+        if new_byte != old_byte {
+            return true;
+        }
+    }
+    false
 }
