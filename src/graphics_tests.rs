@@ -7,9 +7,8 @@ mod tests {
     use embedded_graphics::mock_display::MockDisplay;
     use embedded_graphics::pixelcolor::Rgb888;
     use embedded_graphics::primitives::Rectangle;
-    use firefly_device::*;
+    use firefly_device::DeviceImpl;
     use std::path::PathBuf;
-    use wasmi::Value::*;
 
     // const N: i32 = 0;
     // const W: i32 = 1;
@@ -28,7 +27,7 @@ mod tests {
             assert_eq!(byte, &0b_0000_0000);
         }
 
-        let inputs = [I32(2)];
+        let inputs = wrap_input(&[2]);
         let mut outputs = Vec::new();
         func.call(&mut store, &inputs, &mut outputs).unwrap();
         assert_eq!(outputs.len(), 0);
@@ -148,6 +147,35 @@ mod tests {
                 "WBGGBW", // y=3
                 "WBGGBW", // y=3
                 "WWBBWW", // y=4
+            ],
+        );
+    }
+
+    #[test]
+    fn test_draw_circle() {
+        let mut store = make_store();
+        let func = wasmi::Func::wrap(&mut store, draw_circle);
+
+        // ensure that the frame buffer is empty
+        let state = store.data();
+        for byte in &state.frame.data {
+            assert_eq!(byte, &0b_0000_0000);
+        }
+
+        store.data_mut().frame.mark_clean();
+        let inputs = wrap_input(&[1, 2, 4, G, R, 1]);
+        func.call(&mut store, &inputs, &mut []).unwrap();
+
+        let state = store.data_mut();
+        check_display(
+            &mut state.frame,
+            &[
+                "      ", // y=0
+                "      ", // y=1
+                "WWRRWW", // y=2
+                "WRGGRW", // y=3
+                "WRGGRW", // y=3
+                "WWRRWW", // y=4
             ],
         );
     }
