@@ -1,7 +1,8 @@
 use crate::color::FromRGB;
+use crate::error::Error;
+use crate::frame_buffer::HEIGHT;
 use crate::linking::link;
 use crate::state::State;
-use crate::Error;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
@@ -150,14 +151,32 @@ where
 
     /// Draw the frame buffer on the actual screen.
     fn flush_frame(&mut self) -> Result<(), Error> {
+        // self.display.clear(C::BLACK);
         if let Some(render_line) = self.render_line {
-            if let Err(err) = render_line.call(&mut self.store, (0,)) {
-                return Err(Error::FuncCall("render_line", err));
+            let mut min_y: i32 = 0;
+            while min_y < HEIGHT as i32 {
+                let (max_y,) = match render_line.call(&mut self.store, (min_y,)) {
+                    Ok(max_y) => max_y,
+                    Err(err) => {
+                        return Err(Error::FuncCall("render_line", err));
+                    }
+                };
+                let max_y: i32 = if max_y == 0 { 1000 } else { max_y };
+                let state = self.store.data_mut();
+                _ = state
+                    .frame
+                    .draw_range(&mut self.display, min_y as usize, max_y as usize);
+                // make sure the line number only grows
+                if min_y > max_y {
+                    break;
+                }
+                min_y = max_y;
             }
+        } else {
+            let state = self.store.data_mut();
+            // TODO: handle error
+            _ = state.frame.draw(&mut self.display);
         }
-        let state = self.store.data_mut();
-        // TODO: handle error
-        _ = state.frame.draw(&mut self.display);
         Ok(())
     }
 

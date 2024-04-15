@@ -20,9 +20,9 @@ pub(crate) struct FrameBuffer {
     /// The color palette. Maps 4-color packed pixels to 4 RGB colors.
     pub(crate) palette: [Rgb888; 4],
     /// The lowest (by value) Y value of all updated lines.
-    pub(crate) dirty_from: usize,
+    dirty_from: usize,
     /// The highest (by value) Y value of all updated lines.
-    pub(crate) dirty_to: usize,
+    dirty_to: usize,
 }
 
 impl FrameBuffer {
@@ -81,28 +81,45 @@ impl DrawTarget for FrameBuffer {
 impl FrameBuffer {
     /// Draw the framebuffer on an RGB screen.
     ///
-    /// Draws only the region with changed pixels.
-    /// After all changed pixels are written,
-    /// the whole buffer is marked as clean.
-    /// The next call to draw won't draw anything
+    /// Draws only the region with changed pixels. After all changed pixels are written,
+    /// the whole buffer is marked as clean. The next call to draw won't draw anything
     /// unless the frame buffer is updated.
     pub(crate) fn draw<D, C, E>(&mut self, target: &mut D) -> Result<(), E>
     where
         C: RgbColor + FromRGB,
         D: DrawTarget<Color = C, Error = E>,
     {
+        let result = self.draw_range(target, 0, HEIGHT + 1);
+        // As soon as all lines are rendered on the screen,
+        // mark all lines a "clean" so that the next frame knows
+        // which lines are updated.
+        self.mark_clean();
+        result
+    }
+
+    pub(crate) fn draw_range<D, C, E>(
+        &mut self,
+        target: &mut D,
+        min_y: usize,
+        max_y: usize,
+    ) -> Result<(), E>
+    where
+        C: RgbColor + FromRGB,
+        D: DrawTarget<Color = C, Error = E>,
+    {
+        let min_y = min_y.max(self.dirty_from);
+        let max_y = max_y.min(self.dirty_to);
         // If no dirty lines, don't update the screen.
-        if self.dirty_from > self.dirty_to {
-            self.mark_clean();
+        if min_y > max_y {
             return Ok(());
         }
         let colors = ColorIter {
             data: &self.data,
             palette: &self.palette,
             // start iteration from the first dirty line
-            index: WIDTH * self.dirty_from,
+            index: WIDTH * min_y,
             // end iteration at the last dirty line
-            max_y: self.dirty_to,
+            max_y,
             color: PhantomData,
         };
         let area = Rectangle::new(
@@ -110,10 +127,6 @@ impl FrameBuffer {
             Size::new(WIDTH as u32, self.dirty_to as u32),
         );
         let result = target.fill_contiguous(&area, colors);
-        // As soon as all lines are rendered on the screen,
-        // mark all lines a "clean" so that the next frame knows
-        // which lines are updated.
-        self.mark_clean();
         result
     }
 
