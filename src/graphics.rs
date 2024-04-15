@@ -579,15 +579,17 @@ mod tests {
             assert_eq!(byte, &0b_0000_0000);
         }
 
+        let state = store.data_mut();
+        state.frame.mark_clean();
+        let mut display = MockDisplay::<Rgb888>::new();
+
         let inputs = [I32(2), I32(1), I32(4), I32(3), I32(3), I32(1)];
         let mut outputs = Vec::new();
         func.call(&mut store, &inputs, &mut outputs).unwrap();
         assert_eq!(outputs.len(), 0);
 
-        let mut display = MockDisplay::<Rgb888>::new();
-        display.set_allow_out_of_bounds_drawing(true);
         let state = store.data_mut();
-        let area = Rectangle::new(Point::zero(), Size::new(6, 5));
+        let area = Rectangle::new(Point::zero(), Size::new(6, 64));
         use embedded_graphics::draw_target::DrawTargetExt;
         let mut sub_display = display.clipped(&area);
         state.frame.palette = [
@@ -598,11 +600,10 @@ mod tests {
         ];
         state.frame.draw(&mut sub_display).unwrap();
         display.assert_pattern(&[
-            "WWWWWW", // y=0
+            "      ", // y=0
             "WWRWWW", // y=1
             "WWWRWW", // y=2
             "WWWWRW", // y=3
-            "WWWWWW", // y=4
         ]);
     }
 }

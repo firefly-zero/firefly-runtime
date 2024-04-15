@@ -90,6 +90,12 @@ impl DrawTarget for FrameBuffer {
 
 impl FrameBuffer {
     /// Draw the framebuffer on an RGB screen.
+    ///
+    /// Draws only the region with changed pixels.
+    /// After all changed pixels are written,
+    /// the whole buffer is marked as clean.
+    /// The next call to draw won't draw anything
+    /// unless the frame buffer is updated.
     pub(crate) fn draw<D, C, E>(&mut self, target: &mut D) -> Result<(), E>
     where
         C: RgbColor + FromRGB,
@@ -97,7 +103,7 @@ impl FrameBuffer {
     {
         // If no dirty lines, don't update the screen.
         if self.dirty_from > self.dirty_to {
-            self.reset_dirty();
+            self.mark_clean();
             return Ok(());
         }
         let colors = ColorIter {
@@ -117,12 +123,12 @@ impl FrameBuffer {
         // As soon as all lines are rendered on the screen,
         // mark all lines a "clean" so that the next frame knows
         // which lines are updated.
-        self.reset_dirty();
+        self.mark_clean();
         result
     }
 
     /// Mark all lines as clean ("non-dirty").
-    fn reset_dirty(&mut self) {
+    pub(crate) fn mark_clean(&mut self) {
         self.dirty_from = HEIGHT;
         self.dirty_to = 0;
     }
