@@ -30,7 +30,7 @@ pub(crate) fn clear(mut caller: C, color: u32) {
 /// Set the given palette color.
 pub(crate) fn set_color(mut caller: C, index: u32, r: u32, g: u32, b: u32) {
     let state = caller.data_mut();
-    state.frame.palette[index as usize] = Rgb888::new(r as u8, g as u8, b as u8);
+    state.frame.palette[index as usize - 1] = Rgb888::new(r as u8, g as u8, b as u8);
     state.frame.mark_dirty();
 }
 

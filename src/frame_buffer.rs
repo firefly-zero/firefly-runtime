@@ -123,8 +123,8 @@ impl FrameBuffer {
             color: PhantomData,
         };
         let area = Rectangle::new(
-            Point::new(0, self.dirty_from as i32),
-            Size::new(WIDTH as u32, self.dirty_to as u32),
+            Point::new(0, min_y as i32),
+            Size::new(WIDTH as u32, max_y as u32),
         );
         let result = target.fill_contiguous(&area, colors);
         result
