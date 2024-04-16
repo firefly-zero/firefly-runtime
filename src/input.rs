@@ -8,7 +8,7 @@ pub(crate) fn read_pad(mut caller: C) -> u32 {
     // TODO: cache input in state
     let input = match state.device.read_input() {
         Some(InputState { pad: Some(pad), .. }) => pad,
-        _ => return 0,
+        _ => return 0xffff,
     };
     let x = input.x as u16 as u32;
     let y = input.y as u16 as u32;
