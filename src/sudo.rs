@@ -1,6 +1,6 @@
 use crate::state::State;
 use firefly_device::Device;
-use firefly_meta::validate_path_part;
+use firefly_meta::{validate_id, validate_path_part};
 use heapless::Vec;
 
 type C<'a> = wasmi::Caller<'a, State>;
@@ -89,6 +89,54 @@ pub(crate) fn iter_dirs(
         pos += entry_name.len() + 1;
     });
     pos as u32
+}
+
+/// Stop the current app and run the given one instead.
+pub(crate) fn run_app(mut caller: C, author_ptr: u32, author_len: u32, app_ptr: u32, app_len: u32) {
+    let state = caller.data_mut();
+    let Some(memory) = state.memory else {
+        state.device.log_error("sudo", "memory not found");
+        return;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+
+    let author_ptr = author_ptr as usize;
+    let author_len = author_len as usize;
+    let Some(author_bytes) = data.get(author_ptr..(author_ptr + author_len)) else {
+        let msg = "invalid pointer for author_id";
+        state.device.log_error("sudo.run_app", msg);
+        return;
+    };
+    let Ok(author_id) = core::str::from_utf8(author_bytes) else {
+        let msg = "author_id is not valid UTF-8";
+        state.device.log_error("sudo.run_app", msg);
+        return;
+    };
+    if validate_id(author_id).is_err() {
+        let msg = "author_id is not allowed";
+        state.device.log_error("sudo.run_app", msg);
+        return;
+    }
+
+    let app_ptr = app_ptr as usize;
+    let app_len = app_len as usize;
+    let Some(app_bytes) = data.get(app_ptr..(app_ptr + app_len)) else {
+        let msg = "invalid pointer for app_id";
+        state.device.log_error("sudo.run_app", msg);
+        return;
+    };
+    let Ok(app_id) = core::str::from_utf8(app_bytes) else {
+        let msg = "app_id is not valid UTF-8";
+        state.device.log_error("sudo.run_app", msg);
+        return;
+    };
+    if validate_id(app_id).is_err() {
+        let msg = "app_id is not allowed";
+        state.device.log_error("sudo.run_app", msg);
+        return;
+    }
+
+    todo!()
 }
 
 /// Get 2 subslices (one of which is mutable) from a slice.
