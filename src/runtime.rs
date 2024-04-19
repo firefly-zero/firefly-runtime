@@ -1,13 +1,13 @@
 use crate::color::FromRGB;
+use crate::config::RuntimeConfig;
 use crate::error::Error;
 use crate::frame_buffer::HEIGHT;
 use crate::linking::link;
-use crate::state::State;
+use crate::state::{State, Transition};
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
 use firefly_device::*;
-use firefly_meta::validate_id;
 use fugit::ExtU32;
 
 /// Default frames per second.
@@ -38,33 +38,23 @@ where
     C: RgbColor + FromRGB,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
-    pub fn new(
-        device: DeviceImpl,
-        display: D,
-        author_id: &str,
-        app_id: &str,
-    ) -> Result<Self, Error> {
+    pub fn new(config: RuntimeConfig<D, C>) -> Result<Self, Error> {
         let engine = wasmi::Engine::default();
-        if let Err(err) = validate_id(author_id) {
-            return Err(Error::InvalidAuthorID(err));
-        }
-        if let Err(err) = validate_id(app_id) {
-            return Err(Error::InvalidAppID(err));
-        }
-        let path = &["roms", author_id, app_id, "bin"];
-        let Some(stream) = device.open_file(path) else {
+        config.id.validate()?;
+        let path = &["roms", config.id.author(), config.id.app(), "bin"];
+        let Some(stream) = config.device.open_file(path) else {
             return Err(Error::FileNotFound);
         };
         let module = wasmi::Module::new(&engine, stream)?;
-        let now = device.now();
-        let state = State::new(author_id, app_id, device);
+        let now = config.device.now();
+        let state = State::new(config.id.author(), config.id.app(), config.device);
         let mut store = wasmi::Store::<State>::new(&engine, state);
         let mut linker = wasmi::Linker::<State>::new(&engine);
         link(&mut linker)?;
         let instance_pre = linker.instantiate(&mut store, &module)?;
         let instance = instance_pre.start(&mut store)?;
         let runtime = Self {
-            display,
+            display: config.display,
             instance,
             store,
             update: None,
@@ -123,7 +113,7 @@ where
     ///
     /// If there is not enough time passed since the last update,
     /// the update will be delayed to keep the expected frame rate.
-    pub fn update(&mut self) -> Result<(), Error> {
+    pub fn update(&mut self) -> Result<&Transition, Error> {
         if let Some(update) = self.update {
             // TODO: continue execution even if an update fails.
             if let Err(err) = update.call(&mut self.store, ()) {
@@ -146,7 +136,16 @@ where
         }
         self.prev_time = state.device.now();
 
-        self.flush_frame()
+        self.flush_frame()?;
+
+        let state = self.store.data();
+        Ok(&state.next)
+    }
+
+    /// When runtime is created, it takes ownership of [Device]. This method releases it.
+    pub fn into_device(self) -> DeviceImpl {
+        let state = self.store.into_data();
+        state.device
     }
 
     /// Draw the frame buffer on the actual screen.
