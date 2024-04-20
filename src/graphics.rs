@@ -339,7 +339,7 @@ pub(crate) fn draw_image(
     draw_image_inner(caller, ptr, len, x, y, colors, None)
 }
 
-pub(crate) fn draw_image_inner(
+fn draw_image_inner(
     mut caller: C,
     ptr: u32,
     len: u32,
