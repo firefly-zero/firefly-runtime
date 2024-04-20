@@ -110,7 +110,7 @@ pub(crate) fn draw_rect(
     never_fails(rect.draw_styled(&style, &mut state.frame));
 }
 
-// Draw a rectangle with rounded corners.
+/// Draw a rectangle with rounded corners.
 pub(crate) fn draw_rounded_rect(
     mut caller: C,
     x: i32,
