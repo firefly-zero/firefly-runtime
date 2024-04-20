@@ -52,7 +52,7 @@ pub(crate) fn load_file(
     load_file_inner(caller, "data", path_ptr, path_len, buf_ptr, buf_len)
 }
 
-pub fn load_file_inner(
+fn load_file_inner(
     mut caller: C,
     dir: &str,
     path_ptr: u32,
