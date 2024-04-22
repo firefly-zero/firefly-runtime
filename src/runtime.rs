@@ -12,7 +12,6 @@ use embedded_io::Read;
 use firefly_device::*;
 use firefly_meta::ShortMeta;
 use fugit::ExtU32;
-use heapless::Vec;
 
 /// Default frames per second.
 const FPS: u32 = 30;
@@ -214,9 +213,9 @@ fn detect_launcher(device: &DeviceImpl) -> Option<FullID> {
 fn get_short_meta(fname: &str, device: &DeviceImpl) -> Option<FullID> {
     let path = &["sys", fname];
     let mut file = device.open_file(path)?;
-    let mut bytes = Vec::<u8, 64>::new();
-    file.read(&mut bytes).ok()?;
-    let meta = ShortMeta::decode(&bytes).ok()?;
+    let bytes = &mut [0; 64];
+    file.read(bytes).ok()?;
+    let meta = ShortMeta::decode(bytes).ok()?;
     let author = meta.author_id.try_into().ok()?;
     let app = meta.app_id.try_into().ok()?;
     let id = FullID::new(author, app);
