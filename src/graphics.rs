@@ -31,7 +31,6 @@ pub(crate) fn clear_screen(mut caller: C, color: u32) {
 pub(crate) fn set_color(mut caller: C, index: u32, r: u32, g: u32, b: u32) {
     let state = caller.data_mut();
     state.frame.palette[index as usize - 1] = Rgb888::new(r as u8, g as u8, b as u8);
-    state.frame.mark_dirty();
 }
 
 /// Set all colors of the palette.
@@ -55,7 +54,6 @@ pub(crate) fn set_colors(
     state.frame.palette[1] = Rgb888::new(c2_r as u8, c2_g as u8, c2_b as u8);
     state.frame.palette[2] = Rgb888::new(c3_r as u8, c3_g as u8, c3_b as u8);
     state.frame.palette[3] = Rgb888::new(c4_r as u8, c4_g as u8, c4_b as u8);
-    state.frame.mark_dirty();
 }
 
 /// Draw a single point.

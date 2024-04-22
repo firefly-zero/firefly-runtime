@@ -52,7 +52,6 @@ mod tests {
             assert_eq!(byte, &0b_0000_0000);
         }
 
-        store.data_mut().frame.mark_clean();
         let inputs = wrap_input(&[2, 1, 4, 3, R, 1]);
         func.call(&mut store, &inputs, &mut []).unwrap();
 
@@ -81,7 +80,6 @@ mod tests {
             assert_eq!(byte, &0b_0000_0000);
         }
 
-        store.data_mut().frame.mark_clean();
         let inputs = wrap_input(&[-1, -2, 4, 3, G, 1]);
         func.call(&mut store, &inputs, &mut []).unwrap();
 
@@ -107,7 +105,6 @@ mod tests {
             assert_eq!(byte, &0b_0000_0000);
         }
 
-        store.data_mut().frame.mark_clean();
         let inputs = wrap_input(&[1, 2, 4, 3, G, B, 1]);
         func.call(&mut store, &inputs, &mut []).unwrap();
 
@@ -135,7 +132,6 @@ mod tests {
             assert_eq!(byte, &0b_0000_0000);
         }
 
-        store.data_mut().frame.mark_clean();
         let inputs = wrap_input(&[1, 2, 4, 4, 2, 2, G, B, 1]);
         func.call(&mut store, &inputs, &mut []).unwrap();
 
@@ -164,7 +160,6 @@ mod tests {
             assert_eq!(byte, &0b_0000_0000);
         }
 
-        store.data_mut().frame.mark_clean();
         let inputs = wrap_input(&[1, 2, 4, G, R, 1]);
         func.call(&mut store, &inputs, &mut []).unwrap();
 

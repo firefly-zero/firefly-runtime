@@ -19,20 +19,13 @@ pub(crate) struct FrameBuffer {
     pub(crate) data:    [u8; BUFFER_SIZE],
     /// The color palette. Maps 4-color packed pixels to 4 RGB colors.
     pub(crate) palette: [Rgb888; 4],
-    /// The lowest (by value) Y value of all updated lines.
-    dirty_from:         usize,
-    /// The highest (by value) Y value of all updated lines.
-    dirty_to:           usize,
 }
 
 impl FrameBuffer {
     pub(crate) fn new() -> Self {
         Self {
-            data:       [0; BUFFER_SIZE],
-            // For the first frame, consider all lines dirty.
-            dirty_from: 0,
-            dirty_to:   HEIGHT,
-            palette:    [
+            data:    [0; BUFFER_SIZE],
+            palette: [
                 // https://lospec.com/palette-list/kirokaze-gameboy
                 Rgb888::new(0x33, 0x2c, 0x50),
                 Rgb888::new(0x46, 0x87, 0x8f),
@@ -67,12 +60,6 @@ impl DrawTarget for FrameBuffer {
 
     fn clear(&mut self, color: Self::Color) -> Result<(), Self::Error> {
         let new_byte = color_to_byte(&color);
-        for y in 0..HEIGHT {
-            if check_line_dirty(&self.data, y, &new_byte) {
-                self.dirty_from = self.dirty_from.min(y);
-                self.dirty_to = self.dirty_to.max(y);
-            }
-        }
         self.data.fill(new_byte);
         Ok(())
     }
@@ -89,12 +76,7 @@ impl FrameBuffer {
         C: RgbColor + FromRGB,
         D: DrawTarget<Color = C, Error = E>,
     {
-        let result = self.draw_range(target, 0, HEIGHT + 1);
-        // As soon as all lines are rendered on the screen,
-        // mark all lines a "clean" so that the next frame knows
-        // which lines are updated.
-        self.mark_clean();
-        result
+        self.draw_range(target, 0, HEIGHT + 1)
     }
 
     pub(crate) fn draw_range<D, C, E>(
@@ -107,18 +89,16 @@ impl FrameBuffer {
         C: RgbColor + FromRGB,
         D: DrawTarget<Color = C, Error = E>,
     {
-        let min_y = min_y.max(self.dirty_from);
-        let max_y = max_y.min(self.dirty_to);
-        // If no dirty lines, don't update the screen.
+        // If the range is empty, don't update the screen.
         if min_y > max_y {
             return Ok(());
         }
         let colors = ColorIter {
             data: &self.data,
             palette: &self.palette,
-            // start iteration from the first dirty line
+            // start iteration from the first line in range
             index: WIDTH * min_y,
-            // end iteration at the last dirty line
+            // end iteration at the last line in range
             max_y,
             color: PhantomData,
         };
@@ -127,23 +107,6 @@ impl FrameBuffer {
             Size::new(WIDTH as u32, max_y as u32),
         );
         target.fill_contiguous(&area, colors)
-    }
-
-    /// Mark all lines as clean ("non-dirty").
-    ///
-    /// The next render won't redraw anything
-    /// unless something new is drawn on the buffer.
-    pub(crate) fn mark_clean(&mut self) {
-        self.dirty_from = HEIGHT;
-        self.dirty_to = 0;
-    }
-
-    /// Mark all lines as dirty.
-    ///
-    /// If called, the next frame will render all lines.
-    pub(crate) fn mark_dirty(&mut self) {
-        self.dirty_from = 0;
-        self.dirty_to = HEIGHT;
     }
 
     /// Set color of a single pixel at the given coordinates.
@@ -165,8 +128,6 @@ impl FrameBuffer {
         if new_byte == byte {
             return;
         }
-        self.dirty_from = self.dirty_from.min(y);
-        self.dirty_to = self.dirty_to.max(y);
         self.data[byte_index] = new_byte
     }
 }
@@ -226,17 +187,4 @@ fn color_to_byte(c: &Gray2) -> u8 {
         new_byte = (new_byte << BPP) | luma;
     }
     new_byte
-}
-
-/// Check the whole horizontal line if it should be marked dirty.
-fn check_line_dirty(data: &[u8], y: usize, new_byte: &u8) -> bool {
-    let line_start = WIDTH * y / PPB;
-    let line_end = line_start + y / PPB;
-    let line = &data[line_start..=line_end];
-    for old_byte in line {
-        if new_byte != old_byte {
-            return true;
-        }
-    }
-    false
 }
