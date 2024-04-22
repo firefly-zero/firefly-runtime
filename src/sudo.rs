@@ -113,6 +113,7 @@ pub(crate) fn run_app(mut caller: C, author_ptr: u32, author_len: u32, app_ptr: 
         author_id.try_into().unwrap(), //
         app_id.try_into().unwrap(),    //
     ));
+    state.exit = true;
 }
 
 pub fn get_file_size(mut caller: C, path_ptr: u32, path_len: u32) -> u32 {
