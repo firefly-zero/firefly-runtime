@@ -38,6 +38,7 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error
 
     linker.func_wrap("sudo", "list_dirs", sudo::list_dirs)?;
     linker.func_wrap("sudo", "list_dirs_buf_size", sudo::list_dirs_buf_size)?;
+    linker.func_wrap("sudo", "load_file", sudo::load_file)?;
     linker.func_wrap("sudo", "run_app", sudo::run_app)?;
 
     Ok(())

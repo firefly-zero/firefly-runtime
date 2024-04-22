@@ -1,5 +1,6 @@
 use crate::config::FullID;
 use crate::state::State;
+use embedded_io::Read;
 use firefly_device::Device;
 use firefly_meta::{validate_id, validate_path_part};
 use heapless::Vec;
@@ -112,6 +113,58 @@ pub(crate) fn run_app(mut caller: C, author_ptr: u32, author_len: u32, app_ptr: 
         author_id.try_into().unwrap(), //
         app_id.try_into().unwrap(),    //
     ));
+}
+
+pub(crate) fn load_file(
+    mut caller: C,
+    path_ptr: u32,
+    path_len: u32,
+    buf_ptr: u32,
+    buf_len: u32,
+) -> u32 {
+    let state = caller.data_mut();
+    let Some(memory) = state.memory else {
+        state.device.log_error("sudo", "memory not found");
+        return 0;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let Some((path_bytes, buf)) = get_safe_subsclices(data, path_ptr, path_len, buf_ptr, buf_len)
+    else {
+        let msg = "invalid pointer for path or buffer";
+        state.device.log_error("sudo.list_dirs", msg);
+        return 0;
+    };
+
+    // parse and validate the dir path.
+    let Ok(path) = core::str::from_utf8(path_bytes) else {
+        let msg = "file path is not valid UTF-8";
+        state.device.log_error("sudo", msg);
+        return 0;
+    };
+    let path: Vec<&str, MAX_DEPTH> = path.split('/').collect();
+    for part in &path {
+        if let Err(err) = validate_path_part(part) {
+            state.log_validation_error("sudo", "bad file path", err);
+            return 0;
+        }
+    }
+
+    let Some(mut file) = state.device.open_file(&path) else {
+        let msg = "cannot open file";
+        state.device.log_error("sudo", msg);
+        return 0;
+    };
+    let Ok(file_size) = file.read(buf) else {
+        let msg = "cannot read file";
+        state.device.log_error("fs", msg);
+        return 0;
+    };
+    if file_size != buf_len as usize {
+        let msg = "buffer size for file does not match the file size";
+        state.device.log_error("fs", msg);
+        return 0;
+    }
+    file_size as u32
 }
 
 fn get_id<'a>(ptr: u32, len: u32, data: &'a [u8], state: &mut State) -> Option<&'a str> {
