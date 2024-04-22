@@ -125,6 +125,8 @@ where
     /// If there is not enough time passed since the last update,
     /// the update will be delayed to keep the expected frame rate.
     pub fn update(&mut self) -> Result<bool, Error> {
+        let state = self.store.data_mut();
+        state.update();
         if let Some(update) = self.update {
             // TODO: continue execution even if an update fails.
             if let Err(err) = update.call(&mut self.store, ()) {

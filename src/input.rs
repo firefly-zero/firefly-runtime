@@ -3,10 +3,9 @@ use firefly_device::*;
 
 type C<'a> = wasmi::Caller<'a, State>;
 
-pub(crate) fn read_pad(mut caller: C) -> u32 {
-    let state = caller.data_mut();
-    // TODO: cache input in state
-    let input = match state.device.read_input() {
+pub(crate) fn read_pad(caller: C) -> u32 {
+    let state = caller.data();
+    let input = match &state.input {
         Some(InputState { pad: Some(pad), .. }) => pad,
         _ => return 0xffff,
     };
@@ -15,10 +14,9 @@ pub(crate) fn read_pad(mut caller: C) -> u32 {
     x << 16 | y
 }
 
-pub(crate) fn read_buttons(mut caller: C) -> u32 {
-    let state = caller.data_mut();
-    // TODO: cache input in state
-    let Some(input) = state.device.read_input() else {
+pub(crate) fn read_buttons(caller: C) -> u32 {
+    let state = caller.data();
+    let Some(input) = &state.input else {
         return 0;
     };
     let mut res: u32 = 0;

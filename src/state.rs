@@ -1,6 +1,6 @@
 use crate::config::FullID;
 use crate::frame_buffer::FrameBuffer;
-use firefly_device::{Device, DeviceImpl};
+use firefly_device::*;
 use firefly_meta::ValidationError;
 
 pub(crate) struct State {
@@ -11,6 +11,7 @@ pub(crate) struct State {
     pub memory: Option<wasmi::Memory>,
     pub exit:   bool,
     pub next:   Option<FullID>,
+    pub input:  Option<InputState>,
 }
 
 impl State {
@@ -23,6 +24,18 @@ impl State {
             memory: None,
             next: None,
             exit: false,
+            input: None,
+        }
+    }
+
+    /// Update the state: read inputs, handle system commands.
+    pub(crate) fn update(&mut self) {
+        self.input = self.device.read_input();
+        if let Some(InputState { buttons, .. }) = self.input {
+            // exit if menu button is pressed
+            if buttons[4] {
+                self.exit = true
+            }
         }
     }
 
