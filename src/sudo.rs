@@ -13,7 +13,7 @@ type C<'a> = wasmi::Caller<'a, State>;
 /// `{data,roms,sys}/AUTHOR_ID/APP_ID/FILE_NAME`
 const MAX_DEPTH: usize = 4;
 
-pub(crate) fn iter_dirs_buf_size(caller: C, path_ptr: u32, path_len: u32) -> u32 {
+pub(crate) fn list_dirs_buf_size(caller: C, path_ptr: u32, path_len: u32) -> u32 {
     let state = caller.data();
     let Some(memory) = state.memory else {
         state.device.log_error("sudo", "memory not found");
@@ -47,7 +47,7 @@ pub(crate) fn iter_dirs_buf_size(caller: C, path_ptr: u32, path_len: u32) -> u32
     size as u32
 }
 
-pub(crate) fn iter_dirs(
+pub(crate) fn list_dirs(
     mut caller: C,
     path_ptr: u32,
     path_len: u32,
@@ -63,7 +63,7 @@ pub(crate) fn iter_dirs(
     let Some((path_bytes, buf)) = get_safe_subsclices(data, path_ptr, path_len, buf_ptr, buf_len)
     else {
         let msg = "invalid pointer for path or buffer";
-        state.device.log_error("sudo.iter_dirs", msg);
+        state.device.log_error("sudo.list_dirs", msg);
         return 0;
     };
 

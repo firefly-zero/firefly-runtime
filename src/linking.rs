@@ -35,8 +35,8 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error
     linker.func_wrap("misc", "set_seed", misc::set_seed)?;
     linker.func_wrap("misc", "get_random", misc::get_random)?;
 
-    linker.func_wrap("sudo", "iter_dirs", sudo::iter_dirs)?;
-    linker.func_wrap("sudo", "iter_dirs_buf_size", sudo::iter_dirs_buf_size)?;
+    linker.func_wrap("sudo", "list_dirs", sudo::list_dirs)?;
+    linker.func_wrap("sudo", "list_dirs_buf_size", sudo::list_dirs_buf_size)?;
     linker.func_wrap("sudo", "run_app", sudo::run_app)?;
 
     Ok(())
