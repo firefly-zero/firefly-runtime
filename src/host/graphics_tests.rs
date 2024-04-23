@@ -59,10 +59,13 @@ mod tests {
         check_display(
             &mut state.frame,
             &[
-                "      ", // y=0
+                "WWWWWW", // y=0
                 "WWRWWW", // y=1
                 "WWWRWW", // y=2
                 "WWWWRW", // y=3
+                "WWWWWW", // y=4
+                "WWWWWW", // y=5
+                "WWWWWW", // y=6
             ],
         );
     }
@@ -90,6 +93,10 @@ mod tests {
                 "WGWWWW", // y=0
                 "WWGWWW", // y=1
                 "WWWGWW", // y=2
+                "WWWWGW", // y=3
+                "WWWWWW", // y=4
+                "WWWWWW", // y=5
+                "WWWWWW", // y=6
             ],
         );
     }
@@ -112,11 +119,13 @@ mod tests {
         check_display(
             &mut state.frame,
             &[
-                "      ", // y=0
-                "      ", // y=1
+                "WWWWWW", // y=0
+                "WWWWWW", // y=1
                 "WBBBBW", // y=2
                 "WBGGBW", // y=3
                 "WBBBBW", // y=4
+                "WWWWWW", // y=5
+                "WWWWWW", // y=6
             ],
         );
     }
@@ -139,12 +148,13 @@ mod tests {
         check_display(
             &mut state.frame,
             &[
-                "      ", // y=0
-                "      ", // y=1
+                "WWWWWW", // y=0
+                "WWWWWW", // y=1
                 "WWBBWW", // y=2
                 "WBGGBW", // y=3
-                "WBGGBW", // y=3
-                "WWBBWW", // y=4
+                "WBGGBW", // y=4
+                "WWBBWW", // y=5
+                "WWWWWW", // y=6
             ],
         );
     }
@@ -167,12 +177,13 @@ mod tests {
         check_display(
             &mut state.frame,
             &[
-                "      ", // y=0
-                "      ", // y=1
+                "WWWWWW", // y=0
+                "WWWWWW", // y=1
                 "WWRRWW", // y=2
                 "WRGGRW", // y=3
-                "WRGGRW", // y=3
-                "WWRRWW", // y=4
+                "WRGGRW", // y=4
+                "WWRRWW", // y=5
+                "WWWWWW", // y=6
             ],
         );
     }
@@ -187,7 +198,7 @@ mod tests {
 
     fn check_display(frame: &mut FrameBuffer, pattern: &[&str]) {
         let mut display = MockDisplay::<Rgb888>::new();
-        let area = Rectangle::new(Point::zero(), Size::new(6, 64));
+        let area = Rectangle::new(Point::zero(), Size::new(6, 7));
         let mut sub_display = display.clipped(&area);
         frame.palette = [
             Rgb888::new(255, 255, 255),
