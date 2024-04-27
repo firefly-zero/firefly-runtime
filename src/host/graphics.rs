@@ -195,16 +195,16 @@ pub(crate) fn draw_arc(
     x: i32,
     y: i32,
     diameter: u32,
-    angle_start: i32,
-    angle_sweep: i32,
+    angle_start: wasmi::core::F32,
+    angle_sweep: wasmi::core::F32,
     fill_color: u32,
     stroke_color: u32,
     stroke_width: u32,
 ) {
     let state = caller.data_mut();
     let point = Point::new(x, y);
-    let angle_start = Angle::from_degrees(angle_start as f32);
-    let angle_sweep = Angle::from_degrees(angle_sweep as f32);
+    let angle_start = Angle::from_radians(angle_start.into());
+    let angle_sweep = Angle::from_radians(angle_sweep.into());
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let arc = Arc::new(point, diameter, angle_start, angle_sweep);
     never_fails(arc.draw_styled(&style, &mut state.frame));
@@ -216,16 +216,16 @@ pub(crate) fn draw_sector(
     x: i32,
     y: i32,
     diameter: u32,
-    angle_start: i32,
-    angle_sweep: i32,
+    angle_start: wasmi::core::F32,
+    angle_sweep: wasmi::core::F32,
     fill_color: u32,
     stroke_color: u32,
     stroke_width: u32,
 ) {
     let state = caller.data_mut();
     let point = Point::new(x, y);
-    let angle_start = Angle::from_degrees(angle_start as f32);
-    let angle_sweep = Angle::from_degrees(angle_sweep as f32);
+    let angle_start = Angle::from_radians(angle_start.into());
+    let angle_sweep = Angle::from_radians(angle_sweep.into());
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let arc = Sector::new(point, diameter, angle_start, angle_sweep);
     never_fails(arc.draw_styled(&style, &mut state.frame));
