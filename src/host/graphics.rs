@@ -1,4 +1,4 @@
-use crate::color::{BPPAdapter, ColorReplaceAdapter};
+use crate::color::BPPAdapter;
 use crate::state::State;
 use core::convert::Infallible;
 use embedded_graphics::image::{Image, ImageRaw, ImageRawLE};
@@ -301,42 +301,18 @@ pub(crate) fn draw_sub_image(
     sub_y: i32,
     sub_width: u32,
     sub_height: u32,
-    c1: i32,
-    c2: i32,
-    c3: i32,
-    c4: i32,
 ) {
     let sub_point = Point::new(sub_x, sub_y);
     let sub_size = Size::new(sub_width, sub_height);
     let sub = Rectangle::new(sub_point, sub_size);
-    let colors = parse_4_colors(c1, c2, c3, c4);
-    draw_image_inner(caller, ptr, len, x, y, colors, Some(sub))
+    draw_image_inner(caller, ptr, len, x, y, Some(sub))
 }
 
-pub(crate) fn draw_image(
-    caller: C,
-    ptr: u32,
-    len: u32,
-    x: i32,
-    y: i32,
-    c1: i32,
-    c2: i32,
-    c3: i32,
-    c4: i32,
-) {
-    let colors = parse_4_colors(c1, c2, c3, c4);
-    draw_image_inner(caller, ptr, len, x, y, colors, None)
+pub(crate) fn draw_image(caller: C, ptr: u32, len: u32, x: i32, y: i32) {
+    draw_image_inner(caller, ptr, len, x, y, None)
 }
 
-fn draw_image_inner(
-    mut caller: C,
-    ptr: u32,
-    len: u32,
-    x: i32,
-    y: i32,
-    colors: [Option<Gray4>; 4],
-    sub: Option<Rectangle>,
-) {
+fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Option<Rectangle>) {
     // retrieve the raw data from memory
     let Some((state, image_bytes)) = get_bytes(&mut caller, ptr, len) else {
         return;
@@ -351,14 +327,10 @@ fn draw_image_inner(
     let image_bytes = &image_bytes[4..];
 
     let point = Point::new(x, y);
-    let mut adapter = ColorReplaceAdapter {
-        target: &mut state.frame,
-        colors,
-    };
     if bpp == 1 {
-        draw_1bpp(image_bytes, width, point, sub, &mut adapter);
+        draw_1bpp(image_bytes, width, point, sub, &mut state.frame);
     } else {
-        draw_2bpp(image_bytes, width, point, sub, &mut adapter);
+        draw_2bpp(image_bytes, width, point, sub, &mut state.frame);
     }
 }
 
@@ -495,15 +467,6 @@ fn read_u8(bytes: &[u8], s: usize) -> u8 {
 /// Read little-endian u32 from the slice at the given index.
 fn read_u16(bytes: &[u8], s: usize) -> u16 {
     u16::from_le_bytes([bytes[s], bytes[s + 1]])
-}
-
-fn parse_4_colors(c1: i32, c2: i32, c3: i32, c4: i32) -> [Option<Gray4>; 4] {
-    [
-        parse_color(c1),
-        parse_color(c2),
-        parse_color(c3),
-        parse_color(c4),
-    ]
 }
 
 fn parse_color(c: i32) -> Option<Gray4> {

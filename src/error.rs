@@ -27,3 +27,8 @@ impl From<wasmi::Error> for Error {
         Self::Wasmi(value)
     }
 }
+
+// pub(crate) enum HostError {
+//     NoneColor,
+//     InvalidPointer,
+// }

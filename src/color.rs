@@ -4,51 +4,7 @@ use embedded_graphics::prelude::DrawTarget;
 use embedded_graphics::primitives::Rectangle;
 use embedded_graphics::Pixel;
 
-/// Replace colors.
-pub(crate) struct ColorReplaceAdapter<'a, D>
-where
-    D: DrawTarget<Color = Gray4> + OriginDimensions,
-{
-    pub target: &'a mut D,
-
-    /// Replacement colors.
-    pub colors: [Option<Gray4>; 4],
-}
-
-/// Required by the DrawTarget trait.
-impl<'a, D> OriginDimensions for ColorReplaceAdapter<'a, D>
-where
-    D: DrawTarget<Color = Gray4> + OriginDimensions,
-{
-    fn size(&self) -> embedded_graphics::prelude::Size {
-        self.target.size()
-    }
-}
-
-impl<'a, D> DrawTarget for ColorReplaceAdapter<'a, D>
-where
-    D: DrawTarget<Color = Gray4> + OriginDimensions,
-{
-    type Color = Gray4;
-    type Error = D::Error;
-
-    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = Pixel<Self::Color>>,
-    {
-        let iter = pixels
-            .into_iter()
-            .filter_map(|Pixel(point, color)| -> Option<Pixel<Gray4>> {
-                let raw = color.into_storage();
-                debug_assert!(raw < 4);
-                let color = self.colors[raw as usize]?;
-                Some(Pixel(point, color))
-            });
-        self.target.draw_iter(iter)
-    }
-}
-
-// Convert 1 bit per pixel image into 2 bits par pixel.
+// Convert 1 bit per pixel image into 2 bits per pixel.
 pub(crate) struct BPPAdapter<'a, D>
 where
     D: DrawTarget<Color = Gray4> + OriginDimensions,
