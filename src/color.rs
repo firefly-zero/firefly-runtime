@@ -1,32 +1,50 @@
+use core::marker::PhantomData;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::*;
 use embedded_graphics::prelude::DrawTarget;
 use embedded_graphics::primitives::Rectangle;
 use embedded_graphics::Pixel;
 
-// Convert 1 bit per pixel image into 2 bits per pixel.
-pub(crate) struct BPPAdapter<'a, D>
+// Convert 1/2/4 BPP image into 4 BPP ([`Gray4`]) color.
+pub(crate) struct BPPAdapter<'a, D, C>
 where
     D: DrawTarget<Color = Gray4> + OriginDimensions,
+    C: PixelColor + IntoStorage<Storage = u8>,
 {
-    pub target: &'a mut D,
+    target: &'a mut D,
+    color:  PhantomData<C>,
+}
+
+impl<'a, D, C> BPPAdapter<'a, D, C>
+where
+    D: DrawTarget<Color = Gray4> + OriginDimensions,
+    C: PixelColor + IntoStorage<Storage = u8>,
+{
+    pub fn new(target: &'a mut D) -> Self {
+        Self {
+            target,
+            color: PhantomData,
+        }
+    }
 }
 
 /// Required by the DrawTarget trait.
-impl<'a, D> OriginDimensions for BPPAdapter<'a, D>
+impl<'a, D, C> OriginDimensions for BPPAdapter<'a, D, C>
 where
     D: DrawTarget<Color = Gray4> + OriginDimensions,
+    C: PixelColor + IntoStorage<Storage = u8>,
 {
     fn size(&self) -> embedded_graphics::prelude::Size {
         self.target.size()
     }
 }
 
-impl<'a, D> DrawTarget for BPPAdapter<'a, D>
+impl<'a, D, C> DrawTarget for BPPAdapter<'a, D, C>
 where
     D: DrawTarget<Color = Gray4> + OriginDimensions,
+    C: PixelColor + IntoStorage<Storage = u8>,
 {
-    type Color = BinaryColor;
+    type Color = C;
     type Error = D::Error;
 
     fn draw_iter<I>(&mut self, _pixels: I) -> Result<(), Self::Error>

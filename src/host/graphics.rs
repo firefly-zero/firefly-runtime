@@ -344,7 +344,7 @@ fn draw_1bpp<T>(
     T: DrawTarget<Color = Gray4, Error = Infallible> + OriginDimensions,
 {
     let image_raw = ImageRawLE::<BinaryColor>::new(image_bytes, width);
-    let mut adapter = BPPAdapter { target };
+    let mut adapter = BPPAdapter::new(target);
     match sub {
         Some(sub) => {
             let image_raw = image_raw.sub_image(&sub);
