@@ -12,8 +12,8 @@ where
     C: PixelColor + IntoStorage<Storage = u8>,
 {
     target: &'a mut D,
-    swaps:  [Option<Gray4>; 16],
-    color:  PhantomData<C>,
+    swaps: [Option<Gray4>; 16],
+    color: PhantomData<C>,
 }
 
 impl<'a, D, C> BPPAdapter<'a, D, C>
@@ -21,10 +21,10 @@ where
     D: DrawTarget<Color = Gray4> + OriginDimensions,
     C: PixelColor + IntoStorage<Storage = u8>,
 {
-    pub fn new(target: &'a mut D, swaps: &'_ [u8]) -> Self {
+    pub fn new(target: &'a mut D, transp: u8, swaps: &'_ [u8]) -> Self {
         Self {
             target,
-            swaps: parse_swaps(swaps),
+            swaps: parse_swaps(transp, swaps),
             color: PhantomData,
         }
     }
@@ -129,39 +129,45 @@ impl FromRGB for Bgr888 {
 }
 
 #[allow(clippy::get_first)]
-fn parse_swaps(swaps: &[u8]) -> [Option<Gray4>; 16] {
+fn parse_swaps(transp: u8, swaps: &[u8]) -> [Option<Gray4>; 16] {
     [
         // 0-4
-        parse_color_l(swaps.get(0)),
-        parse_color_r(swaps.get(0)),
-        parse_color_l(swaps.get(1)),
-        parse_color_r(swaps.get(1)),
+        parse_color_l(transp, swaps.get(0)),
+        parse_color_r(transp, swaps.get(0)),
+        parse_color_l(transp, swaps.get(1)),
+        parse_color_r(transp, swaps.get(1)),
         // 4-8
-        parse_color_l(swaps.get(2)),
-        parse_color_r(swaps.get(2)),
-        parse_color_l(swaps.get(3)),
-        parse_color_r(swaps.get(3)),
+        parse_color_l(transp, swaps.get(2)),
+        parse_color_r(transp, swaps.get(2)),
+        parse_color_l(transp, swaps.get(3)),
+        parse_color_r(transp, swaps.get(3)),
         // 8-12
-        parse_color_l(swaps.get(4)),
-        parse_color_r(swaps.get(4)),
-        parse_color_l(swaps.get(5)),
-        parse_color_r(swaps.get(5)),
+        parse_color_l(transp, swaps.get(4)),
+        parse_color_r(transp, swaps.get(4)),
+        parse_color_l(transp, swaps.get(5)),
+        parse_color_r(transp, swaps.get(5)),
         // 12-16
-        parse_color_l(swaps.get(6)),
-        parse_color_r(swaps.get(6)),
-        parse_color_l(swaps.get(7)),
-        parse_color_r(swaps.get(7)),
+        parse_color_l(transp, swaps.get(6)),
+        parse_color_r(transp, swaps.get(6)),
+        parse_color_l(transp, swaps.get(7)),
+        parse_color_r(transp, swaps.get(7)),
     ]
 }
 
 /// Parse the high bits of a byte as a color.
-fn parse_color_r(c: Option<&u8>) -> Option<Gray4> {
+fn parse_color_r(transp: u8, c: Option<&u8>) -> Option<Gray4> {
     let c = c?;
+    if c == &transp {
+        return None;
+    }
     Some(Gray4::new(c & 0b1111))
 }
 
 /// Parse the low bits of a byte as a color.
-fn parse_color_l(c: Option<&u8>) -> Option<Gray4> {
+fn parse_color_l(transp: u8, c: Option<&u8>) -> Option<Gray4> {
     let c = c?;
+    if c == &transp {
+        return None;
+    }
     Some(Gray4::new((c >> 4) & 0b1111))
 }

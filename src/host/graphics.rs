@@ -321,26 +321,34 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         return;
     }
 
-    // read image header
+    // Read image header.
+    // Bits per color pixel. Can be 1, 2, or 4.
     let bpp = u8::from_le_bytes([image_bytes[1]]);
+    // The image width. The height is inferred fro width, BPP, and byte size.
     let width = u16::from_le_bytes([image_bytes[2], image_bytes[3]]) as u32;
+    // The color that should be omitted.
+    // Used to encode transparency by sacrificing one color from the palette.
+    let transp = u8::from_le_bytes([image_bytes[4]]);
+    let image_bytes = &image_bytes[4..];
     let swaps_len = bpp as usize * 16 / 8;
-    let swaps = &image_bytes[4..(4 + swaps_len)];
-    let image_bytes = &image_bytes[(4 + swaps_len)..];
+    // The palette swaps. Used to map colors from image to the actual palette.
+    let swaps = &image_bytes[..swaps_len];
+    // The raw packed image content.
+    let image_bytes = &image_bytes[swaps_len..];
 
     let point = Point::new(x, y);
     match bpp {
         1 => {
             let image_raw = ImageRawLE::<BinaryColor>::new(image_bytes, width);
-            draw_bpp(image_raw, swaps, point, sub, &mut state.frame)
+            draw_bpp(image_raw, transp, swaps, point, sub, &mut state.frame)
         }
         2 => {
             let image_raw = ImageRawLE::<Gray2>::new(image_bytes, width);
-            draw_bpp(image_raw, swaps, point, sub, &mut state.frame)
+            draw_bpp(image_raw, transp, swaps, point, sub, &mut state.frame)
         }
         4 => {
             let image_raw = ImageRawLE::<Gray4>::new(image_bytes, width);
-            draw_bpp(image_raw, swaps, point, sub, &mut state.frame)
+            draw_bpp(image_raw, transp, swaps, point, sub, &mut state.frame)
         }
         _ => {
             state.device.log_error("graphics", "invalid BPP");
@@ -354,6 +362,7 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
 /// and the target.
 fn draw_bpp<C, I, T>(
     image_raw: I,
+    transp: u8,
     swaps: &[u8],
     point: Point,
     sub: Option<Rectangle>,
@@ -363,7 +372,7 @@ fn draw_bpp<C, I, T>(
     I: ImageDrawable<Color = C>,
     T: DrawTarget<Color = Gray4, Error = Infallible> + OriginDimensions,
 {
-    let mut adapter = BPPAdapter::<_, C>::new(target, swaps);
+    let mut adapter = BPPAdapter::<_, C>::new(target, transp, swaps);
     match sub {
         Some(sub) => {
             let image_raw = image_raw.sub_image(&sub);
