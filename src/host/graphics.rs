@@ -3,7 +3,6 @@ use crate::state::State;
 use core::convert::Infallible;
 use embedded_graphics::image::{Image, ImageRaw, ImageRawLE};
 use embedded_graphics::mono_font::{mapping, DecorationDimensions, MonoFont, MonoTextStyle};
-use embedded_graphics::pixelcolor::raw::{RawU1, RawU2, RawU4, RawU8};
 use embedded_graphics::pixelcolor::{BinaryColor, Gray2, Gray4, Rgb888};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
@@ -325,21 +324,23 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
     // read image header
     let bpp = u8::from_le_bytes([image_bytes[1]]);
     let width = u16::from_le_bytes([image_bytes[2], image_bytes[3]]) as u32;
-    let image_bytes = &image_bytes[4..];
+    let swaps_len = bpp as usize * 16 / 8;
+    let swaps = &image_bytes[4..(4 + swaps_len)];
+    let image_bytes = &image_bytes[(4 + swaps_len)..];
 
     let point = Point::new(x, y);
     match bpp {
         1 => {
             let image_raw = ImageRawLE::<BinaryColor>::new(image_bytes, width);
-            draw_bpp(image_raw, point, sub, &mut state.frame)
+            draw_bpp(image_raw, swaps, point, sub, &mut state.frame)
         }
         2 => {
             let image_raw = ImageRawLE::<Gray2>::new(image_bytes, width);
-            draw_bpp(image_raw, point, sub, &mut state.frame)
+            draw_bpp(image_raw, swaps, point, sub, &mut state.frame)
         }
         4 => {
             let image_raw = ImageRawLE::<Gray4>::new(image_bytes, width);
-            draw_bpp(image_raw, point, sub, &mut state.frame)
+            draw_bpp(image_raw, swaps, point, sub, &mut state.frame)
         }
         _ => {
             state.device.log_error("graphics", "invalid BPP");
@@ -351,13 +352,18 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
 ///
 /// The function takes care of the BPP differences between the given image
 /// and the target.
-fn draw_bpp<C, I, T>(image_raw: I, point: Point, sub: Option<Rectangle>, target: &mut T)
-where
+fn draw_bpp<C, I, T>(
+    image_raw: I,
+    swaps: &[u8],
+    point: Point,
+    sub: Option<Rectangle>,
+    target: &mut T,
+) where
     C: PixelColor + IntoStorage<Storage = u8>,
     I: ImageDrawable<Color = C>,
     T: DrawTarget<Color = Gray4, Error = Infallible> + OriginDimensions,
 {
-    let mut adapter = BPPAdapter::<_, C>::new(target);
+    let mut adapter = BPPAdapter::<_, C>::new(target, swaps);
     match sub {
         Some(sub) => {
             let image_raw = image_raw.sub_image(&sub);

@@ -12,6 +12,7 @@ where
     C: PixelColor + IntoStorage<Storage = u8>,
 {
     target: &'a mut D,
+    swaps:  [Option<Gray4>; 16],
     color:  PhantomData<C>,
 }
 
@@ -20,9 +21,10 @@ where
     D: DrawTarget<Color = Gray4> + OriginDimensions,
     C: PixelColor + IntoStorage<Storage = u8>,
 {
-    pub fn new(target: &'a mut D) -> Self {
+    pub fn new(target: &'a mut D, swaps: &'_ [u8]) -> Self {
         Self {
             target,
+            swaps: parse_swaps(swaps),
             color: PhantomData,
         }
     }
@@ -58,7 +60,13 @@ where
     where
         I: IntoIterator<Item = Self::Color>,
     {
-        let iter = colors.into_iter().map(|c| Gray4::new(c.into_storage()));
+        let iter = colors.into_iter().map(|c| {
+            let c = c.into_storage();
+            match self.swaps.get(c as usize) {
+                Some(Some(c)) => *c,
+                _ => Gray4::new(c),
+            }
+        });
         self.target.fill_contiguous(area, iter)
     }
 }
@@ -118,4 +126,42 @@ impl FromRGB for Bgr888 {
     fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         Self::new(r, g, b)
     }
+}
+
+#[allow(clippy::get_first)]
+fn parse_swaps(swaps: &[u8]) -> [Option<Gray4>; 16] {
+    [
+        // 0-4
+        parse_color_l(swaps.get(0)),
+        parse_color_r(swaps.get(0)),
+        parse_color_l(swaps.get(1)),
+        parse_color_r(swaps.get(1)),
+        // 4-8
+        parse_color_l(swaps.get(2)),
+        parse_color_r(swaps.get(2)),
+        parse_color_l(swaps.get(3)),
+        parse_color_r(swaps.get(3)),
+        // 8-12
+        parse_color_l(swaps.get(4)),
+        parse_color_r(swaps.get(4)),
+        parse_color_l(swaps.get(5)),
+        parse_color_r(swaps.get(5)),
+        // 12-16
+        parse_color_l(swaps.get(6)),
+        parse_color_r(swaps.get(6)),
+        parse_color_l(swaps.get(7)),
+        parse_color_r(swaps.get(7)),
+    ]
+}
+
+/// Parse the high bits of a byte as a color.
+fn parse_color_r(c: Option<&u8>) -> Option<Gray4> {
+    let c = c?;
+    Some(Gray4::new(c & 0b1111))
+}
+
+/// Parse the low bits of a byte as a color.
+fn parse_color_l(c: Option<&u8>) -> Option<Gray4> {
+    let c = c?;
+    Some(Gray4::new((c >> 4) & 0b1111))
 }
