@@ -339,6 +339,8 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         _ => 8,
     };
     // The palette swaps. Used to map colors from image to the actual palette.
+    //
+    // TODO: It can panic! Don't trust swaps to have the correct size/
     let swaps = &image_bytes[..swaps_len];
     // The raw packed image content.
     let image_bytes = &image_bytes[swaps_len..];
