@@ -12,8 +12,8 @@ where
     C: PixelColor + IntoStorage<Storage = u8>,
 {
     target: &'a mut D,
-    swaps: [Option<Gray4>; 16],
-    color: PhantomData<C>,
+    swaps:  [Option<Gray4>; 16],
+    color:  PhantomData<C>,
 }
 
 impl<'a, D, C> BPPAdapter<'a, D, C>
@@ -157,17 +157,19 @@ fn parse_swaps(transp: u8, swaps: &[u8]) -> [Option<Gray4>; 16] {
 /// Parse the high bits of a byte as a color.
 fn parse_color_r(transp: u8, c: Option<&u8>) -> Option<Gray4> {
     let c = c?;
-    if c == &transp {
+    let c = c & 0b1111;
+    if c == transp {
         return None;
     }
-    Some(Gray4::new(c & 0b1111))
+    Some(Gray4::new(c))
 }
 
 /// Parse the low bits of a byte as a color.
 fn parse_color_l(transp: u8, c: Option<&u8>) -> Option<Gray4> {
     let c = c?;
-    if c == &transp {
+    let c = (c >> 4) & 0b1111;
+    if c == transp {
         return None;
     }
-    Some(Gray4::new((c >> 4) & 0b1111))
+    Some(Gray4::new(c))
 }

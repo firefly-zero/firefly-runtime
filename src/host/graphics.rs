@@ -317,7 +317,10 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
     let Some((state, image_bytes)) = get_bytes(&mut caller, ptr, len) else {
         return;
     };
-    if image_bytes.len() < 4 {
+    if image_bytes.len() < 7 {
+        state
+            .device
+            .log_error("graphics", "image file is too small");
         return;
     }
 
@@ -330,7 +333,11 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
     // Used to encode transparency by sacrificing one color from the palette.
     let transp = u8::from_le_bytes([image_bytes[4]]);
     let image_bytes = &image_bytes[4..];
-    let swaps_len = bpp as usize * 16 / 8;
+    let swaps_len = match bpp {
+        1 => 1,
+        2 => 2,
+        _ => 8,
+    };
     // The palette swaps. Used to map colors from image to the actual palette.
     let swaps = &image_bytes[..swaps_len];
     // The raw packed image content.
