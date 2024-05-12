@@ -2,7 +2,6 @@ use core::marker::PhantomData;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::*;
 use embedded_graphics::prelude::DrawTarget;
-use embedded_graphics::primitives::Rectangle;
 use embedded_graphics::Pixel;
 
 // Convert 1/2/4 BPP image into 4 BPP ([`Gray4`]) color.
@@ -49,25 +48,18 @@ where
     type Color = C;
     type Error = D::Error;
 
-    fn draw_iter<I>(&mut self, _pixels: I) -> Result<(), Self::Error>
+    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
     where
         I: IntoIterator<Item = Pixel<Self::Color>>,
     {
-        panic!("not implemented, use BPPAdapter.fill_contiguous instead")
-    }
-
-    fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = Self::Color>,
-    {
-        let iter = colors.into_iter().map(|c| {
+        let iter = pixels.into_iter().filter_map(|Pixel(p, c)| {
             let c = c.into_storage();
             match self.swaps.get(c as usize) {
-                Some(Some(c)) => *c,
-                _ => Gray4::new(c),
+                Some(Some(c)) => Some(Pixel(p, *c)),
+                _ => None,
             }
         });
-        self.target.fill_contiguous(area, iter)
+        self.target.draw_iter(iter)
     }
 }
 
