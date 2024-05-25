@@ -1,3 +1,4 @@
+use crate::error::HostError;
 use crate::state::State;
 use embedded_io::{Read, Write};
 use firefly_device::Device;
@@ -19,7 +20,7 @@ pub(crate) fn get_file_size(caller: C, path_ptr: u32, path_len: u32) -> u32 {
 pub fn get_file_size_inner(mut caller: C, dir: &str, path_ptr: u32, path_len: u32) -> u32 {
     let state = caller.data_mut();
     let Some(memory) = state.memory else {
-        state.device.log_error("fs", "memory not found");
+        state.device.log_error("fs", HostError::MemoryNotFound);
         return 0;
     };
     let (data, state) = memory.data_and_store_mut(&mut caller);
@@ -62,7 +63,7 @@ fn load_file_inner(
 ) -> u32 {
     let state = caller.data_mut();
     let Some(memory) = state.memory else {
-        state.device.log_error("fs", "memory not found");
+        state.device.log_error("fs", HostError::MemoryNotFound);
         return 0;
     };
     let (data, state) = memory.data_and_store_mut(&mut caller);
@@ -72,25 +73,21 @@ fn load_file_inner(
 
     let path = &[dir, state.id.author(), state.id.app(), name];
     let Some(mut file) = state.device.open_file(path) else {
-        let msg = "cannot open file";
-        state.device.log_error("fs", msg);
+        state.device.log_error("fs", HostError::FileNotFound);
         return 0;
     };
     let buf_ptr = buf_ptr as usize;
     let buf_len = buf_len as usize;
     let Some(buf) = data.get_mut(buf_ptr..(buf_ptr + buf_len)) else {
-        let msg = "buffer for file points out of memory";
-        state.device.log_error("fs", msg);
+        state.device.log_error("fs", HostError::OomPointer);
         return 0;
     };
     let Ok(file_size) = file.read(buf) else {
-        let msg = "cannot read file";
-        state.device.log_error("fs", msg);
+        state.device.log_error("fs", HostError::FileRead);
         return 0;
     };
     if file_size != buf_len {
-        let msg = "buffer size for file does not match the file size";
-        state.device.log_error("fs", msg);
+        state.device.log_error("fs", HostError::BufferSize);
         return 0;
     }
     file_size as u32
@@ -106,7 +103,9 @@ pub(crate) fn dump_file(
 ) -> u32 {
     let state = caller.data_mut();
     let Some(memory) = state.memory else {
-        state.device.log_error("fs", "memory not found");
+        state
+            .device
+            .log_error("fs.dump_file", HostError::MemoryNotFound);
         return 0;
     };
     let (data, state) = memory.data_and_store_mut(&mut caller);
@@ -116,30 +115,31 @@ pub(crate) fn dump_file(
 
     let path = &["data", state.id.author(), state.id.app(), name];
     let Some(mut file) = state.device.create_file(path) else {
-        let msg = "cannot create file";
-        state.device.log_error("fs.dump_file", msg);
+        state
+            .device
+            .log_error("fs.dump_file", HostError::FileCreate);
         return 0;
     };
     let buf_ptr = buf_ptr as usize;
     let buf_len = buf_len as usize;
     let Some(buf) = data.get_mut(buf_ptr..(buf_ptr + buf_len)) else {
-        let msg = "buffer for file points out of memory";
-        state.device.log_error("fs.dump_file", msg);
+        state
+            .device
+            .log_error("fs.dump_file", HostError::OomPointer);
         return 0;
     };
     let Ok(file_size) = file.write(buf) else {
-        let msg = "cannot read file";
-        state.device.log_error("fs.dump_file", msg);
+        state.device.log_error("fs.dump_file", HostError::FileRead);
         return 0;
     };
     if file.flush().is_err() {
-        let msg = "cannot flush file";
-        state.device.log_error("fs.dump_file", msg);
+        state.device.log_error("fs.dump_file", HostError::FileFlush);
         return 0;
     }
     if file_size != buf_len {
-        let msg = "not the whole buffer could be written into file";
-        state.device.log_error("fs.dump_file", msg);
+        state
+            .device
+            .log_error("fs.dump_file", HostError::BufferSize);
         return 0;
     }
     file_size as u32
@@ -148,7 +148,7 @@ pub(crate) fn dump_file(
 pub(crate) fn remove_file(mut caller: C, path_ptr: u32, path_len: u32) {
     let state = caller.data_mut();
     let Some(memory) = state.memory else {
-        state.device.log_error("fs", "memory not found");
+        state.device.log_error("fs", HostError::MemoryNotFound);
         return;
     };
     let (data, state) = memory.data_and_store_mut(&mut caller);
@@ -159,8 +159,9 @@ pub(crate) fn remove_file(mut caller: C, path_ptr: u32, path_len: u32) {
     let path = &["data", state.id.author(), state.id.app(), name];
     let ok = state.device.remove_file(path);
     if !ok {
-        let msg = "cannot remove file";
-        state.device.log_error("fs.remove_file", msg);
+        state
+            .device
+            .log_error("fs.remove_file", HostError::FileRemove);
     };
 }
 
@@ -174,17 +175,15 @@ fn get_file_name<'a>(
     let path_ptr = path_ptr as usize;
     let path_len = path_len as usize;
     let Some(name_bytes) = &data.get(path_ptr..(path_ptr + path_len)) else {
-        let msg = "file name points out of memory";
-        state.device.log_error("fs", msg);
+        state.device.log_error("fs", HostError::OomPointer);
         return None;
     };
     let Ok(name) = core::str::from_utf8(name_bytes) else {
-        let msg = "file name is not valid UTF-8";
-        state.device.log_error("fs", msg);
+        state.device.log_error("fs", HostError::FileNameUtf8);
         return None;
     };
     if let Err(err) = validate_path_part(name) {
-        state.log_validation_error("fs", "bad file name", err);
+        state.device.log_error("fs", HostError::FileName(err));
         return None;
     }
     Some(name)

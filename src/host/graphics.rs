@@ -1,4 +1,5 @@
 use crate::color::BPPAdapter;
+use crate::error::HostError;
 use crate::state::State;
 use core::convert::Infallible;
 use embedded_graphics::image::{Image, ImageRaw, ImageRawLE};
@@ -20,7 +21,7 @@ pub(crate) fn clear_screen(mut caller: C, color: i32) {
     let Some(color) = parse_color(color) else {
         state
             .device
-            .log_error("graphics.clear_screen", "color is None");
+            .log_error("graphics.clear_screen", HostError::NoneColor);
         return;
     };
     never_fails(state.frame.clear(color));
@@ -44,7 +45,7 @@ pub(crate) fn draw_point(mut caller: C, x: i32, y: i32, color: i32) {
     let Some(color) = parse_color(color) else {
         state
             .device
-            .log_error("graphics.draw_point", "point color is None");
+            .log_error("graphics.draw_point", HostError::NoneColor);
         return;
     };
     let pixel = Pixel(point, color);
@@ -68,7 +69,7 @@ pub(crate) fn draw_line(
     let Some(color) = parse_color(color) else {
         state
             .device
-            .log_error("graphics.draw_line", "line color is None");
+            .log_error("graphics.draw_line", HostError::NoneColor);
         return;
     };
     let style = PrimitiveStyle::with_stroke(color, stroke_width);
@@ -230,7 +231,9 @@ pub(crate) fn draw_text(
 ) {
     let state = caller.data();
     let Some(memory) = state.memory else {
-        state.device.log_error("graphics", "memory not found");
+        state
+            .device
+            .log_error("graphics.draw_text", HostError::MemoryNotFound);
         return;
     };
     let (data, state) = memory.data_and_store_mut(&mut caller);
@@ -258,13 +261,15 @@ pub(crate) fn draw_text(
     }
 
     let Some(text_bytes) = &data.get(text_ptr..(text_ptr + text_len)) else {
-        let msg = "text points outside of memory";
-        state.device.log_error("graphics.draw_text", msg);
+        state
+            .device
+            .log_error("graphics.draw_text", HostError::OomPointer);
         return;
     };
     let Some(font_bytes) = &data.get(font_ptr..(font_ptr + font_len)) else {
-        let msg = "font points outside of memory";
-        state.device.log_error("graphics.draw_text", msg);
+        state
+            .device
+            .log_error("graphics.draw_text", HostError::OomPointer);
         return;
     };
     let font = match parse_font(font_bytes) {
@@ -277,7 +282,7 @@ pub(crate) fn draw_text(
     let Some(color) = parse_color(color) else {
         state
             .device
-            .log_error("graphics.draw_text", "text color is None");
+            .log_error("graphics.draw_text", HostError::NoneColor);
         return;
     };
     let style = MonoTextStyle::new(&font, color);
@@ -417,14 +422,16 @@ fn get_bytes<'b>(
 ) -> Option<(&'b mut State, &'b [u8])> {
     let state = caller.data();
     let Some(memory) = state.memory else {
-        state.device.log_error("graphics", "memory not found");
+        state
+            .device
+            .log_error("graphics", HostError::MemoryNotFound);
         return None;
     };
     let (data, state) = memory.data_and_store_mut(caller);
     let ptr = ptr as usize;
     let len = len as usize;
     let Some(bytes) = &data.get(ptr..(ptr + len)) else {
-        state.device.log_error("graphics", "slice out of range");
+        state.device.log_error("graphics", HostError::OomPointer);
         return None;
     };
     Some((state, bytes))
@@ -432,7 +439,7 @@ fn get_bytes<'b>(
 
 /// Load mono font from the firefly format.
 fn parse_font(bytes: &[u8]) -> Result<MonoFont, &str> {
-    if bytes.len() < 7 {
+    if bytes.len() < 10 {
         return Err("file too short");
     }
 
@@ -459,7 +466,7 @@ fn parse_font(bytes: &[u8]) -> Result<MonoFont, &str> {
         0xb => &mapping::ISO_8859_5,  // Latin/Cyrillic.
         0xc => &mapping::ISO_8859_7,  // Latin/Greek.
         0xd => &mapping::JIS_X0201,   // Japanese katakana (halfwidth).
-        _ => return Err("uknown mapping"),
+        _ => return Err("unknown mapping"),
     };
     let font = MonoFont {
         image,

@@ -1,7 +1,6 @@
 use crate::config::FullID;
 use crate::frame_buffer::FrameBuffer;
 use firefly_device::*;
-use firefly_meta::ValidationError;
 
 pub(crate) struct State {
     pub device: DeviceImpl,
@@ -39,10 +38,5 @@ impl State {
                 self.exit = true
             }
         }
-    }
-
-    pub(crate) fn log_validation_error(&self, source: &str, msg: &str, err: ValidationError) {
-        self.device.log_error(source, msg);
-        self.device.log_error(source, err.as_str());
     }
 }
