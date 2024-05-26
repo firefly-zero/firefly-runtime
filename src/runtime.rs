@@ -55,7 +55,7 @@ where
         let Some(stream) = config.device.open_file(path) else {
             return Err(Error::FileNotFound);
         };
-        let module = wasmi::Module::new(&engine, stream)?;
+        let module = wasmi::Module::new_streaming(&engine, stream)?;
         let now = config.device.now();
         let state = State::new(id, config.device);
         let mut store = wasmi::Store::<State>::new(&engine, state);
