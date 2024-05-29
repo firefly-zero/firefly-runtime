@@ -1,6 +1,9 @@
 #![cfg_attr(not(test), no_std)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::new_without_default)]
+
+extern crate alloc;
+
 mod color;
 mod config;
 mod error;

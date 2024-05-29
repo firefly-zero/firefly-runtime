@@ -1,4 +1,5 @@
 use crate::color::FromRGB;
+use alloc::boxed::Box;
 use core::convert::Infallible;
 use core::marker::PhantomData;
 use embedded_graphics::pixelcolor::{Gray4, Rgb888};
@@ -16,7 +17,7 @@ const BUFFER_SIZE: usize = WIDTH * HEIGHT / PPB;
 
 pub(crate) struct FrameBuffer {
     /// Tightly packed pixel data, 4 bits per pixel (2 pixels per byte).
-    pub(crate) data:    [u8; BUFFER_SIZE],
+    pub(crate) data:    Box<[u8; BUFFER_SIZE]>,
     /// The color palette. Maps 16-color packed pixels to RGB colors.
     pub(crate) palette: [Rgb888; 16],
 }
@@ -24,7 +25,7 @@ pub(crate) struct FrameBuffer {
 impl FrameBuffer {
     pub(crate) fn new() -> Self {
         Self {
-            data:    [0; BUFFER_SIZE],
+            data:    Box::new([0; BUFFER_SIZE]),
             palette: [
                 // https://lospec.com/palette-list/sweetie-16
                 // https://github.com/nesbox/TIC-80/wiki/Palette

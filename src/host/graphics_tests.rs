@@ -25,7 +25,7 @@ mod tests {
 
         // ensure that the frame buffer is empty
         let state = store.data();
-        for byte in &state.frame.data {
+        for byte in &*state.frame.data {
             assert_eq!(byte, &0b_0000_0000);
         }
 
@@ -36,7 +36,7 @@ mod tests {
 
         // check that all pixel in the frame buffer are set to 1.
         let state = store.data();
-        for byte in &state.frame.data {
+        for byte in &*state.frame.data {
             assert_eq!(byte, &0b_0001_0001);
         }
     }
@@ -48,7 +48,7 @@ mod tests {
 
         // ensure that the frame buffer is empty
         let state = store.data();
-        for byte in &state.frame.data {
+        for byte in &*state.frame.data {
             assert_eq!(byte, &0b_0000_0000);
         }
 
@@ -79,7 +79,7 @@ mod tests {
 
         // ensure that the frame buffer is empty
         let state = store.data();
-        for byte in &state.frame.data {
+        for byte in &*state.frame.data {
             assert_eq!(byte, &0b_0000_0000);
         }
 
@@ -108,7 +108,7 @@ mod tests {
 
         // ensure that the frame buffer is empty
         let state = store.data();
-        for byte in &state.frame.data {
+        for byte in &*state.frame.data {
             assert_eq!(byte, &0b_0000_0000);
         }
 
@@ -137,7 +137,7 @@ mod tests {
 
         // ensure that the frame buffer is empty
         let state = store.data();
-        for byte in &state.frame.data {
+        for byte in &*state.frame.data {
             assert_eq!(byte, &0b_0000_0000);
         }
 
@@ -166,7 +166,7 @@ mod tests {
 
         // ensure that the frame buffer is empty
         let state = store.data();
-        for byte in &state.frame.data {
+        for byte in &*state.frame.data {
             assert_eq!(byte, &0b_0000_0000);
         }
 
