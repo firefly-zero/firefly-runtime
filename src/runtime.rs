@@ -50,10 +50,22 @@ where
             },
         };
         id.validate()?;
-        let path = &["roms", id.author(), id.app(), "bin"];
-        let Some(stream) = config.device.open_file(path) else {
-            return Err(Error::FileNotFound);
+
+        let path = &["roms", id.author(), id.app(), "_bin"];
+        let stream = match config.device.open_file(path) {
+            Some(stream) => stream,
+            None => {
+                let path = &["roms", id.author(), id.app(), "bin"];
+                match config.device.open_file(path) {
+                    Some(stream) => stream,
+                    None => return Err(Error::FileNotFound),
+                }
+            }
         };
+        // let Some(stream) = config.device.open_file(path) else {
+        //     return Err(Error::FileNotFound);
+        // };
+
         let module = wasmi::Module::new_streaming(&engine, stream)?;
         let now = config.device.now();
         let state = State::new(id, config.device);
