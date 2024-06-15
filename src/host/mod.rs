@@ -5,3 +5,4 @@ pub(crate) mod input;
 pub(crate) mod misc;
 pub(crate) mod net;
 pub(crate) mod sudo;
+pub(crate) mod wasip1;

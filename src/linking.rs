@@ -43,6 +43,70 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error
     linker.func_wrap("sudo", "load_file", sudo::load_file)?;
     linker.func_wrap("sudo", "run_app", sudo::run_app)?;
 
+    // WASI preview 1
+    linker.func_wrap("env", "args_get", wasip1::args_get)?;
+    linker.func_wrap("env", "args_sizes_get", wasip1::args_sizes_get)?;
+    linker.func_wrap("env", "environ_get", wasip1::environ_get)?;
+    linker.func_wrap("env", "environ_sizes_get", wasip1::environ_sizes_get)?;
+    linker.func_wrap("env", "clock_res_get", wasip1::clock_res_get)?;
+    linker.func_wrap("env", "clock_time_get", wasip1::clock_time_get)?;
+    linker.func_wrap("env", "fd_advise", wasip1::fd_advise)?;
+    linker.func_wrap("env", "fd_allocate", wasip1::fd_allocate)?;
+    linker.func_wrap("env", "fd_close", wasip1::fd_close)?;
+    linker.func_wrap("env", "fd_datasync", wasip1::fd_datasync)?;
+    linker.func_wrap("env", "fd_fdstat_get", wasip1::fd_fdstat_get)?;
+    linker.func_wrap("env", "fd_fdstat_set_flags", wasip1::fd_fdstat_set_flags)?;
+    linker.func_wrap("env", "fd_fdstat_set_rights", wasip1::fd_fdstat_set_rights)?;
+    linker.func_wrap("env", "fd_filestat_get", wasip1::fd_filestat_get)?;
+    linker.func_wrap("env", "fd_filestat_set_size", wasip1::fd_filestat_set_size)?;
+    linker.func_wrap(
+        "env",
+        "fd_filestat_set_times",
+        wasip1::fd_filestat_set_times,
+    )?;
+    linker.func_wrap("env", "fd_pread", wasip1::fd_pread)?;
+    linker.func_wrap("env", "fd_prestat_get", wasip1::fd_prestat_get)?;
+    linker.func_wrap("env", "fd_prestat_dir_name", wasip1::fd_prestat_dir_name)?;
+    linker.func_wrap("env", "fd_pwrite", wasip1::fd_pwrite)?;
+    linker.func_wrap("env", "fd_read", wasip1::fd_read)?;
+    linker.func_wrap("env", "fd_readdir", wasip1::fd_readdir)?;
+    linker.func_wrap("env", "fd_renumber", wasip1::fd_renumber)?;
+    linker.func_wrap("env", "fd_seek", wasip1::fd_seek)?;
+    linker.func_wrap("env", "fd_sync", wasip1::fd_sync)?;
+    linker.func_wrap("env", "fd_tell", wasip1::fd_tell)?;
+    linker.func_wrap("env", "fd_write", wasip1::fd_write)?;
+    linker.func_wrap(
+        "env",
+        "path_create_directory",
+        wasip1::path_create_directory,
+    )?;
+    linker.func_wrap("env", "path_filestat_get", wasip1::path_filestat_get)?;
+    linker.func_wrap(
+        "env",
+        "path_filestat_set_times",
+        wasip1::path_filestat_set_times,
+    )?;
+    linker.func_wrap("env", "path_link", wasip1::path_link)?;
+    linker.func_wrap("env", "path_open", wasip1::path_open)?;
+    linker.func_wrap("env", "path_readlink", wasip1::path_readlink)?;
+    linker.func_wrap(
+        "env",
+        "path_remove_directory",
+        wasip1::path_remove_directory,
+    )?;
+    linker.func_wrap("env", "path_rename", wasip1::path_rename)?;
+    linker.func_wrap("env", "path_symlink", wasip1::path_symlink)?;
+    linker.func_wrap("env", "path_unlink_file", wasip1::path_unlink_file)?;
+    linker.func_wrap("env", "poll_oneoff", wasip1::poll_oneoff)?;
+    linker.func_wrap("env", "proc_exit", wasip1::proc_exit)?;
+    linker.func_wrap("env", "proc_raise", wasip1::proc_raise)?;
+    linker.func_wrap("env", "sched_yield", wasip1::sched_yield)?;
+    linker.func_wrap("env", "random_get", wasip1::random_get)?;
+    linker.func_wrap("env", "sock_accept", wasip1::sock_accept)?;
+    linker.func_wrap("env", "sock_recv", wasip1::sock_recv)?;
+    linker.func_wrap("env", "sock_send", wasip1::sock_send)?;
+    linker.func_wrap("env", "sock_shutdown", wasip1::sock_shutdown)?;
+
     Ok(())
 }
 
