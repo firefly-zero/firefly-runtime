@@ -138,6 +138,10 @@ where
         let state = self.store.data_mut();
         state.update();
         if state.menu.active() {
+            // We render the system menu directly on the screen,
+            // bypassing the frame buffer. That way, we preserve
+            // the frame buffer rendered by the app.
+            // Performance isn't an issue for a simple text menu.
             let res = state.menu.render(&mut self.display);
             if res.is_err() {
                 return Err(Error::CannotDisplay);
