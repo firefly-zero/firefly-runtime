@@ -7,6 +7,7 @@ pub enum Error {
     NoLauncher,
     InvalidAuthorID(firefly_meta::ValidationError),
     InvalidAppID(firefly_meta::ValidationError),
+    CannotDisplay,
 }
 
 impl fmt::Display for Error {
@@ -18,6 +19,7 @@ impl fmt::Display for Error {
             Error::FuncCall(func, err) => write!(f, "error calling {func}: {err}"),
             Error::InvalidAuthorID(err) => write!(f, "invalid author ID: {err}"),
             Error::InvalidAppID(err) => write!(f, "invalid app ID: {err}"),
+            Error::CannotDisplay => write!(f, "failed to draw on the display"),
         }
     }
 }

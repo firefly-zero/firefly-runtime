@@ -137,6 +137,14 @@ where
     pub fn update(&mut self) -> Result<bool, Error> {
         let state = self.store.data_mut();
         state.update();
+        if state.menu.active() {
+            let res = state.menu.render(&mut self.display);
+            if res.is_err() {
+                return Err(Error::CannotDisplay);
+            }
+            return Ok(false);
+        }
+
         if let Some(update) = self.update {
             // TODO: continue execution even if an update fails.
             if let Err(err) = update.call(&mut self.store, ()) {
@@ -205,8 +213,10 @@ where
             }
         } else {
             let state = self.store.data_mut();
-            // TODO: handle error
-            _ = state.frame.draw(&mut self.display);
+            let res = state.frame.draw(&mut self.display);
+            if res.is_err() {
+                return Err(Error::CannotDisplay);
+            }
         }
         Ok(())
     }

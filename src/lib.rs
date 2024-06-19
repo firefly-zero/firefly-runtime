@@ -10,6 +10,7 @@ mod error;
 mod frame_buffer;
 mod host;
 mod linking;
+mod menu;
 mod runtime;
 mod state;
 
