@@ -42,7 +42,10 @@ pub(crate) struct Menu {
     rendered: bool,
 
     /// True if the menu button is currently pressed.
-    is_pressed: bool,
+    pressed: bool,
+
+    /// True if the menu button was released when the menu was open.
+    was_released: bool,
 }
 
 impl Menu {
@@ -56,28 +59,46 @@ impl Menu {
             selected: 0,
             active: false,
             rendered: false,
-            is_pressed: false,
+            pressed: false,
+            was_released: false,
         }
     }
 
     pub fn handle_input(&mut self, input: &Option<InputState>) {
-        let is_pressed = matches!(
-            input,
-            Some(InputState {
-                pad:     _,
-                buttons: [_, _, _, _, true],
-            })
-        );
-        // the menu button wasn't pressed but is pressed now.
-        if !self.is_pressed && is_pressed {
-            self.active = !self.active;
-            if self.active {
-                self.rendered = false;
-            }
-        }
-        self.is_pressed = is_pressed;
+        let def = InputState::default();
+        let input = match input {
+            Some(input) => input,
+            None => &def,
+        };
+        self.handle_menu_button(input.buttons[4]);
     }
 
+    fn handle_menu_button(&mut self, pressed: bool) {
+        // Depending on if menu is open or not, handle the menu button in a way
+        // that the button is always released when the app is running.
+        if self.active {
+            // When menu is open, close it on releasing the menu button.
+            if self.was_released && self.pressed && !pressed {
+                self.active = false;
+            }
+            if !pressed {
+                self.was_released = true;
+            }
+        } else {
+            // When menu is closed, open it on pressing the menu button.
+            #[allow(clippy::collapsible_else_if)]
+            if !self.pressed && pressed {
+                self.active = true;
+                self.rendered = false;
+                self.was_released = false;
+            }
+        }
+        self.pressed = pressed;
+    }
+
+    /// True if the menu should be currently shown.
+    ///
+    /// While it is true, the app is paused.
     pub fn active(&self) -> bool {
         self.active
     }
