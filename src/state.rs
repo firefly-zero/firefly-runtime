@@ -1,6 +1,6 @@
 use crate::config::FullID;
 use crate::frame_buffer::FrameBuffer;
-use crate::menu::Menu;
+use crate::menu::{Menu, MenuItem};
 use firefly_device::*;
 
 pub(crate) struct State {
@@ -35,6 +35,13 @@ impl State {
     /// Update the state: read inputs, handle system commands.
     pub(crate) fn update(&mut self) {
         self.input = self.device.read_input();
-        self.menu.handle_input(&self.input);
+        let action = self.menu.handle_input(&self.input);
+        if let Some(action) = action {
+            match action {
+                MenuItem::Connect => todo!(),
+                MenuItem::Quit => self.exit = true,
+                MenuItem::ScreenShot => todo!(),
+            };
+        };
     }
 }

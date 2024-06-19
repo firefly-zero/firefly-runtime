@@ -13,7 +13,7 @@ use firefly_device::InputState;
 
 const LINE_HEIGHT: i32 = 12;
 
-enum MenuItem {
+pub(crate) enum MenuItem {
     Connect,
     Quit,
     ScreenShot,
@@ -44,6 +44,9 @@ pub(crate) struct Menu {
     /// True if the menu button is currently pressed.
     menu_pressed: bool,
 
+    /// True if the selection button (A) is currently pressed.
+    select_pressed: bool,
+
     /// True if the menu button was released when the menu was open.
     was_released: bool,
 
@@ -66,17 +69,29 @@ impl Menu {
             was_released: false,
             down_pressed: false,
             up_pressed: false,
+            select_pressed: false,
         }
     }
 
-    pub fn handle_input(&mut self, input: &Option<InputState>) {
+    pub fn handle_input(&mut self, input: &Option<InputState>) -> Option<&MenuItem> {
         let def = InputState::default();
         let input = match input {
             Some(input) => input,
             None => &def,
         };
         self.handle_menu_button(input.buttons[4]);
-        self.handle_pad(input)
+        if !self.active {
+            return None;
+        }
+        self.handle_pad(input);
+        if !self.select_pressed && input.buttons[0] {
+            self.select_pressed = true;
+            self.active = false;
+            self.items.get(self.selected as usize)
+        } else {
+            self.select_pressed = false;
+            None
+        }
     }
 
     fn handle_menu_button(&mut self, pressed: bool) {
