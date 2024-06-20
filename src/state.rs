@@ -42,7 +42,10 @@ impl State {
                 MenuItem::Connect => todo!("network game is not implemented yet"),
                 MenuItem::Quit => self.exit = true,
                 MenuItem::ScreenShot => {
-                    let file_name = alloc::format!("{}.{}.png", self.id.author(), self.id.app());
+                    let mut index = 1;
+                    self.device.iter_dir(&["sys", "shots"], |_, _| index += 1);
+                    let file_name =
+                        alloc::format!("{}.{}.{}.png", index, self.id.author(), self.id.app());
                     let path = &["sys", "shots", &file_name];
                     let mut file = self.device.create_file(path).unwrap();
                     save_png(&mut file, &self.frame.palette, &*self.frame.data).unwrap();
