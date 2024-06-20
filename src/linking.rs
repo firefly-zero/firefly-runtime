@@ -21,6 +21,9 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error
     linker.func_wrap("input", "read_pad", input::read_pad)?;
     linker.func_wrap("input", "read_buttons", input::read_buttons)?;
 
+    linker.func_wrap("menu", "add", menu::add)?;
+    linker.func_wrap("menu", "remove", menu::remove)?;
+
     linker.func_wrap("fs", "get_rom_file_size", fs::get_rom_file_size)?;
     linker.func_wrap("fs", "load_rom_file", fs::load_rom_file)?;
     linker.func_wrap("fs", "get_file_size", fs::get_file_size)?;

@@ -82,6 +82,19 @@ impl Menu {
         }
     }
 
+    /// Add a custom menu item.
+    pub(crate) fn add(&mut self, index: u8, name: alloc::string::String) {
+        self.app_items.push(MenuItem::Custom(index, name));
+    }
+
+    /// Remove a custom menu item.
+    pub(crate) fn remove(&mut self, index: u8) {
+        self.app_items.retain(|item| match item {
+            MenuItem::Custom(i, _) if *i == index => false,
+            _ => true,
+        });
+    }
+
     pub fn handle_input(&mut self, input: &Option<InputState>) -> Option<&MenuItem> {
         let def = InputState::default();
         let input = match input {
