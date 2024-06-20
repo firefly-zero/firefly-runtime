@@ -193,15 +193,19 @@ impl Menu {
         let corners = CornerRadii::new(Size::new_equal(4));
         let white = C::from_rgb(0xf4, 0xf4, 0xf4);
         let black = C::from_rgb(0x1a, 0x1c, 0x2c);
-        let mut box_style = PrimitiveStyle::new();
-        box_style.stroke_color = Some(black);
-        box_style.stroke_width = 1;
-        let text_style = MonoTextStyle::new(&FONT_6X9, black);
+        let blue = C::from_rgb(0x3b, 0x5d, 0xc9);
+        let box_style = PrimitiveStyle::with_stroke(black, 1);
+        let black_style = MonoTextStyle::new(&FONT_6X9, black);
+        let blue_style = MonoTextStyle::new(&FONT_6X9, blue);
 
         display.clear(white)?;
         let items = self.app_items.iter().chain(self.sys_items.iter());
         for (item, i) in items.zip(0..) {
             let point = Point::new(6, 9 + i * LINE_HEIGHT);
+            let text_style = match item {
+                MenuItem::Custom(_, _) => blue_style,
+                _ => black_style,
+            };
             let text = Text::new(item.as_str(), point, text_style);
             text.draw(display)?;
 
