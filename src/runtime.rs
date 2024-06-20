@@ -25,6 +25,7 @@ where
     store: wasmi::Store<State>,
     update: Option<wasmi::TypedFunc<(), ()>>,
     render: Option<wasmi::TypedFunc<(), ()>>,
+    handle_menu: Option<wasmi::TypedFunc<(u32,), ()>>,
     render_line: Option<wasmi::TypedFunc<(i32,), (i32,)>>,
 
     /// Time to render a single frame to match the expected FPS.
@@ -80,6 +81,7 @@ where
             store,
             update: None,
             render: None,
+            handle_menu: None,
             render_line: None,
             per_frame: Duration::from_fps(FPS),
             prev_time: now,
@@ -126,6 +128,7 @@ where
         // Other functions defined by our spec.
         self.update = ins.get_typed_func(&self.store, "update").ok();
         self.render = ins.get_typed_func(&self.store, "render").ok();
+        self.handle_menu = ins.get_typed_func(&self.store, "handle_menu").ok();
         self.render_line = ins.get_typed_func(&self.store, "render_line").ok();
         Ok(())
     }
@@ -136,7 +139,7 @@ where
     /// the update will be delayed to keep the expected frame rate.
     pub fn update(&mut self) -> Result<bool, Error> {
         let state = self.store.data_mut();
-        state.update();
+        let menu_index = state.update();
         if state.menu.active() {
             // We render the system menu directly on the screen,
             // bypassing the frame buffer. That way, we preserve
@@ -147,6 +150,14 @@ where
                 return Err(Error::CannotDisplay);
             }
             return Ok(false);
+        }
+        // If a custom menu item is selected, trigger the handle_menu callback.
+        if let Some(custom_menu) = menu_index {
+            if let Some(handle_menu) = self.handle_menu {
+                if let Err(err) = handle_menu.call(&mut self.store, (custom_menu as u32,)) {
+                    return Err(Error::FuncCall("handle_menu", err));
+                };
+            }
         }
 
         if let Some(update) = self.update {

@@ -34,12 +34,12 @@ impl State {
     }
 
     /// Update the state: read inputs, handle system commands.
-    pub(crate) fn update(&mut self) {
+    pub(crate) fn update(&mut self) -> Option<u8> {
         self.input = self.device.read_input();
         let action = self.menu.handle_input(&self.input);
         if let Some(action) = action {
             match action {
-                MenuItem::Custom(_, _) => todo!("custom items not implemented yet"),
+                MenuItem::Custom(index, _) => return Some(*index),
                 MenuItem::Connect => todo!("network game is not implemented yet"),
                 MenuItem::ScreenShot => self.take_screenshot(),
                 MenuItem::Restart => {
@@ -49,6 +49,7 @@ impl State {
                 MenuItem::Quit => self.exit = true,
             };
         };
+        None
     }
 
     /// Save the current frame buffer into a PNG file.

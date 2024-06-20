@@ -164,6 +164,9 @@ impl Menu {
                 self.active = false;
                 let selected = self.selected as usize;
                 if let Some(item) = self.app_items.get(selected) {
+                    // Close menu and return control to the game
+                    // if a custom menu item is selected.
+                    self.active = false;
                     return Some(item);
                 }
                 let selected = selected - self.app_items.len();
