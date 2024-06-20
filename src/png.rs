@@ -16,7 +16,6 @@ where
     write_chunk(&mut w, b"PLTE", &encode_palette(palette))?;
     write_frame(&mut w, frame)?;
     write_chunk(&mut w, b"IEND", &[])?;
-
     Ok(())
 }
 
@@ -25,7 +24,7 @@ where
     W: embedded_io::Write<Error = E>,
 {
     let inner = Buffer::new();
-    let mut compressor = libflate::deflate::Encoder::new(inner);
+    let mut compressor = libflate::zlib::Encoder::new(inner).unwrap();
     for line in data.chunks(WIDTH / 2) {
         compressor.write_all(&[0]).unwrap(); // filter type: no filter
         compressor.write_all(&line).unwrap();
