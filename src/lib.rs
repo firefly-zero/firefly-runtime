@@ -11,6 +11,7 @@ mod frame_buffer;
 mod host;
 mod linking;
 mod menu;
+mod png;
 mod runtime;
 mod state;
 

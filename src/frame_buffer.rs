@@ -17,7 +17,7 @@ const BUFFER_SIZE: usize = WIDTH * HEIGHT / PPB;
 
 pub(crate) struct FrameBuffer {
     /// Tightly packed pixel data, 4 bits per pixel (2 pixels per byte).
-    pub(crate) data:    Box<[u8; BUFFER_SIZE]>,
+    pub(crate) data: Box<[u8; BUFFER_SIZE]>,
     /// The color palette. Maps 16-color packed pixels to RGB colors.
     pub(crate) palette: [Rgb888; 16],
 }
@@ -25,7 +25,7 @@ pub(crate) struct FrameBuffer {
 impl FrameBuffer {
     pub(crate) fn new() -> Self {
         Self {
-            data:    Box::new([0; BUFFER_SIZE]),
+            data: Box::new([0; BUFFER_SIZE]),
             palette: [
                 // https://lospec.com/palette-list/sweetie-16
                 // https://github.com/nesbox/TIC-80/wiki/Palette
@@ -150,11 +150,11 @@ struct ColorIter<'a, C>
 where
     C: RgbColor + FromRGB,
 {
-    data:    &'a [u8; BUFFER_SIZE],
+    data: &'a [u8; BUFFER_SIZE],
     palette: &'a [Rgb888; 16],
-    index:   usize,
-    max_y:   usize,
-    color:   PhantomData<C>,
+    index: usize,
+    max_y: usize,
+    color: PhantomData<C>,
 }
 
 impl<'a, C> Iterator for ColorIter<'a, C>

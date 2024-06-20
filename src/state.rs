@@ -1,19 +1,20 @@
 use crate::config::FullID;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
+use crate::png::save_png;
 use firefly_device::*;
 
 pub(crate) struct State {
     pub device: DeviceImpl,
-    pub menu:   Menu,
-    pub id:     FullID,
-    pub frame:  FrameBuffer,
-    pub seed:   u32,
+    pub menu: Menu,
+    pub id: FullID,
+    pub frame: FrameBuffer,
+    pub seed: u32,
     pub online: bool,
     pub memory: Option<wasmi::Memory>,
-    pub exit:   bool,
-    pub next:   Option<FullID>,
-    pub input:  Option<InputState>,
+    pub exit: bool,
+    pub next: Option<FullID>,
+    pub input: Option<InputState>,
 }
 
 impl State {
@@ -40,7 +41,12 @@ impl State {
             match action {
                 MenuItem::Connect => todo!(),
                 MenuItem::Quit => self.exit = true,
-                MenuItem::ScreenShot => todo!(),
+                MenuItem::ScreenShot => {
+                    let file_name = alloc::format!("{}.{}.png", self.id.author(), self.id.app());
+                    let path = &["sys", "shots", &file_name];
+                    let mut file = self.device.create_file(path).unwrap();
+                    save_png(&mut file, &self.frame.palette, &*self.frame.data).unwrap();
+                }
             };
         };
     }
