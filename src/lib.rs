@@ -3,6 +3,7 @@
 #![allow(clippy::new_without_default)]
 
 extern crate alloc;
+extern crate libflate;
 
 mod color;
 mod config;
