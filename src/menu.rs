@@ -15,8 +15,9 @@ const LINE_HEIGHT: i32 = 12;
 
 pub(crate) enum MenuItem {
     Connect,
-    Quit,
     ScreenShot,
+    Restart,
+    Quit,
 }
 
 impl MenuItem {
@@ -24,6 +25,7 @@ impl MenuItem {
         match self {
             MenuItem::Connect => "start multiplayer",
             MenuItem::ScreenShot => "take screenshot",
+            MenuItem::Restart => "restart app",
             MenuItem::Quit => "exit app",
         }
     }
@@ -31,7 +33,7 @@ impl MenuItem {
 
 pub(crate) struct Menu {
     /// System menu items.
-    items: heapless::Vec<MenuItem, 3>,
+    items: heapless::Vec<MenuItem, 4>,
 
     selected: i32,
 
@@ -51,7 +53,7 @@ pub(crate) struct Menu {
     was_released: bool,
 
     down_pressed: bool,
-    up_pressed:   bool,
+    up_pressed: bool,
 }
 
 impl Menu {
@@ -59,6 +61,7 @@ impl Menu {
         let mut items = heapless::Vec::new();
         _ = items.push(MenuItem::Connect);
         _ = items.push(MenuItem::ScreenShot);
+        _ = items.push(MenuItem::Restart);
         _ = items.push(MenuItem::Quit);
         Self {
             items,
@@ -118,7 +121,7 @@ impl Menu {
         };
         if pad.y < -50 {
             self.down_pressed = false;
-            if !self.up_pressed && self.selected < 2 {
+            if !self.up_pressed && self.selected < self.items.len() as i32 - 1 {
                 self.selected += 1;
                 self.rendered = false;
             }

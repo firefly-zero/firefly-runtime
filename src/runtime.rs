@@ -20,11 +20,11 @@ where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
 {
-    display:     D,
-    instance:    wasmi::Instance,
-    store:       wasmi::Store<State>,
-    update:      Option<wasmi::TypedFunc<(), ()>>,
-    render:      Option<wasmi::TypedFunc<(), ()>>,
+    display: D,
+    instance: wasmi::Instance,
+    store: wasmi::Store<State>,
+    update: Option<wasmi::TypedFunc<(), ()>>,
+    render: Option<wasmi::TypedFunc<(), ()>>,
     render_line: Option<wasmi::TypedFunc<(i32,), (i32,)>>,
 
     /// Time to render a single frame to match the expected FPS.
@@ -181,8 +181,8 @@ where
     pub fn into_config(self) -> RuntimeConfig<D, C> {
         let state = self.store.into_data();
         RuntimeConfig {
-            id:      state.next,
-            device:  state.device,
+            id: state.next,
+            device: state.device,
             display: self.display,
         }
     }

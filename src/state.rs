@@ -40,8 +40,12 @@ impl State {
         if let Some(action) = action {
             match action {
                 MenuItem::Connect => todo!("network game is not implemented yet"),
-                MenuItem::Quit => self.exit = true,
                 MenuItem::ScreenShot => self.take_screenshot(),
+                MenuItem::Restart => {
+                    self.next = Some(self.id.clone());
+                    self.exit = true;
+                }
+                MenuItem::Quit => self.exit = true,
             };
         };
     }
