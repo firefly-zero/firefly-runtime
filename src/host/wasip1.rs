@@ -1,3 +1,4 @@
+use crate::error::HostError;
 use crate::state::State;
 use firefly_device::Device;
 
@@ -11,15 +12,38 @@ pub(crate) fn args_sizes_get(_caller: C, _offset0: i32, _offset1: i32) -> i32 {
     0
 }
 
-pub(crate) fn environ_get(caller: C, _environ: i32, _environ_buf: i32) -> i32 {
+pub(crate) fn environ_get(caller: C, environ: i32, environ_buf: i32) -> i32 {
     let state = caller.data();
     state.device.log_debug("wasip1.environ_get", "called");
+    state.device.log_debug(
+        "wasip1.environ_sizes_get",
+        alloc::format!("{environ}, {environ_buf}"),
+    );
     0
 }
 
-pub(crate) fn environ_sizes_get(caller: C, _offset0: i32, _offset1: i32) -> i32 {
+pub(crate) fn environ_sizes_get(mut caller: C, offset0: i32, offset1: i32) -> i32 {
     let state = caller.data();
     state.device.log_debug("wasip1.environ_sizes_get", "called");
+    state.device.log_debug(
+        "wasip1.environ_sizes_get",
+        alloc::format!("{offset0}, {offset1}"),
+    );
+    let Some(memory) = state.memory else {
+        state.device.log_error("fs", HostError::MemoryNotFound);
+        return 1;
+    };
+    let data = memory.data_mut(&mut caller);
+    let offset0 = offset0 as usize;
+    let offset1 = offset1 as usize;
+    data[offset0] = 0;
+    data[offset0 + 1] = 0;
+    data[offset0 + 2] = 0;
+    data[offset0 + 3] = 0;
+    data[offset1] = 0;
+    data[offset1 + 1] = 0;
+    data[offset1 + 2] = 0;
+    data[offset1 + 3] = 0;
     0
 }
 
