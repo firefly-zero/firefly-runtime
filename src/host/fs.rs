@@ -10,14 +10,14 @@ type C<'a> = wasmi::Caller<'a, State>;
 ///
 /// It is used by the apps to allocate the buffer for loading the file.
 pub(crate) fn get_rom_file_size(caller: C, path_ptr: u32, path_len: u32) -> u32 {
-    get_file_size_inner(caller, "roms", path_ptr, path_len)
+    get_file_size_inner(caller, true, path_ptr, path_len)
 }
 
 pub(crate) fn get_file_size(caller: C, path_ptr: u32, path_len: u32) -> u32 {
-    get_file_size_inner(caller, "data", path_ptr, path_len)
+    get_file_size_inner(caller, false, path_ptr, path_len)
 }
 
-pub fn get_file_size_inner(mut caller: C, dir: &str, path_ptr: u32, path_len: u32) -> u32 {
+pub fn get_file_size_inner(mut caller: C, rom: bool, path_ptr: u32, path_len: u32) -> u32 {
     let state = caller.data_mut();
     let Some(memory) = state.memory else {
         state.device.log_error("fs", HostError::MemoryNotFound);
@@ -27,7 +27,11 @@ pub fn get_file_size_inner(mut caller: C, dir: &str, path_ptr: u32, path_len: u3
     let Some(name) = get_file_name(state, data, path_ptr, path_len) else {
         return 0;
     };
-    let path = &[dir, state.id.author(), state.id.app(), name];
+    let path: &[&str] = if rom {
+        &["roms", state.id.author(), state.id.app(), name]
+    } else {
+        &["data", state.id.author(), state.id.app(), "etc", name]
+    };
     state.device.get_file_size(path).unwrap_or(0)
 }
 
@@ -39,7 +43,7 @@ pub(crate) fn load_rom_file(
     buf_ptr: u32,
     buf_len: u32,
 ) -> u32 {
-    load_file_inner(caller, "roms", path_ptr, path_len, buf_ptr, buf_len)
+    load_file_inner(caller, true, path_ptr, path_len, buf_ptr, buf_len)
 }
 
 /// Read contents of the file from the app data dir and write them into the buffer.
@@ -50,12 +54,12 @@ pub(crate) fn load_file(
     buf_ptr: u32,
     buf_len: u32,
 ) -> u32 {
-    load_file_inner(caller, "data", path_ptr, path_len, buf_ptr, buf_len)
+    load_file_inner(caller, false, path_ptr, path_len, buf_ptr, buf_len)
 }
 
 fn load_file_inner(
     mut caller: C,
-    dir: &str,
+    rom: bool,
     path_ptr: u32,
     path_len: u32,
     buf_ptr: u32,
@@ -71,7 +75,11 @@ fn load_file_inner(
         return 0;
     };
 
-    let path = &[dir, state.id.author(), state.id.app(), name];
+    let path: &[&str] = if rom {
+        &["roms", state.id.author(), state.id.app(), name]
+    } else {
+        &["data", state.id.author(), state.id.app(), "etc", name]
+    };
     let Some(mut file) = state.device.open_file(path) else {
         state.device.log_error("fs", HostError::FileNotFound);
         return 0;
@@ -113,7 +121,7 @@ pub(crate) fn dump_file(
         return 0;
     };
 
-    let path = &["data", state.id.author(), state.id.app(), name];
+    let path = &["data", state.id.author(), state.id.app(), "etc", name];
     let Some(mut file) = state.device.create_file(path) else {
         state
             .device
@@ -156,7 +164,7 @@ pub(crate) fn remove_file(mut caller: C, path_ptr: u32, path_len: u32) {
         return;
     };
 
-    let path = &["data", state.id.author(), state.id.app(), name];
+    let path = &["data", state.id.author(), state.id.app(), "etc", name];
     let ok = state.device.remove_file(path);
     if !ok {
         state

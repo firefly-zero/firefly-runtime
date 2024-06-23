@@ -13,8 +13,8 @@ where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
 {
-    pub id: Option<FullID>,
-    pub device: DeviceImpl,
+    pub id:      Option<FullID>,
+    pub device:  DeviceImpl,
     pub display: D,
 }
 
@@ -22,7 +22,7 @@ where
 #[derive(Clone)]
 pub struct FullID {
     author: String<16>,
-    app: String<16>,
+    app:    String<16>,
 }
 
 impl FullID {
@@ -30,11 +30,11 @@ impl FullID {
         Self { author, app }
     }
 
-    pub fn author(&self) -> &String<16> {
+    pub fn author(&self) -> &str {
         &self.author
     }
 
-    pub fn app(&self) -> &String<16> {
+    pub fn app(&self) -> &str {
         &self.app
     }
 

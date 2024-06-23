@@ -6,15 +6,15 @@ use firefly_device::*;
 
 pub(crate) struct State {
     pub device: DeviceImpl,
-    pub menu: Menu,
-    pub id: FullID,
-    pub frame: FrameBuffer,
-    pub seed: u32,
+    pub menu:   Menu,
+    pub id:     FullID,
+    pub frame:  FrameBuffer,
+    pub seed:   u32,
     pub online: bool,
     pub memory: Option<wasmi::Memory>,
-    pub exit: bool,
-    pub next: Option<FullID>,
-    pub input: Option<InputState>,
+    pub exit:   bool,
+    pub next:   Option<FullID>,
+    pub input:  Option<InputState>,
 }
 
 impl State {
@@ -54,10 +54,11 @@ impl State {
 
     /// Save the current frame buffer into a PNG file.
     fn take_screenshot(&mut self) {
+        let dir_path = &["data", self.id.author(), self.id.app(), "shots"];
         let mut index = 1;
-        self.device.iter_dir(&["sys", "shots"], |_, _| index += 1);
-        let file_name = alloc::format!("{}.{}.{}.png", index, self.id.author(), self.id.app());
-        let path = &["sys", "shots", &file_name];
+        self.device.iter_dir(dir_path, |_, _| index += 1);
+        let file_name = alloc::format!("{}.png", index);
+        let path = &["data", self.id.author(), self.id.app(), "shots", &file_name];
         let mut file = self.device.create_file(path).unwrap();
         save_png(&mut file, &self.frame.palette, &*self.frame.data).unwrap();
     }
