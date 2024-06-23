@@ -13,15 +13,16 @@ where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
 {
-    pub id:      Option<FullID>,
-    pub device:  DeviceImpl,
+    pub id: Option<FullID>,
+    pub device: DeviceImpl,
     pub display: D,
 }
 
 /// The author and app ID combo. Must be unique. Cannot be changed.
+#[derive(Clone)]
 pub struct FullID {
     author: String<16>,
-    app:    String<16>,
+    app: String<16>,
 }
 
 impl FullID {

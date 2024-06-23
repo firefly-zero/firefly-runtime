@@ -3,21 +3,23 @@ use core::fmt;
 pub enum Error {
     Wasmi(wasmi::Error),
     FuncCall(&'static str, wasmi::Error),
-    FileNotFound,
+    FileNotFound(alloc::string::String),
     NoLauncher,
     InvalidAuthorID(firefly_meta::ValidationError),
     InvalidAppID(firefly_meta::ValidationError),
+    CannotDisplay,
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Wasmi(err) => write!(f, "wasm error: {err}"),
-            Error::FileNotFound => write!(f, "file not found"),
+            Error::FileNotFound(s) => write!(f, "file not found: {s}"),
             Error::NoLauncher => write!(f, "no launcher installed"),
             Error::FuncCall(func, err) => write!(f, "error calling {func}: {err}"),
             Error::InvalidAuthorID(err) => write!(f, "invalid author ID: {err}"),
             Error::InvalidAppID(err) => write!(f, "invalid app ID: {err}"),
+            Error::CannotDisplay => write!(f, "failed to draw on the display"),
         }
     }
 }
@@ -40,6 +42,7 @@ pub(crate) enum HostError {
     FileFlush,
     FileNameUtf8,
     FileName(firefly_meta::ValidationError),
+    MenuItemUtf8,
     IdUtf8,
     Id(firefly_meta::ValidationError),
     TextUtf8,
@@ -59,6 +62,7 @@ impl fmt::Display for HostError {
             HostError::BufferSize => write!(f, "buffer size for file does not match file size"),
             HostError::FileNameUtf8 => write!(f, "file name is not valid UTF-8"),
             HostError::FileName(err) => write!(f, "bad file name: {err}"),
+            HostError::MenuItemUtf8 => write!(f, "menu item name is not valid UTF-8"),
             HostError::IdUtf8 => write!(f, "ID is not valid UTF-8"),
             HostError::Id(err) => write!(f, "bad ID: {err}"),
             HostError::TextUtf8 => write!(f, "text is not valid UTF-8"),
