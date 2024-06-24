@@ -47,6 +47,17 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error
     linker.func_wrap("sudo", "load_file", sudo::load_file)?;
     linker.func_wrap("sudo", "run_app", sudo::run_app)?;
 
+    // WASI preview 1
+    const M: &str = "wasi_snapshot_preview1";
+    linker.func_wrap(M, "environ_get", wasip1::environ_get)?;
+    linker.func_wrap(M, "environ_sizes_get", wasip1::environ_sizes_get)?;
+    linker.func_wrap(M, "clock_time_get", wasip1::clock_time_get)?;
+    linker.func_wrap(M, "fd_close", wasip1::fd_close)?;
+    linker.func_wrap(M, "fd_read", wasip1::fd_read)?;
+    linker.func_wrap(M, "fd_seek", wasip1::fd_seek)?;
+    linker.func_wrap(M, "fd_write", wasip1::fd_write)?;
+    linker.func_wrap(M, "proc_exit", wasip1::proc_exit)?;
+
     Ok(())
 }
 
