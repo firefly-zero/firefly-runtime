@@ -8,7 +8,9 @@ const MAX_DRIFT: u32 = BUF_SIZE as u32 / 2;
 /// as well as not to loose frames received earlier than expected.
 #[derive(Debug)]
 pub(crate) struct RingBuf<T: Copy> {
+    /// The current frame.
     frame: u32,
+    /// The circular buffer of values for each frame.
     data:  [Option<(u32, T)>; BUF_SIZE],
 }
 
@@ -22,10 +24,14 @@ impl<T: Copy> RingBuf<T> {
         }
     }
 
+    /// Increment the current frame number.
     pub fn advance(&mut self) {
         self.frame += 1
     }
 
+    /// Set the value for the given frame.
+    ///
+    /// Frames inserted too far ahead or behind the current frame will be discarded.
     pub fn insert(&mut self, frame: u32, val: T) {
         // Max drift ensures that too old or too ahead frame doesn't override
         // the frame that is closer to what we currently need.
@@ -36,6 +42,11 @@ impl<T: Copy> RingBuf<T> {
         self.data[index] = Some((frame, val));
     }
 
+    /// Get the value for the given frame.
+    ///
+    /// The given frame must be not too far ahead or behind the current frame
+    /// and must have been inserted earlier into the buffer.
+    /// If any of this isn't true, None is returned.
     pub fn get(&mut self, frame: u32) -> Option<T> {
         if self.frame.abs_diff(frame) > MAX_DRIFT {
             return None;
