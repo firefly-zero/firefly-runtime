@@ -12,6 +12,8 @@ mod frame_buffer;
 mod host;
 mod linking;
 mod menu;
+mod message;
+mod netcode;
 mod png;
 mod ring;
 mod runtime;
