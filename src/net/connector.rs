@@ -1,4 +1,4 @@
-use crate::message::*;
+use super::message::*;
 use firefly_device::*;
 
 const ADVERTISE_EVERY: Duration = Duration::from_ms(100);
