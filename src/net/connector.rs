@@ -38,6 +38,14 @@ impl Connector {
         }
     }
 
+    pub fn peer_addrs(&self) -> &heapless::Vec<Addr, MAX_PEERS> {
+        &self.peer_addrs
+    }
+
+    pub fn peer_infos(&self) -> &heapless::Vec<PeerInfo, MAX_PEERS> {
+        &self.peer_infos
+    }
+
     pub fn update(&mut self, device: &DeviceImpl) {
         let res = self.update_inner(device);
         if let Err(err) = res {

@@ -136,7 +136,7 @@ where
             // bypassing the frame buffer. That way, we preserve
             // the frame buffer rendered by the app.
             // Performance isn't an issue for a simple text menu.
-            let res = state.menu.render(&mut self.display);
+            let res = state.menu.render(state, &mut self.display);
             self.delay();
             if res.is_err() {
                 return Err(Error::CannotDisplay);
