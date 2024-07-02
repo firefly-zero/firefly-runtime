@@ -6,8 +6,8 @@ const MAX_PEERS: usize = 7;
 type Addr = <NetworkImpl as Network>::Addr;
 
 pub(crate) struct MyInfo {
-    name:    heapless::String<16>,
-    version: u16,
+    pub name:    heapless::String<16>,
+    pub version: u16,
 }
 
 pub(crate) struct PeerInfo {
@@ -22,6 +22,7 @@ pub(crate) struct Connector {
     last_advertisement: Option<Instant>,
     peer_addrs:         heapless::Vec<Addr, MAX_PEERS>,
     peer_infos:         heapless::Vec<PeerInfo, MAX_PEERS>,
+    started:            bool,
 }
 
 impl Connector {
@@ -32,6 +33,7 @@ impl Connector {
             last_advertisement: None,
             peer_addrs: heapless::Vec::new(),
             peer_infos: heapless::Vec::new(),
+            started: false,
         }
     }
 
@@ -47,6 +49,10 @@ impl Connector {
     // }
 
     fn update_inner(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
+        if !self.started {
+            self.started = true;
+            self.net.start()?;
+        }
         let now = device.now();
         self.advertise(now)?;
         if let Some((addr, msg)) = self.net.recv()? {
@@ -83,7 +89,10 @@ impl Connector {
         if raw == b"HELLO" {
             return Ok(());
         }
-        let msg = Message::decode(&raw)?;
+        let msg = match Message::decode(&raw) {
+            Ok(msg) => msg,
+            Err(err) => return Err(NetcodeError::Deserialize(err)),
+        };
         match msg {
             Message::Req(req) => self.handle_req(device, addr, req),
             Message::Resp(resp) => self.handle_resp(device, addr, resp),
@@ -143,7 +152,10 @@ impl Connector {
         };
         let msg = Message::Resp(intro.into());
         let mut buf = [0u8, 64];
-        let raw = msg.encode(&mut buf)?;
+        let raw = match msg.encode(&mut buf) {
+            Ok(raw) => raw,
+            Err(err) => return Err(NetcodeError::Serialize(err)),
+        };
         self.net.send(addr, raw)?;
         Ok(())
     }

@@ -2,8 +2,12 @@ use crate::config::FullID;
 use crate::error::Stats;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
+use crate::net::{Connector, MyInfo};
 use crate::png::save_png;
+use core::cell::Cell;
 use core::fmt::Display;
+use core::str::FromStr;
+use embedded_io::Read;
 use firefly_device::*;
 
 pub(crate) struct State {
@@ -39,6 +43,8 @@ pub(crate) struct State {
 
     /// The last called host function.
     pub called: &'static str,
+
+    pub connector: Cell<Option<Connector>>,
 }
 
 impl State {
@@ -55,6 +61,7 @@ impl State {
             online: false,
             input: None,
             called: "",
+            connector: Cell::new(None),
         }
     }
 
@@ -66,12 +73,16 @@ impl State {
 
     /// Update the state: read inputs, handle system commands.
     pub(crate) fn update(&mut self) -> Option<u8> {
+        let connector = self.connector.get_mut();
+        if let Some(connector) = connector {
+            connector.update(&self.device);
+        }
         self.input = self.device.read_input();
         let action = self.menu.handle_input(&self.input);
         if let Some(action) = action {
             match action {
                 MenuItem::Custom(index, _) => return Some(*index),
-                MenuItem::Connect => todo!("network game is not implemented yet"),
+                MenuItem::Connect => self.connect(),
                 MenuItem::ScreenShot => self.take_screenshot(),
                 MenuItem::Restart => {
                     self.next = Some(self.id.clone());
@@ -92,6 +103,25 @@ impl State {
         let path = &["data", self.id.author(), self.id.app(), "shots", &file_name];
         let mut file = self.device.create_file(path).unwrap();
         save_png(&mut file, &self.frame.palette, &*self.frame.data).unwrap();
+    }
+
+    fn connect(&mut self) {
+        if !self.connector.get_mut().is_none() {
+            return;
+        }
+        let name = self
+            .read_name()
+            .unwrap_or_else(|| heapless::String::from_str("anon").unwrap());
+        let me = MyInfo { name, version: 1 };
+        let net = self.device.network();
+        self.connector.set(Some(Connector::new(me, net)));
+    }
+
+    fn read_name(&mut self) -> Option<heapless::String<16>> {
+        let mut name = heapless::String::<16>::new();
+        let mut file = self.device.open_file(&["sys", "name"])?;
+        file.read(unsafe { name.as_bytes_mut() }).ok()?;
+        Some(name)
     }
 
     /// Log an error/warning occured in the currently executing host function.
