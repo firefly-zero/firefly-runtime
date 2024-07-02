@@ -33,6 +33,7 @@ impl MenuItem {
     }
 }
 
+#[derive(Default)]
 pub(crate) struct Menu {
     /// Custom menu items.
     app_items: alloc::vec::Vec<MenuItem>,
@@ -41,12 +42,16 @@ pub(crate) struct Menu {
     sys_items: heapless::Vec<MenuItem, 4>,
 
     selected: i32,
+    frame:    usize,
 
     /// True if the menu should be currently shown.
     active: bool,
 
     /// True if the menu is currently rendered on the screen.
     rendered: bool,
+
+    // True if currentyl trying to connect to other devices.
+    connecting: bool,
 
     /// True if the menu button is currently pressed.
     menu_pressed: bool,
@@ -69,16 +74,9 @@ impl Menu {
         _ = items.push(MenuItem::Restart);
         _ = items.push(MenuItem::Quit);
         Self {
-            app_items:      alloc::vec::Vec::new(),
-            sys_items:      items,
-            selected:       0,
-            active:         false,
-            rendered:       false,
-            menu_pressed:   false,
-            was_released:   false,
-            down_pressed:   false,
-            up_pressed:     false,
-            select_pressed: false,
+            app_items: alloc::vec::Vec::new(),
+            sys_items: items,
+            ..Default::default()
         }
     }
 
@@ -94,11 +92,15 @@ impl Menu {
     }
 
     pub fn handle_input(&mut self, input: &Option<InputState>) -> Option<&MenuItem> {
+        self.frame += 1;
         let def = InputState::default();
         let input = match input {
             Some(input) => input,
             None => &def,
         };
+        if self.connecting {
+            return None;
+        }
         self.handle_menu_button(input.buttons[4]);
         if !self.active {
             return None;
@@ -159,7 +161,6 @@ impl Menu {
         if self.select_pressed {
             if !pressed {
                 self.select_pressed = false;
-                self.active = false;
                 let selected = self.selected as usize;
                 if let Some(item) = self.app_items.get(selected) {
                     // Close menu and return control to the game
@@ -168,7 +169,14 @@ impl Menu {
                     return Some(item);
                 }
                 let selected = selected - self.app_items.len();
-                return self.sys_items.get(selected);
+                let item = self.sys_items.get(selected);
+                if matches!(item, Some(MenuItem::Connect)) {
+                    self.rendered = false;
+                    self.connecting = true;
+                } else {
+                    self.active = false;
+                }
+                return item;
             }
         } else {
             self.select_pressed = pressed;
@@ -196,6 +204,9 @@ impl Menu {
         if self.rendered {
             return Ok(());
         }
+        if self.connecting {
+            return self.render_connecting(display);
+        }
         let corners = CornerRadii::new(Size::new_equal(4));
         let white = C::from_rgb(0xf4, 0xf4, 0xf4);
         let black = C::from_rgb(0x1a, 0x1c, 0x2c);
@@ -222,6 +233,32 @@ impl Menu {
                 rect.draw_styled(&box_style, display)?;
             }
         }
+        Ok(())
+    }
+
+    fn render_connecting<D, C, E>(&self, display: &mut D) -> Result<(), E>
+    where
+        D: DrawTarget<Color = C, Error = E> + OriginDimensions,
+        C: RgbColor + FromRGB,
+    {
+        let quarter_second = self.frame / 15;
+        let white = C::from_rgb(0xf4, 0xf4, 0xf4);
+        let gray = C::from_rgb(0x56, 0x6c, 0x86);
+        let black = C::from_rgb(0x1a, 0x1c, 0x2c);
+        display.clear(white)?;
+        let point = Point::new(120 - 3 * 13, 80 - 9);
+
+        let text_style = MonoTextStyle::new(&FONT_6X9, gray);
+        let text = "Connecting...";
+        let text = Text::new(text, point, text_style);
+        text.draw(display)?;
+
+        let text_style = MonoTextStyle::new(&FONT_6X9, black);
+        let text = "Connecting...";
+        let text = &text[..(quarter_second % 13) + 1];
+        let text = Text::new(text, point, text_style);
+        text.draw(display)?;
+
         Ok(())
     }
 }

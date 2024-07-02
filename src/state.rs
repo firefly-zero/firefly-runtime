@@ -6,7 +6,6 @@ use crate::net::{Connector, MyInfo};
 use crate::png::save_png;
 use core::cell::Cell;
 use core::fmt::Display;
-use core::str::FromStr;
 use embedded_io::Read;
 use firefly_device::*;
 

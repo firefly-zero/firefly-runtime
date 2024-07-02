@@ -137,6 +137,7 @@ where
             // the frame buffer rendered by the app.
             // Performance isn't an issue for a simple text menu.
             let res = state.menu.render(&mut self.display);
+            self.delay();
             if res.is_err() {
                 return Err(Error::CannotDisplay);
             }
@@ -155,8 +156,14 @@ where
         // TODO: continue execution even if an update fails.
         self.call_callback("update", self.update)?;
         self.call_callback("render", self.render)?;
+        self.delay();
+        self.flush_frame()?;
+        let state = self.store.data();
+        Ok(state.exit)
+    }
 
-        // delay the screen flashing to adjust the frame rate
+    // Delay the screen flushing to adjust the frame rate.
+    fn delay(&mut self) {
         let state = self.store.data();
         let now = state.device.now();
         let elapsed = now - self.prev_time;
@@ -165,11 +172,6 @@ where
             state.device.delay(delay);
         }
         self.prev_time = state.device.now();
-
-        self.flush_frame()?;
-
-        let state = self.store.data();
-        Ok(state.exit)
     }
 
     /// When runtime is created, it takes ownership of [Device]. This method releases it.
