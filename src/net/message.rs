@@ -1,37 +1,22 @@
-use alloc::string::{String, ToString};
+use serde::{Deserialize, Serialize};
 
-pub(crate) trait Serialize<S> {
-    fn serialize<W: embedded_io::Write>(&self, w: W) -> Result<(), W::Error>;
-    fn deserialize(r: &[u8]) -> Result<S, ()>;
-}
-
+#[derive(Serialize, Deserialize)]
 pub(crate) enum Message {
     Req(Req),
     Resp(Resp),
 }
 
-impl Serialize<Message> for Message {
-    fn serialize<W: embedded_io::Write>(&self, mut w: W) -> Result<(), W::Error> {
-        match self {
-            Message::Req(req) => {
-                w.write(&[1])?;
-                req.serialize(w)
-            }
-            Message::Resp(resp) => {
-                w.write(&[2])?;
-                resp.serialize(w)
-            }
-        }
+impl Message {
+    pub fn decode(s: &[u8]) -> Result<Self, postcard::Error> {
+        postcard::from_bytes(s)
     }
 
-    fn deserialize(r: &[u8]) -> Result<Message, ()> {
-        match r[0] {
-            1 => Ok(Self::Req(Req::deserialize(&r[1..])?)),
-            _ => Ok(Self::Resp(Resp::deserialize(&r[1..])?)),
-        }
+    pub fn encode<'a>(&self, buf: &'a mut [u8]) -> Result<&'a mut [u8], postcard::Error> {
+        postcard::to_slice(self, buf)
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub(crate) enum Req {
     Intro,
     // Start,
@@ -39,16 +24,7 @@ pub(crate) enum Req {
     // Input,
 }
 
-impl Serialize<Req> for Req {
-    fn serialize<W: embedded_io::Write>(&self, mut w: W) -> Result<(), W::Error> {
-        w.write(&[0])?;
-        Ok(())
-    }
-
-    fn deserialize(r: &[u8]) -> Result<Req, ()> {
-        Ok(Self::Intro)
-    }
-}
+#[derive(Serialize, Deserialize)]
 
 pub(crate) enum Resp {
     Intro(Intro),
@@ -57,35 +33,8 @@ pub(crate) enum Resp {
     // Input(Input),
 }
 
-impl Serialize<Resp> for Resp {
-    fn serialize<W: embedded_io::Write>(&self, w: W) -> Result<(), W::Error> {
-        match self {
-            Resp::Intro(intro) => intro.serialize(w),
-        }
-    }
-
-    fn deserialize(r: &[u8]) -> Result<Resp, ()> {
-        Ok(Resp::Intro(Intro::deserialize(r)?))
-    }
-}
-
+#[derive(Serialize, Deserialize)]
 pub(crate) struct Intro {
-    pub name:    String,
+    pub name:    heapless::String<16>,
     pub version: u16,
-}
-
-impl Serialize<Intro> for Intro {
-    fn serialize<W: embedded_io::Write>(&self, mut w: W) -> Result<(), W::Error> {
-        w.write_all(self.name.as_bytes())
-    }
-
-    fn deserialize(r: &[u8]) -> Result<Self, ()> {
-        let version = u16::from_le_bytes([r[0], r[1]]);
-        // UTF-8 validation will be handled later by "validate"
-        let name = unsafe { core::str::from_utf8_unchecked(&r[2..]) };
-        Ok(Self {
-            name: name.to_string(),
-            version,
-        })
-    }
 }
