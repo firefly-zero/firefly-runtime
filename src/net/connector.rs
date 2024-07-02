@@ -136,7 +136,11 @@ impl Connector {
                 return Ok(());
             }
         }
-        device.log_debug("netcode", &intro.name);
+        if intro.name.is_empty() {
+            device.log_debug("netcode", "new no-name device connected");
+        } else {
+            device.log_debug("netcode", &intro.name);
+        }
         let info = PeerInfo {
             addr,
             name: intro.name,
