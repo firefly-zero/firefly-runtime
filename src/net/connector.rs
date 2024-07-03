@@ -53,6 +53,11 @@ impl Connector {
         }
     }
 
+    pub fn stop(&mut self) -> Result<(), NetcodeError> {
+        self.net.stop()?;
+        Ok(())
+    }
+
     // pub fn finalize(self) {
     //     todo!()
     // }

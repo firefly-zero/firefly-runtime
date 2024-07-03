@@ -2,7 +2,7 @@ use crate::config::FullID;
 use crate::error::Stats;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
-use crate::net::{ConnectScene, Connector, MyInfo};
+use crate::net::{ConnectScene, ConnectStatus, Connector, MyInfo};
 use crate::png::save_png;
 use core::cell::Cell;
 use core::fmt::Display;
@@ -80,7 +80,29 @@ impl State {
         if let Some(connector) = connector {
             connector.update(&self.device);
             if let Some(scene) = self.connect_scene.as_mut() {
-                scene.update(&self.input);
+                let conn_status = scene.update(&self.input);
+                if let Some(conn_status) = conn_status {
+                    match conn_status {
+                        ConnectStatus::Stopped => {
+                            let res = connector.stop();
+                            if let Err(err) = res {
+                                self.device.log_error("netcode", err);
+                            }
+                        }
+                        ConnectStatus::Cancelled => {
+                            self.connect_scene = None;
+                            let res = connector.stop();
+                            if let Err(err) = res {
+                                self.device.log_error("netcode", err);
+                            }
+                            // todo!()
+                        }
+                        ConnectStatus::Finished => {
+                            self.connect_scene = None;
+                            // todo!()
+                        }
+                    }
+                }
             }
         }
         let action = self.menu.handle_input(&self.input);

@@ -1,3 +1,4 @@
+use super::Connector;
 use crate::color::FromRGB;
 use crate::frame_buffer::WIDTH;
 use crate::state::State;
@@ -10,16 +11,46 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::text::Text;
 use firefly_device::InputState;
 
-use super::Connector;
-
 const FONT_HEIGHT: i32 = 10;
 const FONT_WIDTH: i32 = 6;
 const X: i32 = 120 - 3 * 13;
 const Y: i32 = 71;
 
+pub(crate) enum ConnectStatus {
+    /// Stopped listening, [Connector] should do nothing.
+    Stopped,
+    /// Cancelled connecting, destroy [Connector].
+    Cancelled,
+    /// Finished connecting, proceed to multiplayer.
+    Finished,
+}
+
+struct Buttons {
+    a: bool,
+    b: bool,
+    any: bool,
+}
+
+impl Buttons {
+    fn new(input: &Option<InputState>) -> Self {
+        match input {
+            Some(input) => Self {
+                a: input.buttons[0],
+                b: input.buttons[1],
+                any: input.buttons.iter().any(|x| *x),
+            },
+            None => Self {
+                a: false,
+                b: false,
+                any: false,
+            },
+        }
+    }
+}
+
 pub(crate) struct ConnectScene {
     frame: usize,
-    any_pressed: bool,
+    buttons: Buttons,
     stopped: bool,
 }
 
@@ -27,24 +58,46 @@ impl ConnectScene {
     pub fn new() -> Self {
         Self {
             frame: 0,
-            any_pressed: false,
+            buttons: Buttons::new(&None),
             stopped: false,
         }
     }
 
-    pub fn update(&mut self, input: &Option<InputState>) {
+    pub fn update(&mut self, input: &Option<InputState>) -> Option<ConnectStatus> {
+        let buttons = Buttons::new(input);
+        let res = self.update_inner(&buttons);
+        self.buttons = buttons;
+        res
+    }
+
+    fn update_inner(&mut self, buttons: &Buttons) -> Option<ConnectStatus> {
         self.frame += 1;
-        if let Some(input) = input {
-            let any_pressed = input.buttons.iter().any(|x| *x);
-            if any_pressed {
-                self.any_pressed = true;
-            } else {
-                if self.any_pressed {
-                    self.stopped = true;
-                }
-                self.any_pressed = false;
+        let new_buttons = buttons;
+        let old_buttons = &self.buttons;
+        // If a button is pressed, just track it and return.
+        // All actions the module does happen on button release, not press.
+        if new_buttons.any {
+            return None;
+        }
+
+        // Connecting is not stopped, a button was pressed
+        // but is released now. Stop connecting.
+        if !self.stopped && old_buttons.any {
+            self.stopped = true;
+            return Some(ConnectStatus::Stopped);
+        }
+
+        // Connecting is stopped. The user either confirms that all
+        // connected devices are good or cancels.
+        if self.stopped {
+            if !new_buttons.a && old_buttons.a {
+                return Some(ConnectStatus::Finished);
+            }
+            if !new_buttons.b && old_buttons.b {
+                return Some(ConnectStatus::Cancelled);
             }
         }
+        None
     }
 
     pub fn render<D, C, E>(&self, state: &State, display: &mut D) -> Result<(), E>
