@@ -7,23 +7,23 @@ const MSG_SIZE: usize = 64;
 type Addr = <NetworkImpl as Network>::Addr;
 
 pub(crate) struct MyInfo {
-    pub name:    heapless::String<16>,
+    pub name: heapless::String<16>,
     pub version: u16,
 }
 
 pub(crate) struct PeerInfo {
-    pub addr:    Addr,
-    pub name:    heapless::String<16>,
+    pub addr: Addr,
+    pub name: heapless::String<16>,
     pub version: u16,
 }
 
 pub(crate) struct Connector {
-    me:                 MyInfo,
-    net:                NetworkImpl,
+    pub me: MyInfo,
+    net: NetworkImpl,
     last_advertisement: Option<Instant>,
-    peer_addrs:         heapless::Vec<Addr, MAX_PEERS>,
-    peer_infos:         heapless::Vec<PeerInfo, MAX_PEERS>,
-    started:            bool,
+    peer_addrs: heapless::Vec<Addr, MAX_PEERS>,
+    peer_infos: heapless::Vec<PeerInfo, MAX_PEERS>,
+    started: bool,
 }
 
 impl Connector {
@@ -160,7 +160,7 @@ impl Connector {
 
     fn send_intro(&mut self, _device: &DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
         let intro = Intro {
-            name:    self.me.name.clone(),
+            name: self.me.name.clone(),
             version: self.me.version,
         };
         let msg = Message::Resp(intro.into());

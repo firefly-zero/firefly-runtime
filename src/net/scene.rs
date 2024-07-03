@@ -8,6 +8,10 @@ use embedded_graphics::pixelcolor::RgbColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::text::Text;
 
+const FONT_HEIGHT: i32 = 9;
+const X: i32 = 120 - 3 * 13;
+const Y: i32 = 71;
+
 pub(crate) struct ConnectScene {
     frame: usize,
 }
@@ -32,28 +36,45 @@ impl ConnectScene {
         let black = C::from_rgb(0x1a, 0x1c, 0x2c);
         let blue = C::from_rgb(0x3b, 0x5d, 0xc9);
         display.clear(white)?;
-        let point = Point::new(120 - 3 * 13, 80 - 9);
+        let point = Point::new(X, Y - FONT_HEIGHT);
 
-        let text_style = MonoTextStyle::new(&FONT_6X9, gray);
-        let text = "Connecting...";
-        let text = Text::new(text, point, text_style);
-        text.draw(display)?;
+        {
+            let text_style = MonoTextStyle::new(&FONT_6X9, gray);
+            let text = "Connecting...";
+            let text = Text::new(text, point, text_style);
+            text.draw(display)?;
+        }
 
-        let text_style = MonoTextStyle::new(&FONT_6X9, black);
-        let text = "Connecting...";
-        let text = &text[..(quarter_second % 13) + 1];
-        let text = Text::new(text, point, text_style);
-        text.draw(display)?;
+        {
+            let text_style = MonoTextStyle::new(&FONT_6X9, black);
+            let text = "Connecting...";
+            let text = &text[..(quarter_second % 13) + 1];
+            let text = Text::new(text, point, text_style);
+            text.draw(display)?;
+        }
 
         let connector = state.connector.replace(None);
         if let Some(connector) = &connector {
+            {
+                let point = Point::new(X, Y);
+                let text_style = MonoTextStyle::new(&FONT_6X9, black);
+                let text = Text::new("you:", point, text_style);
+                text.draw(display)?;
+            }
+            {
+                let point = Point::new(X + 6 * 5, Y);
+                let text_style = MonoTextStyle::new(&FONT_6X9, blue);
+                let text = Text::new(&connector.me.name, point, text_style);
+                text.draw(display)?;
+            }
+
             let text_style = MonoTextStyle::new(&FONT_6X9, blue);
             let mut addrs = connector.peer_addrs().clone();
             let peers = connector.peer_infos();
             let peer_count = peers.len() as i32;
             for (peer, i) in connector.peer_infos().iter().zip(0..) {
                 addrs.retain(|addr| *addr != peer.addr);
-                let point = Point::new(120 - 3 * 13, 80 + 9 * i);
+                let point = Point::new(X, Y + FONT_HEIGHT + FONT_HEIGHT * i);
                 let text = if peer.name.is_empty() {
                     "<empty>"
                 } else {
@@ -63,7 +84,7 @@ impl ConnectScene {
                 text.draw(display)?;
             }
             for (_, i) in addrs.iter().zip(peer_count..) {
-                let point = Point::new(120 - 3 * 13, 80 + 9 * i);
+                let point = Point::new(X, Y + 9 * i);
                 let text = Text::new("???", point, text_style);
                 text.draw(display)?;
             }
