@@ -16,6 +16,15 @@ pub(crate) struct Peer {
     pub ready: bool,
 }
 
+pub(crate) enum ConnectionStatus {
+    /// Waiting for one of the players to pick an app to launch.
+    Waiting,
+    /// Ready to launch an app, waiting for everyone to confirm the choice.
+    Ready,
+    /// Everyone agreed to play, launch the app.
+    Launching,
+}
+
 /// Connection is a result of connector.
 ///
 /// If you play games with friends, you establish the connection once
@@ -33,10 +42,18 @@ pub(crate) struct Connection {
 }
 
 impl Connection {
-    pub fn update(&mut self, device: &DeviceImpl) {
+    pub fn update(&mut self, device: &DeviceImpl) -> ConnectionStatus {
         let res = self.update_inner(device);
         if let Err(err) = res {
             device.log_error("netcode", err);
+        }
+        let all_ready = self.peers.iter().all(|p| p.ready);
+        if all_ready {
+            return ConnectionStatus::Launching;
+        }
+        match self.app {
+            Some(_) => ConnectionStatus::Ready,
+            None => ConnectionStatus::Waiting,
         }
     }
 
