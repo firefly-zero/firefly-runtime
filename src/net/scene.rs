@@ -1,4 +1,5 @@
 use crate::color::FromRGB;
+use crate::frame_buffer::WIDTH;
 use crate::state::State;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{OriginDimensions, Point};
@@ -11,6 +12,7 @@ use embedded_graphics::text::Text;
 use super::Connector;
 
 const FONT_HEIGHT: i32 = 9;
+const FONT_WIDTH: i32 = 6;
 const X: i32 = 120 - 3 * 13;
 const Y: i32 = 71;
 
@@ -55,6 +57,7 @@ impl ConnectScene {
             display.clear(white)?;
         }
 
+        // Render gray "Connecting..." message
         {
             let gray = C::from_rgb(0x94, 0xb0, 0xc2);
             let text_style = MonoTextStyle::new(&FONT_6X9, gray);
@@ -64,6 +67,8 @@ impl ConnectScene {
             text.draw(display)?;
         }
 
+        // Render black "Connecting..." message on top of the gray one.
+        // It is sliced over time to show that the device is not frozen.
         {
             let quarter_second = self.frame / 15;
             let text_style = MonoTextStyle::new(&FONT_6X9, black);
@@ -73,11 +78,12 @@ impl ConnectScene {
             } else {
                 (0, &text[..(quarter_second % 14)])
             };
-            let point = Point::new(X + shift * 6, Y - FONT_HEIGHT);
+            let point = Point::new(X + shift * FONT_WIDTH, Y - FONT_HEIGHT);
             let text = Text::new(text, point, text_style);
             text.draw(display)?;
         }
 
+        // Show the current device name.
         {
             let point = Point::new(X, Y);
             let text_style = MonoTextStyle::new(&FONT_6X9, black);
@@ -86,7 +92,7 @@ impl ConnectScene {
         }
         {
             let blue = C::from_rgb(0x3b, 0x5d, 0xc9);
-            let point = Point::new(X + 6 * 5, Y);
+            let point = Point::new(X + FONT_WIDTH * 5, Y);
             let text_style = MonoTextStyle::new(&FONT_6X9, blue);
             let text = if connector.me.name.is_empty() {
                 "<empty>"
@@ -98,6 +104,15 @@ impl ConnectScene {
         }
 
         self.render_peers_list(connector, display)?;
+
+        {
+            let gray = C::from_rgb(0x94, 0xb0, 0xc2);
+            let point = Point::new((WIDTH as i32 - 26 * FONT_WIDTH) / 2, 140);
+            let text_style = MonoTextStyle::new(&FONT_6X9, gray);
+            let text = "(press any button to stop)";
+            let text = Text::new(text, point, text_style);
+            text.draw(display)?;
+        }
 
         Ok(())
     }
