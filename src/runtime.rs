@@ -20,11 +20,11 @@ where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
 {
-    display:     D,
-    instance:    wasmi::Instance,
-    store:       wasmi::Store<State>,
-    update:      Option<wasmi::TypedFunc<(), ()>>,
-    render:      Option<wasmi::TypedFunc<(), ()>>,
+    display: D,
+    instance: wasmi::Instance,
+    store: wasmi::Store<State>,
+    update: Option<wasmi::TypedFunc<(), ()>>,
+    render: Option<wasmi::TypedFunc<(), ()>>,
     handle_menu: Option<wasmi::TypedFunc<(u32,), ()>>,
     render_line: Option<wasmi::TypedFunc<(i32,), (i32,)>>,
 
@@ -131,18 +131,28 @@ where
     pub fn update(&mut self) -> Result<bool, Error> {
         let state = self.store.data_mut();
         let menu_index = state.update();
-        if state.menu.active() {
-            // We render the system menu directly on the screen,
-            // bypassing the frame buffer. That way, we preserve
-            // the frame buffer rendered by the app.
-            // Performance isn't an issue for a simple text menu.
-            let res = state.menu.render(state, &mut self.display);
-            self.delay();
+
+        if let Some(scene) = &state.connect_scene {
+            let res = scene.render(state, &mut self.display);
             if res.is_err() {
                 return Err(Error::CannotDisplay);
             }
             return Ok(false);
         }
+
+        if state.menu.active() {
+            // We render the system menu directly on the screen,
+            // bypassing the frame buffer. That way, we preserve
+            // the frame buffer rendered by the app.
+            // Performance isn't an issue for a simple text menu.
+            let res = state.menu.render(&mut self.display);
+            if res.is_err() {
+                return Err(Error::CannotDisplay);
+            }
+            self.delay();
+            return Ok(false);
+        }
+
         // If a custom menu item is selected, trigger the handle_menu callback.
         if let Some(custom_menu) = menu_index {
             if let Some(handle_menu) = self.handle_menu {
@@ -178,8 +188,8 @@ where
     pub fn into_config(self) -> RuntimeConfig<D, C> {
         let state = self.store.into_data();
         RuntimeConfig {
-            id:      state.next,
-            device:  state.device,
+            id: state.next,
+            device: state.device,
             display: self.display,
         }
     }

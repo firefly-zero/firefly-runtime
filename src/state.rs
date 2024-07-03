@@ -2,7 +2,7 @@ use crate::config::FullID;
 use crate::error::Stats;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
-use crate::net::{Connector, MyInfo};
+use crate::net::{ConnectScene, Connector, MyInfo};
 use crate::png::save_png;
 use core::cell::Cell;
 use core::fmt::Display;
@@ -44,6 +44,8 @@ pub(crate) struct State {
     pub called: &'static str,
 
     pub connector: Cell<Option<Connector>>,
+
+    pub connect_scene: Option<ConnectScene>,
 }
 
 impl State {
@@ -61,6 +63,7 @@ impl State {
             input: None,
             called: "",
             connector: Cell::new(None),
+            connect_scene: None,
         }
     }
 
@@ -75,6 +78,9 @@ impl State {
         let connector = self.connector.get_mut();
         if let Some(connector) = connector {
             connector.update(&self.device);
+            if let Some(scene) = self.connect_scene.as_mut() {
+                scene.update();
+            }
         }
         self.input = self.device.read_input();
         let action = self.menu.handle_input(&self.input);
@@ -105,7 +111,10 @@ impl State {
     }
 
     fn connect(&mut self) {
-        if !self.connector.get_mut().is_none() {
+        if self.connect_scene.is_none() {
+            self.connect_scene = Some(ConnectScene::new());
+        }
+        if self.connector.get_mut().is_some() {
             return;
         }
         let name = self.read_name().unwrap_or_default();
