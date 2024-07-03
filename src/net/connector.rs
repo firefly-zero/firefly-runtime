@@ -24,6 +24,7 @@ pub(crate) struct Connector {
     peer_addrs: heapless::Vec<Addr, MAX_PEERS>,
     peer_infos: heapless::Vec<PeerInfo, MAX_PEERS>,
     started: bool,
+    stopped: bool,
 }
 
 impl Connector {
@@ -35,6 +36,7 @@ impl Connector {
             peer_addrs: heapless::Vec::new(),
             peer_infos: heapless::Vec::new(),
             started: false,
+            stopped: false,
         }
     }
 
@@ -47,6 +49,9 @@ impl Connector {
     }
 
     pub fn update(&mut self, device: &DeviceImpl) {
+        if self.stopped {
+            return;
+        }
         let res = self.update_inner(device);
         if let Err(err) = res {
             device.log_error("netcode", err);
@@ -54,6 +59,7 @@ impl Connector {
     }
 
     pub fn stop(&mut self) -> Result<(), NetcodeError> {
+        self.stopped = true;
         self.net.stop()?;
         Ok(())
     }
