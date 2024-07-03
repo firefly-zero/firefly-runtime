@@ -124,11 +124,16 @@ impl ConnectScene {
         self.render_peers_list(connector, display)?;
 
         // Show gray "press any button to stop" at the bottom of the screen.
-        if !self.stoped {
+        {
             let gray = C::from_rgb(0x94, 0xb0, 0xc2);
-            let point = Point::new((WIDTH as i32 - 26 * FONT_WIDTH) / 2, 140);
             let text_style = MonoTextStyle::new(&FONT_6X9, gray);
-            let text = "(press any button to stop)";
+            let text = if self.stoped {
+                "press A to continue / B to cancel"
+            } else {
+                "(press any button to stop)"
+            };
+            let width = text.len() as i32 * FONT_WIDTH;
+            let point = Point::new((WIDTH as i32 - width) / 2, 140);
             let text = Text::new(text, point, text_style);
             text.draw(display)?;
         }
@@ -158,10 +163,16 @@ impl ConnectScene {
             let text = Text::new(text, point, text_style);
             text.draw(display)?;
         }
-        Ok(for (_, i) in addrs.iter().zip(peer_count..) {
-            let point = Point::new(X, Y + 9 * i);
-            let text = Text::new("???", point, text_style);
-            text.draw(display)?;
-        })
+        // Show peers that are advertised but haven't sent intro yet
+        // but only if connection phase is not stoped yet.
+        // If it is stoped, all peers without intro will be discarded.
+        if !self.stoped {
+            for (_, i) in addrs.iter().zip(peer_count..) {
+                let point = Point::new(X, Y + 9 * i);
+                let text = Text::new("???", point, text_style);
+                text.draw(display)?;
+            }
+        }
+        Ok(())
     }
 }
