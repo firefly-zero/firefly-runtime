@@ -1,7 +1,7 @@
 use super::Connector;
 use crate::color::FromRGB;
 use crate::frame_buffer::WIDTH;
-use crate::state::State;
+use crate::state::{NetHandler, State};
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{OriginDimensions, Point};
 use embedded_graphics::mono_font::ascii::FONT_6X9;
@@ -105,13 +105,13 @@ impl ConnectScene {
         D: DrawTarget<Color = C, Error = E> + OriginDimensions,
         C: RgbColor + FromRGB,
     {
-        let connector = state.connector.replace(None);
-        let res = if let Some(connector) = &connector {
+        let connector = state.net_handler.replace(NetHandler::None);
+        let res = if let NetHandler::Connector(connector) = &connector {
             self.render_inner(&connector, display)
         } else {
             Ok(())
         };
-        state.connector.replace(connector);
+        state.net_handler.replace(connector);
         res
     }
 

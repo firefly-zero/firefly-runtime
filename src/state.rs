@@ -2,12 +2,18 @@ use crate::config::FullID;
 use crate::error::Stats;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
-use crate::net::{ConnectScene, ConnectStatus, Connector, MyInfo};
+use crate::net::{ConnectScene, ConnectStatus, Connection, Connector, MyInfo};
 use crate::png::save_png;
 use core::cell::Cell;
 use core::fmt::Display;
 use embedded_io::Read;
 use firefly_device::*;
+
+pub(crate) enum NetHandler {
+    None,
+    Connector(Connector),
+    Connection(Connection),
+}
 
 pub(crate) struct State {
     /// Access to peripherals.
@@ -43,8 +49,7 @@ pub(crate) struct State {
     /// The last called host function.
     pub called: &'static str,
 
-    pub connector: Cell<Option<Connector>>,
-
+    pub net_handler: Cell<NetHandler>,
     pub connect_scene: Option<ConnectScene>,
 }
 
@@ -62,7 +67,7 @@ impl State {
             online: false,
             input: None,
             called: "",
-            connector: Cell::new(None),
+            net_handler: Cell::new(NetHandler::None),
             connect_scene: None,
         }
     }
@@ -76,8 +81,8 @@ impl State {
     /// Update the state: read inputs, handle system commands.
     pub(crate) fn update(&mut self) -> Option<u8> {
         self.input = self.device.read_input();
-        let connector = self.connector.get_mut();
-        if let Some(connector) = connector {
+        let connector = self.net_handler.get_mut();
+        if let NetHandler::Connector(connector) = connector {
             connector.update(&self.device);
             if let Some(scene) = self.connect_scene.as_mut() {
                 let conn_status = scene.update(&self.input);
@@ -95,7 +100,7 @@ impl State {
                             if let Err(err) = res {
                                 self.device.log_error("netcode", err);
                             }
-                            self.connector.set(None);
+                            self.net_handler.set(NetHandler::None);
                         }
                         ConnectStatus::Finished => {
                             self.connect_scene = None;
@@ -136,14 +141,15 @@ impl State {
         if self.connect_scene.is_none() {
             self.connect_scene = Some(ConnectScene::new());
         }
-        if self.connector.get_mut().is_some() {
+        if !matches!(self.net_handler.get_mut(), NetHandler::None) {
             return;
         }
         let name = self.read_name().unwrap_or_default();
         // TODO: validate the name
         let me = MyInfo { name, version: 1 };
         let net = self.device.network();
-        self.connector.set(Some(Connector::new(me, net)));
+        self.net_handler
+            .set(NetHandler::Connector(Connector::new(me, net)));
     }
 
     fn read_name(&mut self) -> Option<heapless::String<16>> {
