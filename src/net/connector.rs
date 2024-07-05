@@ -60,7 +60,14 @@ impl Connector {
         }
     }
 
-    pub fn stop(&mut self) -> Result<(), NetcodeError> {
+    /// Stop announcing and accepting new connections.
+    pub fn pause(&mut self) -> Result<(), NetcodeError> {
+        self.stopped = true;
+        Ok(())
+    }
+
+    /// Stop all network operations.
+    pub fn cancel(&mut self) -> Result<(), NetcodeError> {
         self.stopped = true;
         self.net.stop()?;
         Ok(())

@@ -2,7 +2,7 @@ use crate::config::FullID;
 use crate::error::Stats;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
-use crate::net::{ConnectScene, ConnectStatus, Connection, Connector, MyInfo};
+use crate::net::{ConnectScene, ConnectStatus, Connection, ConnectionStatus, Connector, MyInfo};
 use crate::png::save_png;
 use core::cell::Cell;
 use core::fmt::Display;
@@ -102,7 +102,7 @@ impl State {
         let handler = match handler {
             NetHandler::Connector(connector) => self.update_connector(connector),
             NetHandler::None => NetHandler::None,
-            NetHandler::Connection(_) => todo!(),
+            NetHandler::Connection(connection) => self.update_connection(connection),
         };
         self.net_handler.replace(handler);
     }
@@ -118,7 +118,7 @@ impl State {
         };
         match conn_status {
             ConnectStatus::Stopped => {
-                let res = connector.stop();
+                let res = connector.pause();
                 if let Err(err) = res {
                     self.device.log_error("netcode", err);
                 }
@@ -126,7 +126,7 @@ impl State {
             }
             ConnectStatus::Cancelled => {
                 self.connect_scene = None;
-                let res = connector.stop();
+                let res = connector.cancel();
                 if let Err(err) = res {
                     self.device.log_error("netcode", err);
                 }
@@ -138,6 +138,16 @@ impl State {
                 NetHandler::Connection(connection)
             }
         }
+    }
+
+    fn update_connection(&mut self, mut connection: Connection) -> NetHandler {
+        let status = connection.update(&self.device);
+        if matches!(status, ConnectionStatus::Launching) {
+            self.next = connection.app;
+            self.exit = true;
+            return NetHandler::None;
+        }
+        NetHandler::Connection(connection)
     }
 
     /// Save the current frame buffer into a PNG file.

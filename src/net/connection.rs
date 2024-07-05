@@ -62,7 +62,7 @@ impl Connection {
         self.sync(now)?;
         self.ready(now)?;
         if let Some((addr, msg)) = self.net.recv()? {
-            self.handle_message(device, addr, msg)?;
+            self.handle_message(addr, msg)?;
         }
         Ok(())
     }
@@ -118,7 +118,6 @@ impl Connection {
 
     fn handle_message(
         &mut self,
-        device: &DeviceImpl,
         addr: Addr,
         raw: heapless::Vec<u8, MSG_SIZE>,
     ) -> Result<(), NetcodeError> {
@@ -130,26 +129,27 @@ impl Connection {
             Err(err) => return Err(NetcodeError::Deserialize(err)),
         };
         match msg {
-            Message::Req(req) => self.handle_req(device, addr, req),
-            Message::Resp(resp) => self.handle_resp(device, addr, resp),
+            Message::Req(req) => self.handle_req(addr, req),
+            Message::Resp(resp) => self.handle_resp(addr, resp),
         }
     }
 
-    fn handle_req(
-        &mut self,
-        device: &DeviceImpl,
-        addr: Addr,
-        req: Req,
-    ) -> Result<(), NetcodeError> {
-        todo!()
+    fn handle_req(&mut self, addr: Addr, req: Req) -> Result<(), NetcodeError> {
+        if matches!(req, Req::Start) {
+            if let Some(app) = &self.app {
+                let msg = Message::Resp(Resp::Start(app.clone()));
+                let mut buf = alloc::vec![0u8; MSG_SIZE];
+                let raw = match msg.encode(&mut buf) {
+                    Ok(raw) => raw,
+                    Err(err) => return Err(NetcodeError::Serialize(err)),
+                };
+                self.net.send(addr, raw)?;
+            }
+        }
+        Ok(())
     }
 
-    fn handle_resp(
-        &mut self,
-        device: &DeviceImpl,
-        addr: Addr,
-        resp: Resp,
-    ) -> Result<(), NetcodeError> {
+    fn handle_resp(&mut self, addr: Addr, resp: Resp) -> Result<(), NetcodeError> {
         match resp {
             Resp::Start(id) => {
                 self.app = Some(id);
