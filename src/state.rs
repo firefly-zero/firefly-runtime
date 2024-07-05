@@ -81,35 +81,7 @@ impl State {
     /// Update the state: read inputs, handle system commands.
     pub(crate) fn update(&mut self) -> Option<u8> {
         self.input = self.device.read_input();
-        let connector = self.net_handler.get_mut();
-        if let NetHandler::Connector(connector) = connector {
-            connector.update(&self.device);
-            if let Some(scene) = self.connect_scene.as_mut() {
-                let conn_status = scene.update(&self.input);
-                if let Some(conn_status) = conn_status {
-                    match conn_status {
-                        ConnectStatus::Stopped => {
-                            let res = connector.stop();
-                            if let Err(err) = res {
-                                self.device.log_error("netcode", err);
-                            }
-                        }
-                        ConnectStatus::Cancelled => {
-                            self.connect_scene = None;
-                            let res = connector.stop();
-                            if let Err(err) = res {
-                                self.device.log_error("netcode", err);
-                            }
-                            self.net_handler.set(NetHandler::None);
-                        }
-                        ConnectStatus::Finished => {
-                            self.connect_scene = None;
-                            // todo!()
-                        }
-                    }
-                }
-            }
-        }
+        self.update_net();
         let action = self.menu.handle_input(&self.input);
         if let Some(action) = action {
             match action {
@@ -124,6 +96,48 @@ impl State {
             };
         };
         None
+    }
+    fn update_net(&mut self) {
+        let handler = self.net_handler.replace(NetHandler::None);
+        let handler = match handler {
+            NetHandler::Connector(connector) => self.update_connector(connector),
+            NetHandler::None => NetHandler::None,
+            NetHandler::Connection(_) => todo!(),
+        };
+        self.net_handler.replace(handler);
+    }
+
+    fn update_connector(&mut self, mut connector: Connector) -> NetHandler {
+        connector.update(&self.device);
+        let Some(scene) = self.connect_scene.as_mut() else {
+            return NetHandler::Connector(connector);
+        };
+        let conn_status = scene.update(&self.input);
+        let Some(conn_status) = conn_status else {
+            return NetHandler::Connector(connector);
+        };
+        match conn_status {
+            ConnectStatus::Stopped => {
+                let res = connector.stop();
+                if let Err(err) = res {
+                    self.device.log_error("netcode", err);
+                }
+                NetHandler::Connector(connector)
+            }
+            ConnectStatus::Cancelled => {
+                self.connect_scene = None;
+                let res = connector.stop();
+                if let Err(err) = res {
+                    self.device.log_error("netcode", err);
+                }
+                NetHandler::None
+            }
+            ConnectStatus::Finished => {
+                self.connect_scene = None;
+                let connection = connector.finalize();
+                NetHandler::Connection(connection)
+            }
+        }
     }
 
     /// Save the current frame buffer into a PNG file.
