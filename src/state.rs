@@ -78,6 +78,22 @@ impl State {
         }
     }
 
+    pub(crate) fn set_next(&mut self, app: FullID) {
+        match self.net_handler.get_mut() {
+            NetHandler::None => {
+                self.next = Some(app);
+                self.exit = true;
+            }
+            NetHandler::Connector(_) => unreachable!("cannot launch app while connecting"),
+            NetHandler::Connection(c) => {
+                let res = c.set_app(app);
+                if let Err(err) = res {
+                    self.device.log_error("netcode", err);
+                }
+            }
+        };
+    }
+
     /// Update the state: read inputs, handle system commands.
     pub(crate) fn update(&mut self) -> Option<u8> {
         self.input = self.device.read_input();
@@ -88,10 +104,7 @@ impl State {
                 MenuItem::Custom(index, _) => return Some(*index),
                 MenuItem::Connect => self.connect(),
                 MenuItem::ScreenShot => self.take_screenshot(),
-                MenuItem::Restart => {
-                    self.next = Some(self.id.clone());
-                    self.exit = true;
-                }
+                MenuItem::Restart => self.set_next(self.id.clone()),
                 MenuItem::Quit => self.exit = true,
             };
         };

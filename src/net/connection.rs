@@ -57,6 +57,21 @@ impl Connection {
         }
     }
 
+    pub fn set_app(&mut self, app: FullID) -> Result<(), NetcodeError> {
+        let msg = Message::Resp(Resp::Start(app.clone()));
+        let mut buf = alloc::vec![0u8; MSG_SIZE];
+        let raw = match msg.encode(&mut buf) {
+            Ok(raw) => raw,
+            Err(err) => return Err(NetcodeError::Serialize(err)),
+        };
+        for peer in &self.peers {
+            if let Some(addr) = peer.addr {
+                self.net.send(addr, raw)?;
+            }
+        }
+        Ok(())
+    }
+
     fn update_inner(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
         let now = device.now();
         self.sync(now)?;
