@@ -58,7 +58,16 @@ impl Connection {
     }
 
     pub fn set_app(&mut self, app: FullID) -> Result<(), NetcodeError> {
+        if self.app.is_some() {
+            return Ok(());
+        }
         self.broadcast(Resp::Start(app.clone()).into())?;
+        self.app = Some(app);
+        for peer in self.peers.iter_mut() {
+            if peer.addr.is_none() {
+                peer.ready = true;
+            }
+        }
         Ok(())
     }
 
@@ -67,7 +76,7 @@ impl Connection {
         self.sync(now)?;
         self.ready(now)?;
         if let Some((addr, msg)) = self.net.recv()? {
-            self.handle_message(device, addr, msg)?;
+            self.handle_message(addr, msg)?;
         }
         Ok(())
     }
@@ -103,7 +112,6 @@ impl Connection {
 
     fn handle_message(
         &mut self,
-        device: &DeviceImpl,
         addr: Addr,
         raw: heapless::Vec<u8, MSG_SIZE>,
     ) -> Result<(), NetcodeError> {
@@ -114,7 +122,6 @@ impl Connection {
             Ok(msg) => msg,
             Err(err) => return Err(NetcodeError::Deserialize(err)),
         };
-        device.log_debug("tmp", alloc::format!("{msg:?}"));
         match msg {
             Message::Req(req) => self.handle_req(addr, req),
             Message::Resp(resp) => self.handle_resp(addr, resp),
@@ -138,8 +145,8 @@ impl Connection {
 
     fn handle_resp(&mut self, addr: Addr, resp: Resp) -> Result<(), NetcodeError> {
         match resp {
-            Resp::Start(id) => {
-                self.app = Some(id);
+            Resp::Start(app) => {
+                self.set_app(app)?;
                 if let Some(peer) = self.get_peer(addr) {
                     peer.ready = true;
                 }

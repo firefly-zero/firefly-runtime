@@ -20,7 +20,7 @@ where
 }
 
 /// The author and app ID combo. Must be unique. Cannot be changed.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct FullID {
     author: String<16>,
     app: String<16>,
