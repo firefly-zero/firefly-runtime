@@ -211,9 +211,6 @@ impl Connector {
         let msg = Message::Resp(intro.into());
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
-        if raw.is_empty() {
-            return Err(NetcodeError::EmptyBufferOut);
-        }
         self.net.send(addr, raw)?;
         Ok(())
     }

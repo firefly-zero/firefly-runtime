@@ -24,6 +24,9 @@ impl From<Req> for Message {
 impl Message {
     // TODO: return NetworkError
     pub fn decode(s: &[u8]) -> Result<Self, NetcodeError> {
+        if s.is_empty() {
+            return Err(NetcodeError::EmptyBufferIn);
+        }
         let res = postcard::from_bytes(s);
         match res {
             Ok(raw) => Ok(raw),
@@ -35,7 +38,13 @@ impl Message {
     pub fn encode<'a>(&self, buf: &'a mut [u8]) -> Result<&'a mut [u8], NetcodeError> {
         let res = postcard::to_slice(self, buf);
         match res {
-            Ok(raw) => Ok(raw),
+            Ok(raw) => {
+                if raw.is_empty() {
+                    Err(NetcodeError::EmptyBufferOut)
+                } else {
+                    Ok(raw)
+                }
+            }
             Err(err) => Err(NetcodeError::Serialize(err)),
         }
     }

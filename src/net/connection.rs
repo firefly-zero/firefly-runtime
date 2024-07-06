@@ -118,9 +118,6 @@ impl Connection {
         if !self.peers.iter().any(|p| p.addr == Some(addr)) {
             return Err(NetcodeError::UnknownPeer);
         }
-        if raw.is_empty() {
-            return Err(NetcodeError::EmptyBufferIn);
-        }
         let msg = Message::decode(&raw)?;
         match msg {
             Message::Req(req) => self.handle_req(addr, req),
