@@ -8,6 +8,7 @@ pub(crate) enum NetcodeError {
     EmptyBufferOut,
     PeerListFull,
     UnknownPeer,
+    FrameTimeout,
 }
 
 impl From<firefly_device::NetworkError> for NetcodeError {
@@ -18,14 +19,16 @@ impl From<firefly_device::NetworkError> for NetcodeError {
 
 impl fmt::Display for NetcodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use NetcodeError::*;
         match self {
-            NetcodeError::Serialize(err) => write!(f, "serialization error: {err}"),
-            NetcodeError::Deserialize(err) => write!(f, "deserialization error: {err}"),
-            NetcodeError::Network(err) => write!(f, "network error: {err}"),
-            NetcodeError::PeerListFull => write!(f, "cannot connect more devices"),
-            NetcodeError::EmptyBufferIn => write!(f, "received empty message"),
-            NetcodeError::EmptyBufferOut => write!(f, "serializer produced empty message"),
-            NetcodeError::UnknownPeer => write!(f, "received message from unknown peer"),
+            Serialize(err) => write!(f, "serialization error: {err}"),
+            Deserialize(err) => write!(f, "deserialization error: {err}"),
+            Network(err) => write!(f, "network error: {err}"),
+            PeerListFull => write!(f, "cannot connect more devices"),
+            EmptyBufferIn => write!(f, "received empty message"),
+            EmptyBufferOut => write!(f, "serializer produced empty message"),
+            UnknownPeer => write!(f, "received message from unknown peer"),
+            FrameTimeout => write!(f, "timed out waiting for frame state"),
         }
     }
 }

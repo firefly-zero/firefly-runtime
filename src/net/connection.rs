@@ -87,6 +87,7 @@ impl Connection {
             net: self.net,
             last_sync: None,
             frame: 0,
+            last_advance: None,
         }
     }
 

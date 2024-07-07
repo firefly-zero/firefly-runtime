@@ -181,7 +181,12 @@ impl State {
         let frame_state = self.frame_state();
         syncer.advance(&self.device, frame_state);
         while !syncer.ready() {
-            syncer.update(&self.device);
+            let res = syncer.update(&self.device);
+            if let Err(err) = res {
+                self.device.log_error("netcode", err);
+                self.exit = true;
+                return NetHandler::None;
+            }
         }
         NetHandler::FrameSyncer(syncer)
     }

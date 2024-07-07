@@ -3,6 +3,7 @@ use super::*;
 use firefly_device::*;
 
 const SYNC_EVERY: Duration = Duration::from_ms(1);
+const FRAME_TIMEOUT: Duration = Duration::from_ms(100);
 const MAX_PEERS: usize = 8;
 const MSG_SIZE: usize = 64;
 type Addr = <NetworkImpl as Network>::Addr;
@@ -18,6 +19,7 @@ pub(crate) struct FrameSyncer {
     pub frame: u32,
     pub peers: heapless::Vec<FSPeer, MAX_PEERS>,
     pub(super) last_sync: Option<Instant>,
+    pub(super) last_advance: Option<Instant>,
     pub(super) net: NetworkImpl,
 }
 
@@ -33,11 +35,16 @@ impl FrameSyncer {
         true
     }
 
-    pub fn update(&mut self, device: &DeviceImpl) {
+    pub fn update(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
+        let now = device.now();
+        if now - self.last_advance.unwrap() > FRAME_TIMEOUT {
+            return Err(NetcodeError::FrameTimeout);
+        }
         let res = self.update_inner(device);
         if let Err(err) = res {
             device.log_error("netcode", err);
         }
+        Ok(())
     }
 
     pub fn advance(&mut self, device: &DeviceImpl, mut state: FrameState) {
@@ -49,6 +56,7 @@ impl FrameSyncer {
                 peer.states.insert_current(state);
             }
         }
+        self.last_advance = Some(device.now());
         let msg = Message::Resp(Resp::State(state));
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = match msg.encode(&mut buf) {
