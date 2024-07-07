@@ -35,9 +35,9 @@ impl Buttons {
     fn new(input: &Option<InputState>) -> Self {
         match input {
             Some(input) => Self {
-                a: input.buttons[0],
-                b: input.buttons[1],
-                any: input.buttons.iter().any(|x| *x),
+                a: input.a(),
+                b: input.b(),
+                any: input.buttons != 0,
             },
             None => Self {
                 a: false,

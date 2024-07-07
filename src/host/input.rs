@@ -24,11 +24,7 @@ pub(crate) fn read_buttons(mut caller: C, _player: u32) -> u32 {
     let Some(input) = &state.input else {
         return 0;
     };
-    let mut res: u32 = 0;
-    for button in input.buttons.into_iter().rev() {
-        res = (res << 1) | u32::from(button);
-    }
-    res
+    u32::from(input.buttons)
 }
 
 fn get_input(state: &mut State, player: u32) -> Option<InputState> {
@@ -45,8 +41,8 @@ fn get_input(state: &mut State, player: u32) -> Option<InputState> {
     };
     let input = frame_state.input;
     let input = InputState {
-        pad: input.pad.map(|p| Pad { x: p.0, y: p.1 }),
-        buttons: [false; 5],
+        pad: input.pad.map(Into::into),
+        buttons: frame_state.input.buttons,
     };
     Some(input)
 }

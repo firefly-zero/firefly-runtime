@@ -95,12 +95,12 @@ impl Menu {
             Some(input) => input,
             None => &def,
         };
-        self.handle_menu_button(input.buttons[4]);
+        self.handle_menu_button(input.menu());
         if !self.active {
             return None;
         }
         self.handle_pad(input);
-        self.handle_select(input.buttons[0])
+        self.handle_select(input.a())
     }
 
     fn handle_menu_button(&mut self, pressed: bool) {

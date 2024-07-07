@@ -229,15 +229,11 @@ impl State {
 
     fn frame_state(&self) -> FrameState {
         let input = self.input.clone().unwrap_or_default();
-        let mut buttons = 0u8;
-        for button in input.buttons.into_iter().rev() {
-            buttons = (buttons << 1) | u8::from(button);
-        }
         FrameState {
             frame: 0,
             input: Input {
-                pad: input.pad.map(|p| (p.x, p.y)),
-                buttons,
+                pad: input.pad.map(Into::into),
+                buttons: input.buttons,
             },
         }
     }
