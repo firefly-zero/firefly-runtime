@@ -25,7 +25,7 @@ impl FrameSyncer {
     pub fn ready(&self) -> bool {
         // TODO: return timeout error if waiting for too long.
         for peer in &self.peers {
-            let state = peer.states.get(self.frame);
+            let state = peer.states.get_current();
             if state.is_none() {
                 return false;
             }
@@ -46,7 +46,7 @@ impl FrameSyncer {
         for peer in &mut self.peers {
             peer.states.advance();
             if peer.addr.is_none() {
-                peer.states.insert(self.frame, state);
+                peer.states.insert_current(state);
             }
         }
         let msg = Message::Resp(Resp::State(state));
@@ -91,7 +91,7 @@ impl FrameSyncer {
             let Some(addr) = peer.addr else {
                 continue;
             };
-            let state = peer.states.get(self.frame);
+            let state = peer.states.get_current();
             if state.is_none() {
                 self.net.send(addr, raw)?;
             }

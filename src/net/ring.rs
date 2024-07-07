@@ -27,6 +27,11 @@ impl<T: Copy> RingBuf<T> {
         self.frame += 1
     }
 
+    /// Set the value for the current frame.
+    pub fn insert_current(&mut self, val: T) {
+        self.insert(self.frame, val)
+    }
+
     /// Set the value for the given frame.
     ///
     /// Frames inserted too far ahead or behind the current frame will be discarded.

@@ -178,11 +178,11 @@ impl State {
     }
 
     fn update_syncer(&mut self, mut syncer: FrameSyncer) -> NetHandler {
+        let frame_state = self.frame_state();
+        syncer.advance(&self.device, frame_state);
         while !syncer.ready() {
             syncer.update(&self.device);
         }
-        let frame_state = self.frame_state();
-        syncer.advance(&self.device, frame_state);
         NetHandler::FrameSyncer(syncer)
     }
 
