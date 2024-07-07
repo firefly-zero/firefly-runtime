@@ -62,11 +62,12 @@ pub(crate) struct State {
 
 impl State {
     pub(crate) fn new(id: FullID, device: DeviceImpl, net_handler: NetHandler) -> Self {
+        let offline = matches!(net_handler, NetHandler::None);
         Self {
             device,
             id,
             frame: FrameBuffer::new(),
-            menu: Menu::new(),
+            menu: Menu::new(offline),
             seed: 0,
             memory: None,
             next: None,

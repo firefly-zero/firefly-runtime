@@ -63,9 +63,11 @@ pub(crate) struct Menu {
 }
 
 impl Menu {
-    pub fn new() -> Self {
+    pub fn new(offline: bool) -> Self {
         let mut items = heapless::Vec::new();
-        _ = items.push(MenuItem::Connect);
+        if offline {
+            _ = items.push(MenuItem::Connect);
+        }
         _ = items.push(MenuItem::ScreenShot);
         _ = items.push(MenuItem::Restart);
         _ = items.push(MenuItem::Quit);
