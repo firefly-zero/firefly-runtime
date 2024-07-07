@@ -63,6 +63,7 @@ pub(crate) enum HostError {
     Id(firefly_meta::ValidationError),
     TextUtf8,
     NoneColor,
+    UnknownPeer(u32),
 }
 
 impl fmt::Display for HostError {
@@ -83,6 +84,7 @@ impl fmt::Display for HostError {
             HostError::Id(err) => write!(f, "bad ID: {err}"),
             HostError::TextUtf8 => write!(f, "text is not valid UTF-8"),
             HostError::NoneColor => write!(f, "color is None (0)"),
+            HostError::UnknownPeer(p) => write!(f, "player {p} is not connected"),
         }
     }
 }

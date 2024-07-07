@@ -21,3 +21,4 @@ pub use config::{FullID, RuntimeConfig};
 pub use error::Error;
 pub use frame_buffer::{HEIGHT, WIDTH};
 pub use runtime::Runtime;
+pub use state::NetHandler;

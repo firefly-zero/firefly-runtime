@@ -18,7 +18,6 @@ where
     pub id: Option<FullID>,
     pub device: DeviceImpl,
     pub display: D,
-    #[allow(private_interfaces)]
     pub net_handler: NetHandler,
 }
 

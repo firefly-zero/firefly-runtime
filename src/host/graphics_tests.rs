@@ -1,7 +1,7 @@
 use crate::config::FullID;
 use crate::frame_buffer::FrameBuffer;
 use crate::host::graphics::*;
-use crate::state::State;
+use crate::state::{NetHandler, State};
 use embedded_graphics::draw_target::DrawTargetExt;
 use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mock_display::MockDisplay;
@@ -232,6 +232,6 @@ fn make_store() -> wasmi::Store<State> {
         "test-author".try_into().unwrap(),
         "test-app".try_into().unwrap(),
     );
-    let state = State::new(id, device);
+    let state = State::new(id, device, NetHandler::None);
     wasmi::Store::new(&engine, state)
 }

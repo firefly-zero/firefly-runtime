@@ -40,6 +40,11 @@ impl<T: Copy> RingBuf<T> {
         self.data[index] = Some((frame, val));
     }
 
+    /// Get the value for the current frame.
+    pub fn get_current(&self) -> Option<T> {
+        self.get(self.frame)
+    }
+
     /// Get the value for the given frame.
     ///
     /// The given frame must be not too far ahead or behind the current frame
