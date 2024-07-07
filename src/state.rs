@@ -3,7 +3,8 @@ use crate::error::Stats;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
 use crate::net::{
-    ConnectScene, ConnectStatus, Connection, ConnectionStatus, Connector, FrameSyncer, MyInfo,
+    ConnectScene, ConnectStatus, Connection, ConnectionStatus, Connector, FrameState, FrameSyncer,
+    Input, MyInfo,
 };
 use crate::png::save_png;
 use core::cell::Cell;
@@ -174,7 +175,11 @@ impl State {
     }
 
     fn update_syncer(&mut self, mut syncer: FrameSyncer) -> NetHandler {
-        syncer.update(&self.device);
+        while !syncer.ready() {
+            syncer.update(&self.device);
+        }
+        let frame_state = self.frame_state();
+        syncer.advance(&self.device, frame_state);
         NetHandler::FrameSyncer(syncer)
     }
 
@@ -211,6 +216,21 @@ impl State {
         buf.truncate(size);
         let name = heapless::String::<16>::from_utf8(buf).unwrap();
         Some(name)
+    }
+
+    fn frame_state(&self) -> FrameState {
+        let input = self.input.clone().unwrap_or_default();
+        let mut buttons = 0u8;
+        for button in input.buttons.into_iter().rev() {
+            buttons = (buttons << 1) | u8::from(button);
+        }
+        FrameState {
+            frame: 0,
+            input: Input {
+                pad: input.pad.map(|p| (p.x, p.y)),
+                buttons,
+            },
+        }
     }
 
     /// Log an error/warning occured in the currently executing host function.

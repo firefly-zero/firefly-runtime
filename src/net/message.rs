@@ -98,7 +98,6 @@ pub(crate) struct FrameState {
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub(crate) struct Input {
-    x: i16,
-    y: i16,
-    buttons: u8,
+    pub pad: Option<(i16, i16)>,
+    pub buttons: u8,
 }

@@ -40,8 +40,9 @@ impl FrameSyncer {
         }
     }
 
-    pub fn advance(&mut self, device: &DeviceImpl, state: FrameState) {
+    pub fn advance(&mut self, device: &DeviceImpl, mut state: FrameState) {
         self.frame += 1;
+        state.frame = self.frame;
         for peer in &mut self.peers {
             peer.states.advance();
             if peer.addr.is_none() {
