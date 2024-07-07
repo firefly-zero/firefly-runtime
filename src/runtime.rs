@@ -10,7 +10,7 @@ use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
 use embedded_io::Read;
 use firefly_device::*;
-use firefly_meta::ShortMeta;
+use firefly_meta::{Meta, ShortMeta};
 
 /// Default frames per second.
 const FPS: u32 = 60;
@@ -52,6 +52,26 @@ where
         };
         id.validate()?;
 
+        let path = &["roms", id.author(), id.app(), "_meta"];
+        let Some(mut file) = config.device.open_file(path) else {
+            return Err(Error::FileNotFound(path.join("/")));
+        };
+        let bytes = &mut [0; 64];
+        let res = file.read(bytes);
+        if res.is_err() {
+            return Err(Error::ReadMeta);
+        }
+        let meta = match Meta::decode(bytes) {
+            Ok(meta) => meta,
+            Err(err) => return Err(Error::DecodeMeta(err)),
+        };
+        if meta.author_id != id.author() {
+            return Err(Error::AuthorIDMismatch);
+        }
+        if meta.app_id != id.app() {
+            return Err(Error::AppIDMismatch);
+        }
+
         let path = &["roms", id.author(), id.app(), "_bin"];
         let Some(stream) = config.device.open_file(path) else {
             return Err(Error::FileNotFound(path.join("/")));
@@ -61,7 +81,7 @@ where
         let state = State::new(id, config.device, config.net_handler);
         let mut store = wasmi::Store::<State>::new(&engine, state);
         let mut linker = wasmi::Linker::<State>::new(&engine);
-        link(&mut linker)?;
+        link(&mut linker, meta.sudo)?;
         let instance_pre = linker.instantiate(&mut store, &module)?;
         let instance = instance_pre.start(&mut store)?;
         let runtime = Self {

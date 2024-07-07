@@ -2,7 +2,7 @@ use crate::host::*;
 use crate::state::State;
 
 /// Register all host-defined functions in the linker.
-pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error> {
+pub(crate) fn link(linker: &mut wasmi::Linker<State>, sudo: bool) -> Result<(), wasmi::Error> {
     linker.func_wrap("graphics", "clear_screen", graphics::clear_screen)?;
     linker.func_wrap("graphics", "set_color", graphics::set_color)?;
     linker.func_wrap("graphics", "draw_point", graphics::draw_point)?;
@@ -41,11 +41,13 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error
     linker.func_wrap("misc", "get_random", misc::get_random)?;
     linker.func_wrap("misc", "quit", misc::quit)?;
 
-    linker.func_wrap("sudo", "list_dirs", sudo::list_dirs)?;
-    linker.func_wrap("sudo", "list_dirs_buf_size", sudo::list_dirs_buf_size)?;
-    linker.func_wrap("sudo", "get_file_size", sudo::get_file_size)?;
-    linker.func_wrap("sudo", "load_file", sudo::load_file)?;
-    linker.func_wrap("sudo", "run_app", sudo::run_app)?;
+    if sudo {
+        linker.func_wrap("sudo", "list_dirs", sudo::list_dirs)?;
+        linker.func_wrap("sudo", "list_dirs_buf_size", sudo::list_dirs_buf_size)?;
+        linker.func_wrap("sudo", "get_file_size", sudo::get_file_size)?;
+        linker.func_wrap("sudo", "load_file", sudo::load_file)?;
+        linker.func_wrap("sudo", "run_app", sudo::run_app)?;
+    }
 
     // WASI preview 1
     const M: &str = "wasi_snapshot_preview1";
@@ -70,6 +72,6 @@ mod tests {
     fn smoke_test_linking() {
         let engine = wasmi::Engine::default();
         let mut linker = <wasmi::Linker<State>>::new(&engine);
-        link(&mut linker).unwrap();
+        link(&mut linker, true).unwrap();
     }
 }

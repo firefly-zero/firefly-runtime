@@ -8,6 +8,10 @@ pub enum Error {
     InvalidAuthorID(firefly_meta::ValidationError),
     InvalidAppID(firefly_meta::ValidationError),
     CannotDisplay,
+    ReadMeta,
+    AuthorIDMismatch,
+    AppIDMismatch,
+    DecodeMeta(postcard::Error),
 }
 
 impl fmt::Display for Error {
@@ -20,6 +24,10 @@ impl fmt::Display for Error {
             Error::InvalidAuthorID(err) => write!(f, "invalid author ID: {err}"),
             Error::InvalidAppID(err) => write!(f, "invalid app ID: {err}"),
             Error::CannotDisplay => write!(f, "failed to draw on the display"),
+            Error::ReadMeta => write!(f, "cannot read _meta"),
+            Error::AuthorIDMismatch => write!(f, "author ID in meta and in path don't match"),
+            Error::AppIDMismatch => write!(f, "app ID in meta and in path don't match"),
+            Error::DecodeMeta(err) => write!(f, "cannot decode _meta: {err}"),
         }
     }
 }
