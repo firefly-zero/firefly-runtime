@@ -43,6 +43,7 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>, sudo: bool) -> Result<(), 
     linker.func_wrap("misc", "log_error", misc::log_error)?;
     linker.func_wrap("misc", "set_seed", misc::set_seed)?;
     linker.func_wrap("misc", "get_random", misc::get_random)?;
+    linker.func_wrap("misc", "restart", misc::restart)?;
     linker.func_wrap("misc", "quit", misc::quit)?;
 
     if sudo {

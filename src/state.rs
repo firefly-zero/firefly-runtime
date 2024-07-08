@@ -82,6 +82,7 @@ impl State {
         }
     }
 
+    /// Set ID of the next app to run and close the currently running one.
     pub(crate) fn set_next(&mut self, app: FullID) {
         match self.net_handler.get_mut() {
             NetHandler::None => {

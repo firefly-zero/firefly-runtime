@@ -82,3 +82,10 @@ pub(crate) fn quit(mut caller: C) {
     let state = caller.data_mut();
     state.exit = true;
 }
+
+pub(crate) fn restart(mut caller: C) {
+    let state = caller.data_mut();
+    state.called = "misc.restart";
+    let state = caller.data_mut();
+    state.set_next(state.id.clone());
+}
