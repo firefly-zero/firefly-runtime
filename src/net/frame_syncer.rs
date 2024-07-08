@@ -2,7 +2,7 @@ use super::ring::RingBuf;
 use super::*;
 use firefly_device::*;
 
-const SYNC_EVERY: Duration = Duration::from_ms(1);
+const SYNC_EVERY: Duration = Duration::from_ms(5);
 const FRAME_TIMEOUT: Duration = Duration::from_ms(100);
 const MAX_PEERS: usize = 8;
 const MSG_SIZE: usize = 64;
@@ -24,8 +24,8 @@ pub(crate) struct FrameSyncer {
 }
 
 impl FrameSyncer {
+    /// Check if we have the state of the current frame for all connected peers.
     pub fn ready(&self) -> bool {
-        // TODO: return timeout error if waiting for too long.
         for peer in &self.peers {
             let state = peer.states.get_current();
             if state.is_none() {
@@ -47,8 +47,13 @@ impl FrameSyncer {
         Ok(())
     }
 
+    /// Go to the next frame and set that frame's state.
+    ///
+    /// It will also broadcast the new frame state to all connected peers.
     pub fn advance(&mut self, device: &DeviceImpl, mut state: FrameState) {
         self.frame += 1;
+
+        // Set the frame state for the local peer.
         state.frame = self.frame;
         for peer in &mut self.peers {
             peer.states.advance();
@@ -57,6 +62,8 @@ impl FrameSyncer {
             }
         }
         self.last_advance = Some(device.now());
+
+        // Send the new frame state to all peers.
         let msg = Message::Resp(Resp::State(state));
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = match msg.encode(&mut buf) {
@@ -85,6 +92,8 @@ impl FrameSyncer {
         Ok(())
     }
 
+    /// Get every connected peer with unknown state for the current frame
+    /// and send them a request for that state.
     fn sync(&mut self, now: Instant) -> Result<(), NetcodeError> {
         if let Some(prev) = self.last_sync {
             if now - prev < SYNC_EVERY {
@@ -123,6 +132,9 @@ impl FrameSyncer {
     }
 
     fn handle_req(&mut self, addr: Addr, req: Req) -> Result<(), NetcodeError> {
+        // A peer requested a state for a specific frame.
+        // Send them the state if available.
+        // If not, send nothing, let them timeout.
         if let Req::State(frame) = req {
             let me = self.get_me();
             let state = me.states.get(frame);
@@ -137,6 +149,8 @@ impl FrameSyncer {
     }
 
     fn handle_resp(&mut self, addr: Addr, resp: Resp) -> Result<(), NetcodeError> {
+        // A peer reported their state for a frame.
+        // Store it in the ring of states.
         if let Resp::State(state) = resp {
             for peer in self.peers.iter_mut() {
                 if peer.addr == Some(addr) {
@@ -147,6 +161,9 @@ impl FrameSyncer {
         Ok(())
     }
 
+    /// Get a reference to the peer representing the local device.
+    ///
+    /// There must be exactly one such peer in the list of peers.
     fn get_me(&self) -> &FSPeer {
         for peer in &self.peers {
             if peer.addr.is_none() {
