@@ -32,10 +32,7 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>, sudo: bool) -> Result<(), 
     linker.func_wrap("fs", "dump_file", fs::dump_file)?;
     linker.func_wrap("fs", "remove_file", fs::remove_file)?;
 
-    linker.func_wrap("net", "is_online", net::is_online)?;
-    // backward compat:
-    linker.func_wrap("net", "get_player_id", net::get_peer_id)?;
-    linker.func_wrap("net", "get_peer_id", net::get_peer_id)?;
+    linker.func_wrap("net", "get_me", net::get_me)?;
     linker.func_wrap("net", "get_peer_count", net::get_peer_count)?;
     linker.func_wrap("net", "get_peers", net::get_peers)?;
 

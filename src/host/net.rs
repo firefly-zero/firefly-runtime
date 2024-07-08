@@ -2,19 +2,10 @@ use crate::state::{NetHandler, State};
 
 type C<'a> = wasmi::Caller<'a, State>;
 
-/// Check if netplay is active.
-pub(crate) fn is_online(mut caller: C) -> u32 {
-    let state = caller.data_mut();
-    state.called = "net.is_online";
-    let handler = state.net_handler.get_mut();
-    let offline = matches!(handler, NetHandler::None);
-    u32::from(!offline)
-}
-
 /// Get the index of the local peer.
-pub(crate) fn get_peer_id(mut caller: C) -> u32 {
+pub(crate) fn get_me(mut caller: C) -> u32 {
     let state = caller.data_mut();
-    state.called = "net.get_peer_id";
+    state.called = "net.get_me";
     let handler = state.net_handler.get_mut();
     let NetHandler::FrameSyncer(syncer) = handler else {
         return 0;
@@ -32,10 +23,13 @@ pub(crate) fn get_peer_count(mut caller: C) -> u32 {
     let state = caller.data_mut();
     state.called = "net.get_peer_count";
     let handler = state.net_handler.get_mut();
-    let NetHandler::FrameSyncer(syncer) = handler else {
-        return 0;
+    let count = match handler {
+        NetHandler::None => 1,
+        NetHandler::Connector(c) => c.peer_infos().len() + 1,
+        NetHandler::Connection(c) => c.peers.len(),
+        NetHandler::FrameSyncer(c) => c.peers.len(),
     };
-    syncer.peers.len() as u32
+    count as u32
 }
 
 /// Get the map of peers that are currently online.
