@@ -2,7 +2,28 @@ use crate::config::FullID;
 use crate::host::misc::*;
 use crate::state::{NetHandler, State};
 use firefly_device::DeviceImpl;
+use heapless::String;
 use std::path::PathBuf;
+
+#[test]
+fn test_log_debug_smoke() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, log_debug);
+    let inputs = wrap_input(&[0, 0]);
+    let mut outputs = Vec::new();
+    func.call(&mut store, &inputs, &mut outputs).unwrap();
+    assert_eq!(outputs.len(), 0);
+}
+
+#[test]
+fn test_log_error_smoke() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, log_error);
+    let inputs = wrap_input(&[0, 0]);
+    let mut outputs = Vec::new();
+    func.call(&mut store, &inputs, &mut outputs).unwrap();
+    assert_eq!(outputs.len(), 0);
+}
 
 #[test]
 fn test_set_seed() {
@@ -32,6 +53,24 @@ fn test_get_random() {
     assert_eq!(state.seed, expected as u32)
 }
 
+#[test]
+fn test_get_name() {
+    let mut store = make_store();
+    let state = store.data_mut();
+    state.set_name(String::try_from("hello").unwrap());
+    let memory = make_memory(&mut store);
+
+    let func = wasmi::Func::wrap(&mut store, get_name);
+    let inputs = wrap_input(&[0, 10]);
+    let mut outputs = wrap_input(&[0]);
+    func.call(&mut store, &inputs, &mut outputs).unwrap();
+
+    assert_eq!(outputs.len(), 1);
+    assert_eq!(outputs[0].i32(), Some(5));
+    let data = memory.data_mut(&mut store);
+    assert_eq!(&data[10..15], b"hello");
+}
+
 fn wrap_input(a: &[i32]) -> Vec<wasmi::Val> {
     let mut res = Vec::new();
     for el in a {
@@ -50,4 +89,17 @@ fn make_store() -> wasmi::Store<State> {
     );
     let state = State::new(id, device, NetHandler::None);
     wasmi::Store::new(&engine, state)
+}
+
+fn make_memory(store: &mut wasmi::Store<State>) -> wasmi::Memory {
+    let memory = make_memory_inner(store);
+    let state = store.data_mut();
+    state.memory = Some(memory);
+    memory
+}
+
+fn make_memory_inner(store: &mut wasmi::Store<State>) -> wasmi::Memory {
+    let limits = wasmi::MemoryType::new(1, Some(1)).unwrap();
+    let memory = wasmi::Memory::new(store, limits).unwrap();
+    memory
 }

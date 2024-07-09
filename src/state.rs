@@ -118,6 +118,11 @@ impl State {
         self.name.as_ref().unwrap()
     }
 
+    #[cfg(test)]
+    pub(crate) fn set_name(&mut self, name: heapless::String<16>) {
+        self.name = Some(name)
+    }
+
     /// Update the state: read inputs, handle system commands.
     pub(crate) fn update(&mut self) -> Option<u8> {
         self.input = self.device.read_input();
