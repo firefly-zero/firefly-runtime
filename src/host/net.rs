@@ -24,7 +24,7 @@ pub(crate) fn get_peers(mut caller: C) -> u32 {
     state.called = "net.get_peers";
     let handler = state.net_handler.get_mut();
     let NetHandler::FrameSyncer(syncer) = handler else {
-        return 0;
+        return 1;
     };
     let mut res = 0u32;
     for _peer in &syncer.peers {
