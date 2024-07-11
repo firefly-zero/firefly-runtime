@@ -7,10 +7,6 @@ type C<'a> = wasmi::Caller<'a, State>;
 pub(crate) fn add_menu_item(mut caller: C, index: u32, name_ptr: u32, name_len: u32) {
     let state = caller.data_mut();
     state.called = "menu.add_menu_item";
-    if index > 4 {
-        return;
-    }
-
     let Some(memory) = state.memory else {
         state.log_error(HostError::MemoryNotFound);
         return;
@@ -33,9 +29,6 @@ pub(crate) fn add_menu_item(mut caller: C, index: u32, name_ptr: u32, name_len: 
 pub(crate) fn remove_menu_item(mut caller: C, index: u32) {
     let state = caller.data_mut();
     state.called = "menu.remove_menu_item";
-    if index > 4 {
-        return;
-    }
     state.menu.remove(index as u8);
 }
 
