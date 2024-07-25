@@ -1,19 +1,34 @@
 pub(crate) struct StatsTracker {
     /// Fuel spendings for the `update` callback.
-    update_fuel: CallbackFuel,
+    pub update_fuel: CallbackFuel,
 
     /// Fuel spendings for the `render` callback.
-    render_fuel: CallbackFuel,
+    pub render_fuel: CallbackFuel,
 
     /// Time when the CPU values were synced for the last time.
-    synced: firefly_device::Instant,
+    pub synced: firefly_device::Instant,
 
-    /// Time spent sleeping
-    sleeps: firefly_device::Duration,
+    /// Time spent sleeping.
+    pub delays: firefly_device::Duration,
+
+    /// Time lagging behind desired FPS because of updates.
+    pub lags: firefly_device::Duration,
+}
+
+impl StatsTracker {
+    fn as_cpu(&mut self, now: firefly_device::Instant) -> firefly_types::serial::CPU {
+        let total = now - self.synced;
+        self.synced = now;
+        firefly_types::serial::CPU {
+            busy_ns: self.lags.ns() + (total.ns() - self.delays.ns()),
+            lag_ns: self.lags.ns(),
+            total_ns: total.ns(),
+        }
+    }
 }
 
 #[derive(Default)]
-struct CallbackFuel {
+pub(crate) struct CallbackFuel {
     min: Option<u32>,
     max: u32,
     sum: u32,
@@ -23,7 +38,11 @@ struct CallbackFuel {
 }
 
 impl CallbackFuel {
-    fn add(&mut self, v: u32) {
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
+
+    pub fn add(&mut self, v: u32) {
         self.min = match self.min {
             Some(min) => Some(min.min(v)),
             None => Some(v),

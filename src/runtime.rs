@@ -1,10 +1,10 @@
 use crate::color::FromRGB;
-use crate::config::RuntimeConfig;
+use crate::config::{FullID, RuntimeConfig};
 use crate::error::Error;
 use crate::frame_buffer::HEIGHT;
 use crate::linking::link;
 use crate::state::{NetHandler, State};
-use crate::FullID;
+use crate::stats::StatsTracker;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
@@ -30,9 +30,9 @@ where
 
     /// Time to render a single frame to match the expected FPS.
     per_frame: Duration,
-
     /// The last time when the frame was updated.
     prev_time: Instant,
+    stats: Option<StatsTracker>,
 }
 
 impl<D, C> Runtime<D, C>
@@ -92,6 +92,7 @@ where
             render: None,
             handle_menu: None,
             render_line: None,
+            stats: None,
             per_frame: Duration::from_fps(FPS),
             prev_time: now,
         };
@@ -188,7 +189,14 @@ where
         let elapsed = now - self.prev_time;
         if elapsed < self.per_frame {
             let delay = self.per_frame - elapsed;
+            if let Some(stats) = &mut self.stats {
+                stats.delays += delay;
+            }
             state.device.delay(delay);
+        } else {
+            if let Some(stats) = &mut self.stats {
+                stats.lags += elapsed - self.per_frame;
+            }
         }
         self.prev_time = state.device.now();
     }
