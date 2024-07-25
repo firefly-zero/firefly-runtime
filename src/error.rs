@@ -12,6 +12,7 @@ pub enum Error {
     AuthorIDMismatch,
     AppIDMismatch,
     DecodeMeta(postcard::Error),
+    Serial(firefly_device::NetworkError),
 }
 
 impl fmt::Display for Error {
@@ -28,6 +29,7 @@ impl fmt::Display for Error {
             Error::AuthorIDMismatch => write!(f, "author ID in meta and in path don't match"),
             Error::AppIDMismatch => write!(f, "app ID in meta and in path don't match"),
             Error::DecodeMeta(err) => write!(f, "cannot decode _meta: {err}"),
+            Error::Serial(err) => write!(f, "serial port error: {err}"),
         }
     }
 }
@@ -69,7 +71,6 @@ pub(crate) enum HostError {
     MenuItemUtf8,
     IdUtf8,
     Id(firefly_types::ValidationError),
-    Serial(firefly_device::NetworkError),
     TextUtf8,
     NoneColor,
     UnknownPeer(u32),
@@ -91,7 +92,6 @@ impl fmt::Display for HostError {
             HostError::MenuItemUtf8 => write!(f, "menu item name is not valid UTF-8"),
             HostError::IdUtf8 => write!(f, "ID is not valid UTF-8"),
             HostError::Id(err) => write!(f, "bad ID: {err}"),
-            HostError::Serial(err) => write!(f, "serial port error: {err}"),
             HostError::TextUtf8 => write!(f, "text is not valid UTF-8"),
             HostError::NoneColor => write!(f, "color is None (0)"),
             HostError::UnknownPeer(p) => write!(f, "peer {p} is not connected"),

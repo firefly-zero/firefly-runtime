@@ -32,7 +32,9 @@ where
     per_frame: Duration,
     /// The last time when the frame was updated.
     prev_time: Instant,
+
     stats: Option<StatsTracker>,
+    serial: SerialImpl,
 }
 
 impl<D, C> Runtime<D, C>
@@ -72,18 +74,27 @@ where
             return Err(Error::AppIDMismatch);
         }
 
+        let mut serial = config.device.serial();
+        let res = serial.start();
+        if let Err(err) = res {
+            return Err(Error::Serial(err));
+        }
+
         let path = &["roms", id.author(), id.app(), "_bin"];
         let Some(stream) = config.device.open_file(path) else {
             return Err(Error::FileNotFound(path.join("/")));
         };
-        let module = wasmi::Module::new_streaming(&engine, stream)?;
         let now = config.device.now();
         let state = State::new(id, config.device, config.net_handler);
         let mut store = wasmi::Store::<State>::new(&engine, state);
-        let mut linker = wasmi::Linker::<State>::new(&engine);
-        link(&mut linker, meta.sudo)?;
-        let instance_pre = linker.instantiate(&mut store, &module)?;
-        let instance = instance_pre.start(&mut store)?;
+        let instance = {
+            let module = wasmi::Module::new_streaming(&engine, stream)?;
+            let mut linker = wasmi::Linker::<State>::new(&engine);
+            link(&mut linker, meta.sudo)?;
+            let instance_pre = linker.instantiate(&mut store, &module)?;
+            instance_pre.start(&mut store)?
+        };
+
         let runtime = Self {
             display: config.display,
             instance,
@@ -95,6 +106,7 @@ where
             stats: None,
             per_frame: Duration::from_fps(FPS),
             prev_time: now,
+            serial,
         };
         Ok(runtime)
     }
@@ -139,6 +151,7 @@ where
     /// If there is not enough time passed since the last update,
     /// the update will be delayed to keep the expected frame rate.
     pub fn update(&mut self) -> Result<bool, Error> {
+        self.handle_serial()?;
         let state = self.store.data_mut();
         let menu_index = state.update();
 
@@ -257,6 +270,27 @@ where
         let memory = self.instance.get_memory(&self.store, "memory");
         let state = self.store.data_mut();
         state.memory = memory;
+    }
+
+    fn handle_serial(&mut self) -> Result<(), Error> {
+        use firefly_types::serial::Request;
+        let maybe_msg = self.serial.recv().ok().unwrap();
+        if let Some(raw_msg) = maybe_msg {
+            let req = Request::decode(&raw_msg).unwrap();
+            match req {
+                Request::Cheat(_, _) => todo!(),
+                Request::Stats(stats) => {
+                    let now = self.device_mut().now();
+                    if stats && self.stats.is_none() {
+                        self.stats = Some(StatsTracker::new(now));
+                    };
+                    if !stats && self.stats.is_some() {
+                        self.stats = None;
+                    };
+                }
+            }
+        }
+        Ok(())
     }
 
     fn call_callback(

@@ -1,4 +1,9 @@
+use firefly_device::{Duration, Instant};
+use firefly_types::serial;
+
 pub(crate) struct StatsTracker {
+    pub frame: u32,
+
     /// Fuel spendings for the `update` callback.
     pub update_fuel: CallbackFuel,
 
@@ -6,20 +11,53 @@ pub(crate) struct StatsTracker {
     pub render_fuel: CallbackFuel,
 
     /// Time when the CPU values were synced for the last time.
-    pub synced: firefly_device::Instant,
+    pub synced: Instant,
 
     /// Time spent sleeping.
-    pub delays: firefly_device::Duration,
+    pub delays: Duration,
 
     /// Time lagging behind desired FPS because of updates.
-    pub lags: firefly_device::Duration,
+    pub lags: Duration,
 }
 
 impl StatsTracker {
-    fn as_cpu(&mut self, now: firefly_device::Instant) -> firefly_types::serial::CPU {
+    pub fn new(now: Instant) -> Self {
+        Self {
+            frame: 0,
+            update_fuel: CallbackFuel::default(),
+            render_fuel: CallbackFuel::default(),
+            synced: now,
+            delays: Duration::from_ms(0),
+            lags: Duration::from_ms(0),
+        }
+    }
+
+    pub fn as_message(&mut self, now: Instant) -> Option<serial::Response> {
+        self.frame += 1;
+        if self.frame < 120 {
+            return None;
+        };
+        let message = match self.frame % 120 {
+            3 => serial::Response::CPU(self.as_cpu(now)),
+            5 => {
+                let fuel = self.update_fuel.as_fuel();
+                self.update_fuel.reset();
+                serial::Response::Fuel(serial::Callback::Update, fuel)
+            }
+            7 => {
+                let fuel = self.render_fuel.as_fuel();
+                self.render_fuel.reset();
+                serial::Response::Fuel(serial::Callback::Render, fuel)
+            }
+            _ => return None,
+        };
+        Some(message)
+    }
+
+    fn as_cpu(&mut self, now: Instant) -> serial::CPU {
         let total = now - self.synced;
         self.synced = now;
-        firefly_types::serial::CPU {
+        serial::CPU {
             busy_ns: self.lags.ns() + (total.ns() - self.delays.ns()),
             lag_ns: self.lags.ns(),
             total_ns: total.ns(),
@@ -58,12 +96,11 @@ impl CallbackFuel {
         let delta2 = v - self.mean;
         self.m2 += delta * delta2
     }
-}
 
-impl From<CallbackFuel> for firefly_types::serial::Fuel {
-    fn from(v: CallbackFuel) -> Self {
+    fn as_fuel(&self) -> serial::Fuel {
+        let v = self;
         if v.count == 0 {
-            return Self {
+            return serial::Fuel {
                 min: 0,
                 max: 0,
                 mean: 0,
@@ -72,7 +109,7 @@ impl From<CallbackFuel> for firefly_types::serial::Fuel {
             };
         }
         let m2 = if v.count <= 1 { 0.0 } else { v.m2 };
-        Self {
+        serial::Fuel {
             min: v.min.unwrap_or_default(),
             max: v.max,
             mean: v.sum / v.count,
@@ -92,7 +129,7 @@ mod tests {
         for i in vec![2, 4, 4, 4, 5, 5, 7, 9] {
             fuel.add(i);
         }
-        let fuel: firefly_types::serial::Fuel = fuel.into();
+        let fuel: serial::Fuel = fuel.as_fuel();
         assert_eq!(fuel.calls, 8);
         assert_eq!(fuel.min, 2);
         assert_eq!(fuel.max, 9);
