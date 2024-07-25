@@ -275,11 +275,34 @@ where
         state.memory = memory;
     }
 
+    /// Handle requests and responses on the USB serial port.
     fn handle_serial(&mut self) -> Result<(), Error> {
         let maybe_msg = self.serial.recv().ok().unwrap();
         if let Some(raw_msg) = maybe_msg {
             let req = serial::Request::decode(&raw_msg).unwrap();
             self.handle_serial_request(req)?
+        }
+        self.send_stats()?;
+        Ok(())
+    }
+
+    /// Send runtime stats to the serial port.
+    fn send_stats(&mut self) -> Result<(), Error> {
+        let Some(stats) = &mut self.stats else {
+            return Ok(());
+        };
+        let now = self.store.data().device.now();
+        let Some(resp) = stats.as_message(now) else {
+            return Ok(());
+        };
+        let mut buf = alloc::vec![0u8; 32];
+        let encoded = match resp.encode(&mut buf) {
+            Ok(encoded) => encoded,
+            Err(err) => return Err(Error::SerialEncode(err)),
+        };
+        let res = self.serial.send(encoded);
+        if let Err(err) = res {
+            return Err(Error::SerialSend(err));
         }
         Ok(())
     }
