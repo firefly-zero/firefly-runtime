@@ -12,7 +12,10 @@ pub enum Error {
     AuthorIDMismatch,
     AppIDMismatch,
     DecodeMeta(postcard::Error),
-    Serial(firefly_device::NetworkError),
+    SerialEncode(postcard::Error),
+    SerialStart(firefly_device::NetworkError),
+    SerialSend(firefly_device::NetworkError),
+    CheatUndefined,
 }
 
 impl fmt::Display for Error {
@@ -29,7 +32,10 @@ impl fmt::Display for Error {
             Error::AuthorIDMismatch => write!(f, "author ID in meta and in path don't match"),
             Error::AppIDMismatch => write!(f, "app ID in meta and in path don't match"),
             Error::DecodeMeta(err) => write!(f, "cannot decode _meta: {err}"),
-            Error::Serial(err) => write!(f, "serial port error: {err}"),
+            Error::SerialEncode(err) => write!(f, "cannot encode response for serial: {err}"),
+            Error::SerialStart(err) => write!(f, "cannot connect to serial port: {err}"),
+            Error::SerialSend(err) => write!(f, "cannot send into serial port: {err}"),
+            Error::CheatUndefined => write!(f, "the app doesn't have cheat callback"),
         }
     }
 }
@@ -40,7 +46,7 @@ impl From<wasmi::Error> for Error {
     }
 }
 
-/// Runtime stats provided on guset failure that should help to debug the failure cause.
+/// Runtime stats provided on guest failure that should help to debug the failure cause.
 pub struct Stats {
     pub(crate) last_called: &'static str,
 }

@@ -10,7 +10,7 @@ use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
 use embedded_io::Read;
 use firefly_device::*;
-use firefly_types::{Meta, ShortMeta};
+use firefly_types::{serial, Meta, ShortMeta};
 
 /// Default frames per second.
 const FPS: u32 = 60;
@@ -25,6 +25,7 @@ where
     store: wasmi::Store<State>,
     update: Option<wasmi::TypedFunc<(), ()>>,
     render: Option<wasmi::TypedFunc<(), ()>>,
+    cheat: Option<wasmi::TypedFunc<(i32, i32), (i32,)>>,
     handle_menu: Option<wasmi::TypedFunc<(u32,), ()>>,
     render_line: Option<wasmi::TypedFunc<(i32,), (i32,)>>,
 
@@ -77,7 +78,7 @@ where
         let mut serial = config.device.serial();
         let res = serial.start();
         if let Err(err) = res {
-            return Err(Error::Serial(err));
+            return Err(Error::SerialStart(err));
         }
 
         let path = &["roms", id.author(), id.app(), "_bin"];
@@ -101,6 +102,7 @@ where
             store,
             update: None,
             render: None,
+            cheat: None,
             handle_menu: None,
             render_line: None,
             stats: None,
@@ -141,6 +143,7 @@ where
         // Other functions defined by our spec.
         self.update = ins.get_typed_func(&self.store, "update").ok();
         self.render = ins.get_typed_func(&self.store, "render").ok();
+        self.cheat = ins.get_typed_func(&self.store, "cheat").ok();
         self.handle_menu = ins.get_typed_func(&self.store, "handle_menu").ok();
         self.render_line = ins.get_typed_func(&self.store, "render_line").ok();
         Ok(())
@@ -273,21 +276,47 @@ where
     }
 
     fn handle_serial(&mut self) -> Result<(), Error> {
-        use firefly_types::serial::Request;
         let maybe_msg = self.serial.recv().ok().unwrap();
         if let Some(raw_msg) = maybe_msg {
-            let req = Request::decode(&raw_msg).unwrap();
-            match req {
-                Request::Cheat(_, _) => todo!(),
-                Request::Stats(stats) => {
-                    let now = self.device_mut().now();
-                    if stats && self.stats.is_none() {
-                        self.stats = Some(StatsTracker::new(now));
-                    };
-                    if !stats && self.stats.is_some() {
-                        self.stats = None;
-                    };
+            let req = serial::Request::decode(&raw_msg).unwrap();
+            self.handle_serial_request(req)?
+        }
+        Ok(())
+    }
+
+    fn handle_serial_request(&mut self, req: serial::Request) -> Result<(), Error> {
+        match req {
+            serial::Request::Cheat(a, b) => {
+                let Some(cheat) = self.cheat else {
+                    return Err(Error::CheatUndefined);
+                };
+                match cheat.call(&mut self.store, (a, b)) {
+                    Ok((result,)) => {
+                        let resp = serial::Response::Cheat(result);
+                        let mut buf = alloc::vec![0u8; 32];
+                        let encoded = match resp.encode(&mut buf) {
+                            Ok(encoded) => encoded,
+                            Err(err) => return Err(Error::SerialEncode(err)),
+                        };
+                        let res = self.serial.send(encoded);
+                        if let Err(err) = res {
+                            return Err(Error::SerialSend(err));
+                        }
+                    }
+                    Err(err) => {
+                        let stats = self.store.data().stats();
+                        return Err(Error::FuncCall("cheat", err, stats));
+                    }
                 }
+            }
+            serial::Request::Stats(stats) => {
+                let now = self.device_mut().now();
+                if stats && self.stats.is_none() {
+                    self.stats = Some(StatsTracker::new(now));
+                };
+                if !stats && self.stats.is_some() {
+                    self.stats = None;
+                };
             }
         }
         Ok(())
