@@ -1,0 +1,83 @@
+pub(crate) struct StatsTracker {
+    /// Fuel spendings for the `update` callback.
+    update_fuel: CallbackFuel,
+
+    /// Fuel spendings for the `render` callback.
+    render_fuel: CallbackFuel,
+
+    /// Time when the CPU values were synced for the last time.
+    synced: firefly_device::Instant,
+
+    /// Time spent sleeping
+    sleeps: firefly_device::Duration,
+}
+
+#[derive(Default)]
+struct CallbackFuel {
+    min: Option<u32>,
+    max: u32,
+    sum: u32,
+    squares: u32,
+    count: u32,
+}
+
+impl CallbackFuel {
+    fn add(&mut self, v: u32) {
+        self.min = match self.min {
+            Some(min) => Some(min.min(v)),
+            None => Some(v),
+        };
+        self.max = self.max.max(v);
+        self.sum += v;
+        self.squares += v * v;
+        self.count += 1;
+    }
+}
+
+impl From<CallbackFuel> for firefly_types::serial::Fuel {
+    fn from(v: CallbackFuel) -> Self {
+        if v.count == 0 {
+            return Self {
+                min: 0,
+                max: 0,
+                avg: 0,
+                var: 0.,
+                calls: 0,
+            };
+        }
+        // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
+        let var_nom = (v.count * v.squares - v.sum * v.sum) as f32;
+        let var_denom = (v.count * (v.count - 1)) as f32;
+        Self {
+            min: v.min.unwrap_or_default(),
+            max: v.max,
+            avg: v.sum / v.count,
+            var: var_nom / var_denom,
+            calls: v.count,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fuel() {
+        let mut fuel = CallbackFuel::default();
+        fuel.add(2);
+        fuel.add(4);
+        fuel.add(4);
+        fuel.add(4);
+        fuel.add(5);
+        fuel.add(5);
+        fuel.add(7);
+        fuel.add(9);
+        let fuel: firefly_types::serial::Fuel = fuel.into();
+        assert_eq!(fuel.calls, 8);
+        assert_eq!(fuel.min, 2);
+        assert_eq!(fuel.max, 9);
+        assert_eq!(fuel.avg, 5);
+        assert_eq!(fuel.var, 4.);
+    }
+}

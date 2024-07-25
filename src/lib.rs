@@ -16,6 +16,7 @@ mod net;
 mod png;
 mod runtime;
 mod state;
+mod stats;
 
 pub use config::{FullID, RuntimeConfig};
 pub use error::Error;
