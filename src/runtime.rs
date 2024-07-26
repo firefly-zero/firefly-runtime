@@ -14,6 +14,8 @@ use firefly_types::{serial, Meta, ShortMeta};
 
 /// Default frames per second.
 const FPS: u32 = 60;
+const KB: u32 = 1024;
+const FUEL_PER_CALL: u64 = 1_000_000;
 
 pub struct Runtime<D, C>
 where
@@ -45,7 +47,6 @@ where
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
     pub fn new(config: RuntimeConfig<D, C>) -> Result<Self, Error> {
-        let engine = wasmi::Engine::default();
         let id = match config.id {
             Some(id) => id,
             None => match detect_launcher(&config.device) {
@@ -86,8 +87,21 @@ where
             return Err(Error::FileNotFound(path.join("/")));
         };
         let now = config.device.now();
+
+        let engine = {
+            let mut wasmi_config = wasmi::Config::default();
+            wasmi_config.consume_fuel(true);
+            if let Some(bin_size) = config.device.get_file_size(path) {
+                if bin_size > 200 * KB {
+                    wasmi_config.compilation_mode(wasmi::CompilationMode::Lazy);
+                }
+            }
+            wasmi::Engine::new(&wasmi_config)
+        };
+
         let state = State::new(id, config.device, config.net_handler);
         let mut store = wasmi::Store::<State>::new(&engine, state);
+        _ = store.set_fuel(FUEL_PER_CALL);
         let instance = {
             let module = wasmi::Module::new_streaming(&engine, stream)?;
             let mut linker = wasmi::Linker::<State>::new(&engine);
@@ -190,8 +204,12 @@ where
         }
 
         // TODO: continue execution even if an update fails.
-        self.call_callback("update", self.update)?;
-        self.call_callback("render", self.render)?;
+        let fuel_update = self.call_callback("update", self.update)?;
+        let fuel_render = self.call_callback("render", self.render)?;
+        if let Some(stats) = &mut self.stats {
+            stats.update_fuel.add(fuel_update);
+            stats.render_fuel.add(fuel_render);
+        }
         self.delay();
         self.flush_frame()?;
         let state = self.store.data();
@@ -350,18 +368,25 @@ where
         Ok(())
     }
 
+    /// Call a guest function. Returns the amount of fuel consumed.
     fn call_callback(
         &mut self,
         name: &'static str,
         f: Option<wasmi::TypedFunc<(), ()>>,
-    ) -> Result<(), Error> {
+    ) -> Result<u32, Error> {
+        _ = self.store.set_fuel(FUEL_PER_CALL);
         if let Some(f) = f {
             if let Err(err) = f.call(&mut self.store, ()) {
                 let stats = self.store.data().stats();
                 return Err(Error::FuncCall(name, err, stats));
             }
         }
-        Ok(())
+        let Ok(left) = self.store.get_fuel() else {
+            return Ok(0);
+        };
+        let consumed = FUEL_PER_CALL - left;
+        let consumed = u32::try_from(consumed).unwrap_or_default();
+        Ok(consumed)
     }
 }
 
