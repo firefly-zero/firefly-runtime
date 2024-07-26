@@ -277,7 +277,10 @@ where
 
     /// Handle requests and responses on the USB serial port.
     fn handle_serial(&mut self) -> Result<(), Error> {
-        let maybe_msg = self.serial.recv().ok().unwrap();
+        let maybe_msg = match self.serial.recv() {
+            Ok(msg) => msg,
+            Err(err) => return Err(Error::SerialRecv(err)),
+        };
         if let Some(raw_msg) = maybe_msg {
             match serial::Request::decode(&raw_msg) {
                 Ok(req) => self.handle_serial_request(req)?,

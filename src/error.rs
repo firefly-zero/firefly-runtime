@@ -16,6 +16,7 @@ pub enum Error {
     SerialDecode(postcard::Error),
     SerialStart(firefly_device::NetworkError),
     SerialSend(firefly_device::NetworkError),
+    SerialRecv(firefly_device::NetworkError),
     CheatUndefined,
 }
 
@@ -37,6 +38,7 @@ impl fmt::Display for Error {
             Error::SerialDecode(err) => write!(f, "cannot decode request from serial: {err}"),
             Error::SerialStart(err) => write!(f, "cannot connect to serial port: {err}"),
             Error::SerialSend(err) => write!(f, "cannot send into serial port: {err}"),
+            Error::SerialRecv(err) => write!(f, "cannot read from serial port: {err}"),
             Error::CheatUndefined => write!(f, "the app doesn't have cheat callback"),
         }
     }
