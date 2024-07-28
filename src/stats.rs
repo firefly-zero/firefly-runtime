@@ -80,6 +80,9 @@ impl StatsTracker {
                 let memory = serial::Memory {
                     pages: self.pages,
                     last_one: self.last_one,
+                    reads: 0,
+                    writes: 0,
+                    max: 0,
                 };
                 serial::Response::Memory(memory)
             }

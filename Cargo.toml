@@ -10,7 +10,7 @@ embedded-graphics = "0.8.1"
 embedded-hal = { version = "1.0.0", default-features = false }
 embedded-io = { version = "0.6.1", default-features = false }
 firefly-device = { path = "../firefly-device" }
-firefly-types = { path = "../../firefly-types" }
+firefly-types = { version = "0.2.0" }
 heapless = { version = "0.8.0", features = ["serde"] }
 libflate = { version = "2.1.0", default-features = false }
 postcard = "1.0.8"
