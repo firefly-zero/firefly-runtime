@@ -1,7 +1,11 @@
 use firefly_device::{Duration, Instant};
 use firefly_types::serial;
 
+// One kilobyte.
 const KB: usize = 1024;
+
+/// How often (in update cycles) the stats should be emitted.
+const FREQ: u32 = 60;
 
 pub(crate) struct StatsTracker {
     pub frame: u32,
@@ -42,7 +46,7 @@ impl StatsTracker {
     pub fn analyze_memory(&mut self, data: &[u8]) {
         let pages = data.len() / (64 * KB);
         self.pages = pages as u16;
-        if self.frame % 120 != 10 {
+        if self.frame % FREQ != 10 {
             return;
         }
         for (i, byte) in data.iter().rev().enumerate() {
@@ -55,10 +59,11 @@ impl StatsTracker {
 
     pub fn as_message(&mut self, now: Instant) -> Option<serial::Response> {
         self.frame += 1;
-        if self.frame < 120 {
+        // Skip the first period, we don't have enough stats yet.
+        if self.frame < FREQ {
             return None;
         };
-        let message = match self.frame % 120 {
+        let message = match self.frame % FREQ {
             3 => {
                 let cpu = self.as_cpu(now);
                 self.delays = Duration::from_ms(0);
