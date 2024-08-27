@@ -1,5 +1,6 @@
 use crate::error::HostError;
 use crate::state::State;
+use alloc::boxed::Box;
 use firefly_audio::*;
 // use firefly_device::*;
 
@@ -18,4 +19,19 @@ pub(crate) fn get_sink(mut caller: C, index: u32) -> u32 {
         }
     };
     sink.id()
+}
+
+pub(crate) fn add_sine(mut caller: C, parent_id: u32, freq: f32, phase: f32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "audio.add_sine";
+    let beh = Sine::new(freq, phase);
+    let Some(parent) = state.audio.root.get_node(parent_id) else {
+        state.log_error(HostError::UnknownNode(parent_id));
+        return 0;
+    };
+    let Some(id) = parent.add(Box::new(beh)) else {
+        state.log_error(HostError::TooManyNodes(parent_id));
+        return 0;
+    };
+    id
 }

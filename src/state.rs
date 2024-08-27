@@ -26,6 +26,9 @@ pub(crate) struct State {
     /// The app menu manager.
     pub menu: Menu,
 
+    /// Audio manager.
+    pub audio: firefly_audio::Manager,
+
     /// The id of the currently running app.
     pub id: FullID,
 
@@ -67,6 +70,7 @@ impl State {
             id,
             frame: FrameBuffer::new(),
             menu: Menu::new(offline),
+            audio: firefly_audio::Manager::new(),
             seed: 0,
             memory: None,
             next: None,

@@ -87,6 +87,7 @@ pub(crate) enum HostError {
     NoneColor,
     UnknownPeer(u32),
     UnknownNode(u32),
+    TooManyNodes(u32),
 }
 
 impl fmt::Display for HostError {
@@ -109,6 +110,9 @@ impl fmt::Display for HostError {
             HostError::NoneColor => write!(f, "color is None (0)"),
             HostError::UnknownPeer(p) => write!(f, "peer {p} is not connected"),
             HostError::UnknownNode(id) => write!(f, "unknown node ID: {id}"),
+            HostError::TooManyNodes(id) => {
+                write!(f, "the node {id} already has too many child nodes")
+            }
         }
     }
 }
