@@ -35,3 +35,13 @@ pub(crate) fn add_sine(mut caller: C, parent_id: u32, freq: f32, phase: f32) -> 
     };
     id
 }
+
+pub(crate) fn reset(mut caller: C, node_id: u32) {
+    let state = caller.data_mut();
+    state.called = "audio.reset";
+    let Some(node) = state.audio.root.get_node(node_id) else {
+        state.log_error(HostError::UnknownNode(node_id));
+        return;
+    };
+    node.reset();
+}
