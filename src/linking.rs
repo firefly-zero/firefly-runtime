@@ -18,6 +18,8 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>, sudo: bool) -> Result<(), 
     linker.func_wrap("graphics", "draw_image", graphics::draw_image)?;
     linker.func_wrap("graphics", "draw_sub_image", graphics::draw_sub_image)?;
 
+    linker.func_wrap("audio", "get_sink", audio::get_sink)?;
+
     linker.func_wrap("input", "read_pad", input::read_pad)?;
     linker.func_wrap("input", "read_buttons", input::read_buttons)?;
 

@@ -86,6 +86,7 @@ pub(crate) enum HostError {
     TextUtf8,
     NoneColor,
     UnknownPeer(u32),
+    UnknownNode(u32),
 }
 
 impl fmt::Display for HostError {
@@ -107,6 +108,7 @@ impl fmt::Display for HostError {
             HostError::TextUtf8 => write!(f, "text is not valid UTF-8"),
             HostError::NoneColor => write!(f, "color is None (0)"),
             HostError::UnknownPeer(p) => write!(f, "peer {p} is not connected"),
+            HostError::UnknownNode(id) => write!(f, "unknown node ID: {id}"),
         }
     }
 }

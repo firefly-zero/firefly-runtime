@@ -3,6 +3,7 @@
 //! In other words, this is the API that we provide
 //! to the apps in the runtime.
 
+pub(crate) mod audio;
 pub(crate) mod fs;
 pub(crate) mod graphics;
 pub(crate) mod input;
