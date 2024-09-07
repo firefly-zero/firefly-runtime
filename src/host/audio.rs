@@ -9,12 +9,24 @@ type C<'a> = wasmi::Caller<'a, State>;
 pub(crate) fn add_sine(mut caller: C, parent_id: u32, freq: f32, phase: f32) -> u32 {
     let state = caller.data_mut();
     state.called = "audio.add_sine";
-    let beh = Sine::new(freq, phase);
+    let proc = Sine::new(freq, phase);
+    add_node(state, parent_id, Box::new(proc))
+}
+
+/// Add square wave generator as a child for the given node.
+pub(crate) fn add_square(mut caller: C, parent_id: u32, freq: f32, phase: f32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "audio.add_square";
+    let proc = Square::new(freq, phase);
+    add_node(state, parent_id, Box::new(proc))
+}
+
+fn add_node(state: &mut State, parent_id: u32, proc: Box<dyn firefly_audio::Processor>) -> u32 {
     let Some(parent) = state.audio.root.get_node(parent_id) else {
         state.log_error(HostError::UnknownNode(parent_id));
         return 0;
     };
-    let Some(id) = parent.add(Box::new(beh)) else {
+    let Some(id) = parent.add(proc) else {
         state.log_error(HostError::TooManyNodes(parent_id));
         return 0;
     };
