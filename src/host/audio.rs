@@ -22,12 +22,10 @@ pub(crate) fn add_square(mut caller: C, parent_id: u32, freq: f32, phase: f32) -
 }
 
 fn add_node(state: &mut State, parent_id: u32, proc: Box<dyn firefly_audio::Processor>) -> u32 {
-    let Some(parent) = state.audio.root.get_node(parent_id) else {
+    let Some(id) = state.audio.add_node(parent_id, proc) else {
+        // TODO: might be one of the two.
+        // state.log_error(HostError::TooManyNodes(parent_id));
         state.log_error(HostError::UnknownNode(parent_id));
-        return 0;
-    };
-    let Some(id) = parent.add(proc) else {
-        state.log_error(HostError::TooManyNodes(parent_id));
         return 0;
     };
     id
@@ -37,7 +35,7 @@ fn add_node(state: &mut State, parent_id: u32, proc: Box<dyn firefly_audio::Proc
 pub(crate) fn reset(mut caller: C, node_id: u32) {
     let state = caller.data_mut();
     state.called = "audio.reset";
-    let Some(node) = state.audio.root.get_node(node_id) else {
+    let Some(node) = state.audio.get_node(node_id) else {
         state.log_error(HostError::UnknownNode(node_id));
         return;
     };
@@ -48,7 +46,7 @@ pub(crate) fn reset(mut caller: C, node_id: u32) {
 pub(crate) fn reset_all(mut caller: C, node_id: u32) {
     let state = caller.data_mut();
     state.called = "audio.reset_all";
-    let Some(node) = state.audio.root.get_node(node_id) else {
+    let Some(node) = state.audio.get_node(node_id) else {
         state.log_error(HostError::UnknownNode(node_id));
         return;
     };
@@ -59,9 +57,8 @@ pub(crate) fn reset_all(mut caller: C, node_id: u32) {
 pub(crate) fn clear(mut caller: C, node_id: u32) {
     let state = caller.data_mut();
     state.called = "audio.clear";
-    let Some(node) = state.audio.root.get_node(node_id) else {
+    let Some(()) = state.audio.clear(node_id) else {
         state.log_error(HostError::UnknownNode(node_id));
         return;
     };
-    node.clear();
 }
