@@ -51,11 +51,11 @@ pub(crate) fn mod_linear(
 ) {
     let state = caller.data_mut();
     state.called = "audio.mod_linear";
-    let lfo = lfo::Linear::new(start, end, start_at, end_at);
+    let lfo = modulators::Linear::new(start, end, start_at, end_at);
     modulate(state, node_id, param, Box::new(lfo));
 }
 
-fn modulate(state: &mut State, node_id: u32, param: u32, lfo: Box<dyn lfo::LFO>) {
+fn modulate(state: &mut State, node_id: u32, param: u32, lfo: Box<dyn modulators::Modulator>) {
     let node = match state.audio.get_node(node_id) {
         Ok(node) => node,
         Err(err) => {
