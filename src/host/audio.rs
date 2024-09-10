@@ -13,19 +13,43 @@ pub(crate) fn add_sine(mut caller: C, parent_id: u32, freq: f32, phase: f32) -> 
     add_node(state, parent_id, Box::new(proc))
 }
 
-/// Add gain filter as a child for the given node.
-pub(crate) fn add_gain(mut caller: C, parent_id: u32, lvl: f32) -> u32 {
-    let state = caller.data_mut();
-    state.called = "audio.add_gain";
-    let proc = Gain::new(lvl);
-    add_node(state, parent_id, Box::new(proc))
-}
-
 /// Add square wave generator as a child for the given node.
 pub(crate) fn add_square(mut caller: C, parent_id: u32, freq: f32, phase: f32) -> u32 {
     let state = caller.data_mut();
     state.called = "audio.add_square";
     let proc = Square::new(freq, phase);
+    add_node(state, parent_id, Box::new(proc))
+}
+
+/// Add white noise generator as a child for the given node.
+pub(crate) fn add_noise(mut caller: C, parent_id: u32, seed: i32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "audio.add_noise";
+    let proc = Noise::new(seed);
+    add_node(state, parent_id, Box::new(proc))
+}
+
+/// Add empty source as a child for the given node.
+pub(crate) fn add_empty(mut caller: C, parent_id: u32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "audio.add_empty";
+    let proc = Empty::new();
+    add_node(state, parent_id, Box::new(proc))
+}
+
+/// Add zero source as a child for the given node.
+pub(crate) fn add_zero(mut caller: C, parent_id: u32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "audio.add_zero";
+    let proc = Zero::new();
+    add_node(state, parent_id, Box::new(proc))
+}
+
+/// Add gain filter as a child for the given node.
+pub(crate) fn add_gain(mut caller: C, parent_id: u32, lvl: f32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "audio.add_gain";
+    let proc = Gain::new(lvl);
     add_node(state, parent_id, Box::new(proc))
 }
 
