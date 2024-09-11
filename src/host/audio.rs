@@ -79,6 +79,20 @@ pub(crate) fn mod_linear(
     modulate(state, node_id, param, Box::new(lfo));
 }
 
+pub(crate) fn mod_hold(mut caller: C, node_id: u32, param: u32, v1: f32, v2: f32, time: u32) {
+    let state = caller.data_mut();
+    state.called = "audio.mod_hold";
+    let lfo = modulators::Hold::new(v1, v2, time);
+    modulate(state, node_id, param, Box::new(lfo));
+}
+
+pub(crate) fn mod_sine(mut caller: C, node_id: u32, param: u32, freq: f32, low: f32, high: f32) {
+    let state = caller.data_mut();
+    state.called = "audio.mod_sine";
+    let lfo = modulators::Sine::new(freq, low, high);
+    modulate(state, node_id, param, Box::new(lfo));
+}
+
 fn modulate(state: &mut State, node_id: u32, param: u32, lfo: Box<dyn modulators::Modulator>) {
     let node = match state.audio.get_node(node_id) {
         Ok(node) => node,

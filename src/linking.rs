@@ -28,6 +28,8 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>, sudo: bool) -> Result<(), 
     linker.func_wrap("audio", "add_square", audio::add_square)?;
     linker.func_wrap("audio", "add_zero", audio::add_zero)?;
     linker.func_wrap("audio", "mod_linear", audio::mod_linear)?;
+    linker.func_wrap("audio", "mod_hold", audio::mod_hold)?;
+    linker.func_wrap("audio", "mod_sine", audio::mod_sine)?;
 
     linker.func_wrap("input", "read_pad", input::read_pad)?;
     linker.func_wrap("input", "read_buttons", input::read_buttons)?;
