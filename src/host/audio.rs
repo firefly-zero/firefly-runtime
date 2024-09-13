@@ -21,6 +21,14 @@ pub(crate) fn add_square(mut caller: C, parent_id: u32, freq: f32, phase: f32) -
     add_node(state, parent_id, Box::new(proc))
 }
 
+/// Add sawtooth wave generator as a child for the given node.
+pub(crate) fn add_sawtooth(mut caller: C, parent_id: u32, freq: f32, phase: f32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "audio.add_sawtooth";
+    let proc = Sawtooth::new(freq, phase);
+    add_node(state, parent_id, Box::new(proc))
+}
+
 /// Add white noise generator as a child for the given node.
 pub(crate) fn add_noise(mut caller: C, parent_id: u32, seed: i32) -> u32 {
     let state = caller.data_mut();

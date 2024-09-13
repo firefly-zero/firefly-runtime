@@ -26,6 +26,7 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>, sudo: bool) -> Result<(), 
     linker.func_wrap("audio", "add_noise", audio::add_noise)?;
     linker.func_wrap("audio", "add_sine", audio::add_sine)?;
     linker.func_wrap("audio", "add_square", audio::add_square)?;
+    linker.func_wrap("audio", "add_sawtooth", audio::add_sawtooth)?;
     linker.func_wrap("audio", "add_zero", audio::add_zero)?;
     linker.func_wrap("audio", "mod_linear", audio::mod_linear)?;
     linker.func_wrap("audio", "mod_hold", audio::mod_hold)?;
