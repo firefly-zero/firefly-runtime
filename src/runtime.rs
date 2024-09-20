@@ -172,11 +172,6 @@ where
         let state = self.store.data_mut();
         let menu_index = state.update();
 
-        let audio_buf = state.device.get_audio_buffer();
-        if !audio_buf.is_empty() {
-            state.audio.write(audio_buf);
-        }
-
         if let Some(scene) = &state.connect_scene {
             let res = scene.render(state, &mut self.display);
             if res.is_err() {
@@ -185,6 +180,7 @@ where
             return Ok(false);
         }
 
+        // TODO: pause audio when opening menu
         if state.menu.active() {
             // We render the system menu directly on the screen,
             // bypassing the frame buffer. That way, we preserve
@@ -210,6 +206,13 @@ where
 
         // TODO: continue execution even if an update fails.
         let fuel_update = self.call_callback("update", self.update)?;
+        {
+            let state = self.store.data_mut();
+            let audio_buf = state.device.get_audio_buffer();
+            if !audio_buf.is_empty() {
+                state.audio.write(audio_buf);
+            }
+        }
         let fuel_render = self.call_callback("render", self.render)?;
         if let Some(stats) = &mut self.stats {
             stats.update_fuel.add(fuel_update);
