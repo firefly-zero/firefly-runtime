@@ -1,7 +1,7 @@
 use crate::config::FullID;
 use crate::host::misc::*;
 use crate::state::{NetHandler, State};
-use firefly_device::DeviceImpl;
+use firefly_device::{DeviceConfig, DeviceImpl};
 use heapless::String;
 use std::path::PathBuf;
 
@@ -82,7 +82,11 @@ fn wrap_input(a: &[i32]) -> Vec<wasmi::Val> {
 fn make_store() -> wasmi::Store<State> {
     let engine = wasmi::Engine::default();
     let root = PathBuf::from("/tmp");
-    let device = DeviceImpl::new(root);
+    let config = DeviceConfig {
+        root,
+        ..Default::default()
+    };
+    let device = DeviceImpl::new(config);
     let id = FullID::new(
         "test-author".try_into().unwrap(),
         "test-app".try_into().unwrap(),

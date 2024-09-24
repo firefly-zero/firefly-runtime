@@ -7,7 +7,7 @@ use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mock_display::MockDisplay;
 use embedded_graphics::pixelcolor::Rgb888;
 use embedded_graphics::primitives::Rectangle;
-use firefly_device::DeviceImpl;
+use firefly_device::{DeviceConfig, DeviceImpl};
 use std::path::PathBuf;
 
 // const N: i32 = 0;
@@ -227,7 +227,11 @@ fn check_display(frame: &mut FrameBuffer, pattern: &[&str]) {
 fn make_store() -> wasmi::Store<State> {
     let engine = wasmi::Engine::default();
     let root = PathBuf::from("/tmp");
-    let device = DeviceImpl::new(root);
+    let config = DeviceConfig {
+        root,
+        ..Default::default()
+    };
+    let device = DeviceImpl::new(config);
     let id = FullID::new(
         "test-author".try_into().unwrap(),
         "test-app".try_into().unwrap(),
