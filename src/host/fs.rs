@@ -7,9 +7,9 @@ use firefly_types::validate_path_part;
 type C<'a> = wasmi::Caller<'a, State>;
 
 /// DEPRECATED
-pub(crate) fn get_rom_file_size(mut caller: C, path_ptr: u32, path_len: u32) -> u32 {
-    let state = caller.data_mut();
-    state.log_error("get_rom_file_size is deprecated");
+pub(crate) fn get_rom_file_size(caller: C, path_ptr: u32, path_len: u32) -> u32 {
+    // let state = caller.data_mut();
+    // state.log_error("get_rom_file_size is deprecated");
     get_file_size(caller, path_ptr, path_len)
 }
 
@@ -40,14 +40,14 @@ pub(crate) fn get_file_size(mut caller: C, path_ptr: u32, path_len: u32) -> u32 
 
 /// DEPRECATED
 pub(crate) fn load_rom_file(
-    mut caller: C,
+    caller: C,
     path_ptr: u32,
     path_len: u32,
     buf_ptr: u32,
     buf_len: u32,
 ) -> u32 {
-    let state = caller.data_mut();
-    state.log_error("get_rom_file_size is deprecated");
+    // let state = caller.data_mut();
+    // state.log_error("get_rom_file_size is deprecated");
     load_file(caller, path_ptr, path_len, buf_ptr, buf_len)
 }
 

@@ -68,6 +68,7 @@ impl DrawTarget for FrameBuffer {
     where
         I: IntoIterator<Item = Pixel<Self::Color>>,
     {
+        self.dirty = true;
         for pixel in pixels {
             self.set_pixel(pixel);
         }
@@ -132,6 +133,8 @@ impl DrawTarget for FrameBuffer {
 
         Ok(())
     }
+
+    // There is also `fill_contiguous` but it seems to be unused so no need to optimize.
 }
 
 impl FrameBuffer {
@@ -183,9 +186,9 @@ impl FrameBuffer {
     }
 
     /// Set color of a single pixel at the given coordinates.
+    ///
+    /// Does NOT mark the buffer as dirty. This must be done by the caller.
     fn set_pixel(&mut self, pixel: Pixel<Gray4>) {
-        // TODO: move it to caller funcs
-        self.dirty = true;
         let Pixel(point, color) = pixel;
         let x = point.x as usize;
         let y = point.y as usize;
