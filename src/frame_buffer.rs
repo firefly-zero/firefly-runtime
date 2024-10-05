@@ -80,6 +80,59 @@ impl DrawTarget for FrameBuffer {
         self.data.fill(new_byte);
         Ok(())
     }
+
+    fn fill_solid(&mut self, area: &Rectangle, color: Self::Color) -> Result<(), Self::Error> {
+        if area.size.width <= 4 {
+            for point in area.points() {
+                self.set_pixel(Pixel(point, color));
+            }
+            return Ok(());
+        }
+
+        self.dirty = true;
+        let new_byte = color_to_byte(&color);
+
+        let left_x = area.top_left.x as usize;
+        let right_x = left_x + area.size.width as usize;
+        let top_y = area.top_left.y as usize;
+        let bottom_y = top_y + area.size.height as usize;
+
+        let left_x = left_x.clamp(0, WIDTH);
+        let right_x = right_x.clamp(0, WIDTH);
+        let top_y = top_y.clamp(0, HEIGHT);
+        let bottom_y = bottom_y.clamp(0, HEIGHT);
+
+        let left_fract = left_x % 2 == 1;
+        let right_fract = right_x % 2 == 1;
+        let start_x = left_x + if left_fract { 1 } else { 0 };
+        let end_x = right_x - if right_fract { 1 } else { 0 };
+        let width = end_x - start_x;
+        debug_assert_eq!(width % 2, 0);
+
+        for y in top_y..bottom_y {
+            let start_i = y * WIDTH / 2 + start_x / 2;
+            let end_i = start_i + width / 2;
+            self.data[start_i..=end_i].fill(new_byte);
+        }
+
+        if left_fract {
+            for y in top_y..bottom_y {
+                let x = left_x as i32;
+                let y = y as i32;
+                self.set_pixel(Pixel(Point { x, y }, color));
+            }
+        }
+
+        if right_fract {
+            for y in top_y..bottom_y {
+                let x = right_x as i32;
+                let y = y as i32;
+                self.set_pixel(Pixel(Point { x, y }, color));
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl FrameBuffer {
@@ -132,6 +185,7 @@ impl FrameBuffer {
 
     /// Set color of a single pixel at the given coordinates.
     fn set_pixel(&mut self, pixel: Pixel<Gray4>) {
+        // TODO: move it to caller funcs
         self.dirty = true;
         let Pixel(point, color) = pixel;
         let x = point.x as usize;
