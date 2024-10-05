@@ -9,7 +9,7 @@ core2 = { version = "0.4.0", default-features = false }
 crc32fast = { version = "1.4.2", default-features = false }
 embedded-graphics = "0.8.1"
 embedded-io = { version = "0.6.1", default-features = false }
-firefly-audio = { path = "../firefly-audio" }
+firefly-audio = "0.1.0"
 firefly-device = { path = "../firefly-device" }
 firefly-types = { version = "0.2.0" }
 heapless = { version = "0.8.0", features = ["serde"] }
