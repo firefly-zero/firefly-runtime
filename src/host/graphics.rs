@@ -334,6 +334,22 @@ pub(crate) fn drop_canvas(mut caller: C) {
     state.canvas = None;
 }
 
+pub(crate) fn draw_canvas(mut caller: C) {
+    let state = caller.data_mut();
+    state.called = "graphics.draw_canvas";
+    let Some(canvas) = &mut state.canvas else {
+        state.log_error("canvas not set, nothing to draw");
+        return;
+    };
+    let canvas = canvas.clone();
+    let state = caller.data();
+    // safety: memory presence is ensured in set_canvas
+    let memory = state.memory.unwrap();
+    let (memory, state) = memory.data_and_store_mut(&mut caller);
+    let image = canvas.as_image(memory);
+    never_fails(image.draw(&mut state.frame));
+}
+
 pub(crate) fn draw_sub_image(
     mut caller: C,
     ptr: u32,
