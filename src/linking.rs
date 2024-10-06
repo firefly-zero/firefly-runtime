@@ -17,6 +17,7 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>, sudo: bool) -> Result<(), 
     linker.func_wrap("graphics", "draw_text", graphics::draw_text)?;
     linker.func_wrap("graphics", "draw_image", graphics::draw_image)?;
     linker.func_wrap("graphics", "draw_sub_image", graphics::draw_sub_image)?;
+    linker.func_wrap("graphics", "set_canvas", graphics::set_canvas)?;
 
     linker.func_wrap("audio", "reset", audio::reset)?;
     linker.func_wrap("audio", "reset_all", audio::reset_all)?;

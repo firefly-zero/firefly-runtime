@@ -5,6 +5,7 @@
 extern crate alloc;
 extern crate libflate;
 
+mod canvas;
 mod color;
 mod config;
 mod error;

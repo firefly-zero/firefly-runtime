@@ -1,4 +1,6 @@
+use crate::canvas::Canvas;
 use crate::color::BPPAdapter;
+use crate::error::Error;
 use crate::error::HostError;
 use crate::state::State;
 use core::convert::Infallible;
@@ -293,6 +295,33 @@ pub(crate) fn draw_text(
     never_fails(text.draw(&mut state.frame));
 }
 
+/// Set an image localted in the guest memory as the draw target for all graphic operations.
+pub(crate) fn set_canvas(mut caller: C, ptr: u32, len: u32) {
+    const HEADER: usize = 5 + 8;
+    let state = caller.data_mut();
+    state.called = "graphics.set_canvas";
+    let Some((state, image_bytes)) = get_bytes(&mut caller, ptr, len) else {
+        return;
+    };
+    if image_bytes.len() <= HEADER {
+        state.log_error("canvas is too small");
+        return;
+    }
+    let bpp = u8::from_le_bytes([image_bytes[1]]);
+    if bpp != 4 {
+        state.log_error("canvas must have 4 BPP");
+        return;
+    }
+    let width = u16::from_le_bytes([image_bytes[2], image_bytes[3]]) as u32;
+    let image_bytes = &image_bytes[HEADER..];
+    if image_bytes.len() * 2 % width as usize != 0 {
+        state.log_error(Error::InvalidWidth);
+        return;
+    }
+    let canvas = Canvas::new(ptr, len, width);
+    state.canvas = Some(canvas)
+}
+
 pub(crate) fn draw_sub_image(
     mut caller: C,
     ptr: u32,
@@ -343,11 +372,21 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         _ => 8,
     };
     // The palette swaps. Used to map colors from image to the actual palette.
-    //
-    // TODO: It can panic! Don't trust swaps to have the correct size/
-    let swaps = &image_bytes[..swaps_len];
+    let Some(swaps) = &image_bytes.get(..swaps_len) else {
+        state.log_error("the image file header is too small");
+        return;
+    };
     // The raw packed image content.
     let image_bytes = &image_bytes[swaps_len..];
+    let ppb = match bpp {
+        1 => 8,
+        2 => 4,
+        _ => 2,
+    };
+    if image_bytes.len() * ppb % width as usize != 0 {
+        state.log_error(Error::InvalidWidth);
+        return;
+    }
 
     let point = Point::new(x, y);
     match bpp {

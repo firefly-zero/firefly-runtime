@@ -139,10 +139,6 @@ impl DrawTarget for FrameBuffer {
 
 impl FrameBuffer {
     /// Draw the framebuffer on an RGB screen.
-    ///
-    /// Draws only the region with changed pixels. After all changed pixels are written,
-    /// the whole buffer is marked as clean. The next call to draw won't draw anything
-    /// unless the frame buffer is updated.
     pub(crate) fn draw<D, C, E>(&mut self, target: &mut D) -> Result<(), E>
     where
         C: RgbColor + FromRGB,

@@ -1,3 +1,4 @@
+use crate::canvas::Canvas;
 use crate::config::FullID;
 use crate::error::Stats;
 use crate::frame_buffer::FrameBuffer;
@@ -35,6 +36,8 @@ pub(crate) struct State {
     /// The frame buffer.
     pub frame: FrameBuffer,
 
+    pub canvas: Option<Canvas>,
+
     /// The current state of the randomization function.
     pub seed: u32,
 
@@ -69,6 +72,7 @@ impl State {
             device,
             id,
             frame: FrameBuffer::new(),
+            canvas: None,
             menu: Menu::new(offline),
             audio: firefly_audio::Manager::new(),
             seed: 0,
