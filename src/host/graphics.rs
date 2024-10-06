@@ -322,6 +322,12 @@ pub(crate) fn set_canvas(mut caller: C, ptr: u32, len: u32) {
     state.canvas = Some(canvas)
 }
 
+pub(crate) fn drop_canvas(mut caller: C) {
+    let state = caller.data_mut();
+    state.called = "graphics.drop_canvas";
+    state.canvas = None;
+}
+
 pub(crate) fn draw_sub_image(
     mut caller: C,
     ptr: u32,
