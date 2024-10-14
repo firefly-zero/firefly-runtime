@@ -2,7 +2,6 @@ use core::convert::Infallible;
 
 use embedded_graphics::pixelcolor::Gray4;
 use embedded_graphics::prelude::*;
-use embedded_graphics::primitives::Rectangle;
 use embedded_graphics::Pixel;
 
 use crate::state::State;
@@ -26,26 +25,6 @@ impl Canvas {
         }
     }
 
-    /// Draw the contents of the canvas onto the target at the given position.
-    pub fn draw_at<D>(&self, memory: &[u8], point: Point, target: &mut D) -> Result<(), D::Error>
-    where
-        D: DrawTarget<Color = Gray4>,
-    {
-        let data = &memory[self.start..self.end];
-        let colors = CanvasIter {
-            data,
-            idx: 0,
-            second: false,
-        };
-        let height = data.len() * 2 / self.width;
-        let size = Size {
-            width: self.width as u32,
-            height: height as u32,
-        };
-        let area = Rectangle::new(point, size);
-        target.fill_contiguous(&area, colors)
-    }
-
     /// Make a draw target that modifies the data inside the canvas.
     pub fn as_target<'a>(&self, caller: &'a mut wasmi::Caller<'_, State>) -> CanvasBuffer<'a> {
         let state = caller.data();
@@ -59,30 +38,6 @@ impl Canvas {
             width: self.width,
             height,
         }
-    }
-}
-
-/// A continious iterator over all colors in the canvas.
-pub struct CanvasIter<'a> {
-    data: &'a [u8],
-    idx: usize,
-    second: bool,
-}
-
-impl<'a> Iterator for CanvasIter<'a> {
-    type Item = Gray4;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let byte = self.data.get(self.idx)?;
-        let luma: u8 = if self.second {
-            self.idx += 1;
-            byte >> 4
-        } else {
-            *byte
-        };
-        let luma = luma & 0b1111;
-        self.second = !self.second;
-        Some(Gray4::new(luma))
     }
 }
 

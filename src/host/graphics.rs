@@ -389,22 +389,6 @@ pub(crate) fn unset_canvas(mut caller: C) {
     state.canvas = None;
 }
 
-pub(crate) fn draw_canvas(mut caller: C, x: i32, y: i32) {
-    let state = caller.data_mut();
-    state.called = "graphics.draw_canvas";
-    let Some(canvas) = &mut state.canvas else {
-        state.log_error("canvas not set, nothing to draw");
-        return;
-    };
-    let canvas = canvas.clone();
-    let state = caller.data();
-    // safety: memory presence is ensured in set_canvas
-    let memory = state.memory.unwrap();
-    let (memory, state) = memory.data_and_store_mut(&mut caller);
-    let point = Point { x, y };
-    never_fails(canvas.draw_at(memory, point, &mut state.frame));
-}
-
 pub(crate) fn draw_sub_image(
     mut caller: C,
     ptr: u32,
