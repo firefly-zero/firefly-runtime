@@ -16,4 +16,4 @@ heapless = { version = "0.8.0", features = ["serde"] }
 libflate = { version = "2.1.0", default-features = false }
 postcard = "1.0.8"
 serde = { version = "1.0.203", default-features = false, features = ["derive"] }
-wasmi = { version = "0.36.0", default-features = false }
+wasmi = { version = "0.38.0", default-features = false }
