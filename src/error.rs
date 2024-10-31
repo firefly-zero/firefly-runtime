@@ -97,6 +97,9 @@ pub(crate) enum HostError {
     NoneColor,
     UnknownPeer(u32),
     AudioNode(firefly_audio::NodeError),
+    NoStats,
+    NoBadges,
+    NoBadge,
 }
 
 impl fmt::Display for HostError {
@@ -120,6 +123,9 @@ impl fmt::Display for HostError {
             HostError::NoneColor => write!(f, "color is None (0)"),
             HostError::UnknownPeer(p) => write!(f, "peer {p} is not connected"),
             HostError::AudioNode(err) => write!(f, "audio node error: {err}"),
+            HostError::NoStats => write!(f, "the app doesn't have stats file"),
+            HostError::NoBadges => write!(f, "the app doesn't have any badges"),
+            HostError::NoBadge => write!(f, "the app doesn't have a badge with the given ID"),
         }
     }
 }

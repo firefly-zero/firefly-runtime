@@ -115,7 +115,7 @@ where
                 Ok(stats) => stats,
                 Err(err) => return Err(Error::DecodeStats(err)),
             };
-            state.stats = Some(stats)
+            state.app_stats = Some(stats)
         }
 
         let mut store = wasmi::Store::<State>::new(&engine, state);
@@ -216,7 +216,7 @@ where
         if let Some(custom_menu) = menu_index {
             if let Some(handle_menu) = self.handle_menu {
                 if let Err(err) = handle_menu.call(&mut self.store, (custom_menu as u32,)) {
-                    let stats = self.store.data().stats();
+                    let stats = self.store.data().runtime_stats();
                     return Err(Error::FuncCall("handle_menu", err, stats));
                 };
             }
@@ -262,6 +262,7 @@ where
     /// When runtime is created, it takes ownership of [Device]. This method releases it.
     pub fn into_config(self) -> RuntimeConfig<D, C> {
         let state = self.store.into_data();
+        state.save_app_stats();
         let net_handler = state.net_handler.replace(NetHandler::None);
         RuntimeConfig {
             id: state.next,
@@ -285,7 +286,7 @@ where
                 let (max_y,) = match render_line.call(&mut self.store, (min_y,)) {
                     Ok(max_y) => max_y,
                     Err(err) => {
-                        let stats = self.store.data().stats();
+                        let stats = self.store.data().runtime_stats();
                         return Err(Error::FuncCall("render_line", err, stats));
                     }
                 };
@@ -383,7 +384,7 @@ where
                         }
                     }
                     Err(err) => {
-                        let stats = self.store.data().stats();
+                        let stats = self.store.data().runtime_stats();
                         return Err(Error::FuncCall("cheat", err, stats));
                     }
                 }
@@ -410,7 +411,7 @@ where
         _ = self.store.set_fuel(FUEL_PER_CALL);
         if let Some(f) = f {
             if let Err(err) = f.call(&mut self.store, ()) {
-                let stats = self.store.data().stats();
+                let stats = self.store.data().runtime_stats();
                 return Err(Error::FuncCall(name, err, stats));
             }
         }

@@ -7,8 +7,9 @@ use crate::net::*;
 use crate::png::save_png;
 use core::cell::Cell;
 use core::fmt::Display;
-use embedded_io::Read;
+use embedded_io::{Read, Write};
 use firefly_device::*;
+use firefly_types::Encode;
 
 #[allow(private_interfaces)]
 pub enum NetHandler {
@@ -62,7 +63,7 @@ pub(crate) struct State {
     /// None if not cached. Empty string if not provided or invalid.
     name: Option<heapless::String<16>>,
 
-    pub stats: Option<firefly_types::Stats>,
+    pub app_stats: Option<firefly_types::Stats>,
 
     pub net_handler: Cell<NetHandler>,
     pub connect_scene: Option<ConnectScene>,
@@ -87,11 +88,11 @@ impl State {
             net_handler: Cell::new(net_handler),
             connect_scene: None,
             name: None,
-            stats: None,
+            app_stats: None,
         }
     }
 
-    pub(crate) fn stats(&self) -> Stats {
+    pub(crate) fn runtime_stats(&self) -> Stats {
         Stats {
             last_called: self.called,
         }
@@ -133,6 +134,22 @@ impl State {
     #[cfg(test)]
     pub(crate) fn set_name(&mut self, name: heapless::String<16>) {
         self.name = Some(name)
+    }
+
+    pub(crate) fn save_app_stats(&self) {
+        let Some(stats) = &self.app_stats else {
+            return;
+        };
+        let mut buf = alloc::vec![0u8; stats.size()];
+        let res = stats.encode(&mut buf);
+        if res.is_err() {
+            return;
+        }
+        let stats_path = &["data", self.id.author(), self.id.app(), "stats"];
+        let Some(mut stream) = self.device.create_file(stats_path) else {
+            return;
+        };
+        _ = stream.write_all(&buf);
     }
 
     /// Update the state: read inputs, handle system commands.
