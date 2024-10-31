@@ -10,14 +10,19 @@ pub enum Error {
     InvalidWidth,
     CannotDisplay,
     ReadMeta,
+    ReadStats,
     AuthorIDMismatch,
     AppIDMismatch,
+
     DecodeMeta(postcard::Error),
+    DecodeStats(postcard::Error),
     SerialEncode(postcard::Error),
     SerialDecode(postcard::Error),
+
     SerialStart(firefly_device::NetworkError),
     SerialSend(firefly_device::NetworkError),
     SerialRecv(firefly_device::NetworkError),
+
     CheatUndefined,
     CheatInNet,
 }
@@ -34,9 +39,11 @@ impl fmt::Display for Error {
             Error::InvalidWidth => write!(f, "the image has invalid width"),
             Error::CannotDisplay => write!(f, "failed to draw on the display"),
             Error::ReadMeta => write!(f, "cannot read _meta"),
+            Error::ReadStats => write!(f, "cannot read _meta"),
             Error::AuthorIDMismatch => write!(f, "author ID in meta and in path don't match"),
             Error::AppIDMismatch => write!(f, "app ID in meta and in path don't match"),
             Error::DecodeMeta(err) => write!(f, "cannot decode _meta: {err}"),
+            Error::DecodeStats(err) => write!(f, "cannot decode stats: {err}"),
             Error::SerialEncode(err) => write!(f, "cannot encode response for serial: {err}"),
             Error::SerialDecode(err) => write!(f, "cannot decode request from serial: {err}"),
             Error::SerialStart(err) => write!(f, "cannot connect to serial port: {err}"),

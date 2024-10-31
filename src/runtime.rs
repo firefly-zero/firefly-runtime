@@ -10,7 +10,7 @@ use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
 use embedded_io::Read;
 use firefly_device::*;
-use firefly_types::{serial, Meta, ShortMeta};
+use firefly_types::*;
 
 /// Default frames per second.
 const FPS: u32 = 60;
@@ -99,7 +99,25 @@ where
             wasmi::Engine::new(&wasmi_config)
         };
 
-        let state = State::new(id, config.device, config.net_handler);
+        let mut state = State::new(id.clone(), config.device, config.net_handler);
+
+        let stats_path = &["data", id.author(), id.app(), "stats"];
+        if let Some(size) = &state.device.get_file_size(stats_path) {
+            let Some(mut stream) = state.device.open_file(stats_path) else {
+                return Err(Error::FileNotFound(stats_path.join("/")));
+            };
+            let mut raw = alloc::vec![0u8; *size as usize];
+            let res = stream.read(&mut raw);
+            if res.is_err() {
+                return Err(Error::ReadStats);
+            }
+            let stats = match Stats::decode(bytes) {
+                Ok(stats) => stats,
+                Err(err) => return Err(Error::DecodeStats(err)),
+            };
+            state.stats = Some(stats)
+        }
+
         let mut store = wasmi::Store::<State>::new(&engine, state);
         _ = store.set_fuel(FUEL_PER_CALL);
         let instance = {

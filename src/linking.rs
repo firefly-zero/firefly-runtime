@@ -67,6 +67,11 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>, sudo: bool) -> Result<(), 
     linker.func_wrap("net", "get_me", net::get_me)?;
     linker.func_wrap("net", "get_peers", net::get_peers)?;
 
+    linker.func_wrap("stats", "get_progress", stats::get_progress)?;
+    linker.func_wrap("stats", "add_progress", stats::add_progress)?;
+    linker.func_wrap("stats", "set_score", stats::set_score)?;
+    linker.func_wrap("stats", "get_top_score", stats::get_top_score)?;
+
     linker.func_wrap("misc", "log_debug", misc::log_debug)?;
     linker.func_wrap("misc", "log_error", misc::log_error)?;
     linker.func_wrap("misc", "set_seed", misc::set_seed)?;

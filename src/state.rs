@@ -34,12 +34,15 @@ pub(crate) struct State {
     /// The frame buffer.
     pub frame: FrameBuffer,
 
+    /// An image in the guest memory that, if not None, used to graphics as draw target.
     pub canvas: Option<Canvas>,
 
     /// The current state of the randomization function.
     pub seed: u32,
 
-    /// Pointer to the app memory. Might be None if the app doesn't have memory.
+    /// Pointer to the app memory.
+    ///
+    /// Might be None if the app doesn't have guest memory defined.
     pub memory: Option<wasmi::Memory>,
 
     /// True if the app should be stopped.
@@ -58,6 +61,8 @@ pub(crate) struct State {
     ///
     /// None if not cached. Empty string if not provided or invalid.
     name: Option<heapless::String<16>>,
+
+    pub stats: Option<firefly_types::Stats>,
 
     pub net_handler: Cell<NetHandler>,
     pub connect_scene: Option<ConnectScene>,
@@ -82,6 +87,7 @@ impl State {
             net_handler: Cell::new(net_handler),
             connect_scene: None,
             name: None,
+            stats: None,
         }
     }
 
