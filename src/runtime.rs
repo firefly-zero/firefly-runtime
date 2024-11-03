@@ -92,6 +92,9 @@ where
             let mut wasmi_config = wasmi::Config::default();
             wasmi_config.consume_fuel(true);
             if let Some(bin_size) = config.device.get_file_size(path) {
+                if bin_size == 0 {
+                    return Err(Error::FileEmpty(path.join("/")));
+                }
                 if bin_size > 200 * KB {
                     wasmi_config.compilation_mode(wasmi::CompilationMode::Lazy);
                 }
@@ -102,16 +105,19 @@ where
         let mut state = State::new(id.clone(), config.device, config.net_handler);
 
         let stats_path = &["data", id.author(), id.app(), "stats"];
-        if let Some(size) = &state.device.get_file_size(stats_path) {
+        if let Some(size) = state.device.get_file_size(stats_path) {
+            if size == 0 {
+                return Err(Error::FileEmpty(stats_path.join("/")));
+            }
             let Some(mut stream) = state.device.open_file(stats_path) else {
                 return Err(Error::FileNotFound(stats_path.join("/")));
             };
-            let mut raw = alloc::vec![0u8; *size as usize];
+            let mut raw = alloc::vec![0u8; size as usize];
             let res = stream.read(&mut raw);
             if res.is_err() {
                 return Err(Error::ReadStats);
             }
-            let stats = match Stats::decode(bytes) {
+            let stats = match Stats::decode(&raw) {
                 Ok(stats) => stats,
                 Err(err) => return Err(Error::DecodeStats(err)),
             };

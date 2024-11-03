@@ -3,6 +3,7 @@ use core::fmt;
 pub enum Error {
     Wasmi(wasmi::Error),
     FuncCall(&'static str, wasmi::Error, Stats),
+    FileEmpty(alloc::string::String),
     FileNotFound(alloc::string::String),
     NoLauncher,
     InvalidAuthorID(firefly_types::ValidationError),
@@ -31,6 +32,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Wasmi(err) => write!(f, "wasm error: {err}"),
+            Error::FileEmpty(s) => write!(f, "file is empty: {s}"),
             Error::FileNotFound(s) => write!(f, "file not found: {s}"),
             Error::NoLauncher => write!(f, "no launcher installed"),
             Error::FuncCall(func, err, stats) => write!(f, "error calling {func}: {err}.\n{stats}"),
@@ -99,7 +101,7 @@ pub(crate) enum HostError {
     AudioNode(firefly_audio::NodeError),
     NoStats,
     NoBadges,
-    NoBadge,
+    NoBadge(u32),
 }
 
 impl fmt::Display for HostError {
@@ -125,7 +127,7 @@ impl fmt::Display for HostError {
             HostError::AudioNode(err) => write!(f, "audio node error: {err}"),
             HostError::NoStats => write!(f, "the app doesn't have stats file"),
             HostError::NoBadges => write!(f, "the app doesn't have any badges"),
-            HostError::NoBadge => write!(f, "the app doesn't have a badge with the given ID"),
+            HostError::NoBadge(id) => write!(f, "the app doesn't have a badge with ID {id}"),
         }
     }
 }
