@@ -64,6 +64,7 @@ pub(crate) struct State {
     name: Option<heapless::String<16>>,
 
     pub app_stats: Option<firefly_types::Stats>,
+    pub app_stats_dirty: bool,
 
     pub net_handler: Cell<NetHandler>,
     pub connect_scene: Option<ConnectScene>,
@@ -89,6 +90,7 @@ impl State {
             connect_scene: None,
             name: None,
             app_stats: None,
+            app_stats_dirty: false,
         }
     }
 
