@@ -1,7 +1,7 @@
 use crate::FullID;
 
 use super::*;
-use embedded_io::Read;
+use embedded_io::{Read, Write};
 use firefly_device::*;
 use ring::RingBuf;
 
@@ -76,12 +76,13 @@ impl Connection {
     pub(crate) fn finalize(self, device: &DeviceImpl) -> FrameSyncer {
         let mut peers = heapless::Vec::<FSPeer, 8>::new();
         for peer in self.peers {
+            // TODO: don't open the file again for each peer. Detect all IDs in one go.
             let friend_id = get_friend_id(device, peer.name.as_str());
             let peer = FSPeer {
                 addr: peer.addr,
                 name: peer.name,
                 states: RingBuf::new(),
-                friend_id,
+                friend_id: friend_id.unwrap_or(0),
             };
             peers.push(peer).ok().unwrap();
         }
@@ -193,31 +194,35 @@ impl Connection {
     }
 }
 
-fn get_friend_id(device: &DeviceImpl, device_name: &str) -> u32 {
+/// Get the ID that can be used to referer to the device from scores (`FriendScore`).
+fn get_friend_id(device: &DeviceImpl, device_name: &str) -> Option<u32> {
+    let device_name = device_name.as_bytes();
     let path = &["sys", "friends"];
     let Some(mut stream) = device.open_file(path) else {
-        // TODO: create file
-        return 0;
+        let mut stream = device.create_file(path)?;
+        stream.write(&[device_name.len() as u8]).ok()?;
+        stream.write(device_name).ok()?;
+        return Some(1);
     };
-    let device_name = device_name.as_bytes();
 
     // check if the device name is already in the list of friends
     let mut buf = [0u8; 17];
-    for i in 0.. {
+    let mut i = 1;
+    loop {
         let res = stream.read(&mut buf[..1]);
         if res.is_err() {
             break;
         }
         let size = usize::from(buf[0]);
-        let res = stream.read(&mut buf[1..=size]);
-        if res.is_err() {
-            break;
-        }
+        stream.read(&mut buf[1..=size]).ok()?;
         if &buf[1..=size] == device_name {
-            return i;
+            return Some(i);
         }
+        i += 1;
     }
 
-    // TODO: append
-    0
+    let mut stream = device.append_file(path)?;
+    stream.write(&[device_name.len() as u8]).ok()?;
+    stream.write(device_name).ok()?;
+    Some(i + 1)
 }
