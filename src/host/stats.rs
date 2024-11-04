@@ -1,4 +1,5 @@
 use crate::{error::HostError, state::NetHandler, state::State};
+use firefly_types::FriendScore;
 
 type C<'a> = wasmi::Caller<'a, State>;
 
@@ -57,25 +58,34 @@ pub(crate) fn add_score(mut caller: C, board_id: u32, peer_id: u32, new_score: u
     };
 
     let handler = state.net_handler.get_mut();
-    let is_me = match handler {
-        NetHandler::FrameSyncer(syncer) => match syncer.peers.get(peer_id as usize) {
-            Some(peer) => peer.addr.is_none(),
-            None => true,
-        },
-        _ => true,
-    };
+    let friend_id: Option<_> = get_friend_id(handler, peer_id);
     let Ok(new_score) = u16::try_from(new_score) else {
         state.log_error("the value is too big");
         return 0;
     };
-    let personal_best = if is_me {
-        insert_my_score(&mut scores.me, new_score);
-        scores.me[0]
-    } else {
-        todo!()
-        // insert_score(&mut scores.friends, new_score);
-    };
+    if let Some(friend_id) = friend_id {
+        insert_friend_score(&mut scores.friends, friend_id, new_score);
+        for friend in scores.friends.iter() {
+            if friend.index == friend_id {
+                return u32::from(friend.score);
+            }
+        }
+    }
+    insert_my_score(&mut scores.me, new_score);
+    let personal_best = scores.me[0];
     u32::from(personal_best)
+}
+
+/// Get the friend's ID for the given peer to be used in scores.
+///
+/// Returns None if the given peer is this device.
+fn get_friend_id(handler: &mut NetHandler, peer_id: u32) -> Option<u16> {
+    let NetHandler::FrameSyncer(syncer) = handler else {
+        return None;
+    };
+    let peer = syncer.peers.get(peer_id as usize)?;
+    peer.addr?;
+    Some(peer.friend_id)
 }
 
 fn insert_my_score(scores: &mut [u16; 8], new_score: u16) {
@@ -89,6 +99,22 @@ fn insert_my_score(scores: &mut [u16; 8], new_score: u16) {
     let Some(idx) = idx else { return };
     scores[idx..].rotate_right(1);
     scores[idx] = new_score;
+}
+
+fn insert_friend_score(scores: &mut [FriendScore; 8], friend_id: u16, new_score: u16) {
+    let mut idx = None;
+    for (i, friend) in scores.iter().enumerate() {
+        if new_score > friend.score {
+            idx = Some(i);
+            break;
+        }
+    }
+    let Some(idx) = idx else { return };
+    scores[idx..].rotate_right(1);
+    scores[idx] = FriendScore {
+        index: friend_id,
+        score: new_score,
+    };
 }
 
 #[cfg(test)]

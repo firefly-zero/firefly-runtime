@@ -195,7 +195,7 @@ impl Connection {
 }
 
 /// Get the ID that can be used to referer to the device from scores (`FriendScore`).
-fn get_friend_id(device: &DeviceImpl, device_name: &str) -> Option<u32> {
+fn get_friend_id(device: &DeviceImpl, device_name: &str) -> Option<u16> {
     let device_name = device_name.as_bytes();
     let path = &["sys", "friends"];
     let Some(mut stream) = device.open_file(path) else {
