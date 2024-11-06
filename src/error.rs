@@ -104,6 +104,7 @@ pub(crate) enum HostError {
     NoBadge(u32),
     NoBoards,
     NoBoard(u32),
+    ValueTooBig,
 }
 
 impl fmt::Display for HostError {
@@ -132,6 +133,7 @@ impl fmt::Display for HostError {
             HostError::NoBadge(id) => write!(f, "the app doesn't have a badge with ID {id}"),
             HostError::NoBoards => write!(f, "the app doesn't have any boards"),
             HostError::NoBoard(id) => write!(f, "the app doesn't have a board with ID {id}"),
+            HostError::ValueTooBig => write!(f, "the value is too big"),
         }
     }
 }

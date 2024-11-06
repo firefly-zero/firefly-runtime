@@ -32,7 +32,7 @@ pub(crate) fn add_progress(mut caller: C, peer_id: u32, badge_id: u32, val: i32)
     };
     if val != 0 {
         let Ok(val) = i16::try_from(val) else {
-            state.log_error("the value is too big");
+            state.log_error(HostError::ValueTooBig);
             return 0;
         };
         if progress.done < progress.goal {
@@ -48,7 +48,7 @@ pub(crate) fn add_progress(mut caller: C, peer_id: u32, badge_id: u32, val: i32)
     u32::from(progress.done) << 16 | u32::from(progress.goal)
 }
 
-pub(crate) fn add_score(mut caller: C, peer_id: u32, board_id: u32, new_score: u32) -> u32 {
+pub(crate) fn add_score(mut caller: C, peer_id: u32, board_id: u32, new_score: i32) -> i32 {
     let state = caller.data_mut();
     state.called = "stats.set_score";
     let Some(stats) = &mut state.app_stats else {
@@ -68,21 +68,21 @@ pub(crate) fn add_score(mut caller: C, peer_id: u32, board_id: u32, new_score: u
 
     let handler = state.net_handler.get_mut();
     let friend_id = get_friend_id(handler, peer_id);
-    let Ok(new_score) = u16::try_from(new_score) else {
-        state.log_error("the value is too big");
+    let Ok(new_score) = i16::try_from(new_score) else {
+        state.log_error(HostError::ValueTooBig);
         return 0;
     };
     if let Some(friend_id) = friend_id {
         insert_friend_score(&mut scores.friends, friend_id, new_score);
         for friend in scores.friends.iter() {
             if friend.index == friend_id {
-                return u32::from(friend.score);
+                return i32::from(friend.score);
             }
         }
     }
     insert_my_score(&mut scores.me, new_score);
     let personal_best = scores.me[0];
-    u32::from(personal_best)
+    i32::from(personal_best)
 }
 
 /// Get the friend's ID for the given peer to be used in scores.
@@ -100,7 +100,7 @@ fn get_friend_id(handler: &mut NetHandler, peer_id: u32) -> Option<u16> {
     Some(peer.friend_id)
 }
 
-fn insert_my_score(scores: &mut [u16; 8], new_score: u16) {
+fn insert_my_score(scores: &mut [i16; 8], new_score: i16) {
     let mut idx = None;
     for (i, old_score) in scores.iter().enumerate() {
         if new_score > *old_score {
@@ -113,7 +113,7 @@ fn insert_my_score(scores: &mut [u16; 8], new_score: u16) {
     scores[idx] = new_score;
 }
 
-fn insert_friend_score(scores: &mut [FriendScore; 8], friend_id: u16, new_score: u16) {
+fn insert_friend_score(scores: &mut [FriendScore; 8], friend_id: u16, new_score: i16) {
     let mut idx = None;
     for (i, friend) in scores.iter().enumerate() {
         if new_score > friend.score {
