@@ -7,20 +7,20 @@ type C<'a> = wasmi::Caller<'a, State>;
 pub(crate) fn add_progress(mut caller: C, peer_id: u32, badge_id: u32, val: i32) -> u32 {
     let state = caller.data_mut();
     state.called = "stats.add_progress";
+    let handler = state.net_handler.get_mut();
+    let friend_id = get_friend_id(handler, peer_id);
+    if friend_id.is_some() {
+        add_progress_me(state, badge_id, val)
+    } else {
+        add_progress_friend(state, peer_id, badge_id, val)
+    }
+}
 
+pub(crate) fn add_progress_me(state: &mut State, badge_id: u32, val: i32) -> u32 {
     let Some(stats) = &mut state.app_stats else {
         state.log_error(HostError::NoStats);
         return 0;
     };
-
-    // We currently add progress only for the local player.
-    // Each device stores its own progress.
-    let handler = state.net_handler.get_mut();
-    let friend_id = get_friend_id(handler, peer_id);
-    if friend_id.is_some() {
-        return 0;
-    }
-
     let idx = (badge_id - 1) as usize;
     let Some(progress) = stats.badges.get_mut(idx) else {
         let err = if stats.badges.is_empty() {
@@ -47,6 +47,56 @@ pub(crate) fn add_progress(mut caller: C, peer_id: u32, badge_id: u32, val: i32)
         }
     }
     u32::from(progress.done) << 16 | u32::from(progress.goal)
+}
+
+pub(crate) fn add_progress_friend(state: &mut State, peer_id: u32, badge_id: u32, val: i32) -> u32 {
+    let Some(stats) = &mut state.app_stats else {
+        state.log_error(HostError::NoStats);
+        return 0;
+    };
+    let idx = (badge_id - 1) as usize;
+    let Some(progress) = stats.badges.get_mut(idx) else {
+        let err = if stats.badges.is_empty() {
+            HostError::NoBadges
+        } else {
+            HostError::NoBadge(badge_id)
+        };
+        state.log_error(err);
+        return 0;
+    };
+    let NetHandler::FrameSyncer(handler) = state.net_handler.get_mut() else {
+        unreachable!("tried to add peer progress outside the frame syncer");
+    };
+    let Some(peer) = handler.peers.get_mut(peer_id as usize) else {
+        state.log_error(HostError::UnknownPeer(peer_id));
+        return 0;
+    };
+    let idx = (badge_id - 1) as usize;
+    let Some(done) = peer.badges.get_mut(idx) else {
+        let err = if stats.badges.is_empty() {
+            HostError::NoBadges
+        } else {
+            HostError::NoBadge(badge_id)
+        };
+        state.log_error(err);
+        return 0;
+    };
+    if val != 0 {
+        let Ok(val) = i16::try_from(val) else {
+            state.log_error(HostError::ValueTooBig);
+            return 0;
+        };
+        if *done < progress.goal {
+            let new = (*done as i16).saturating_add(val);
+            let new = new.max(0) as u16;
+            *done = u16::min(new, progress.goal);
+            state.app_stats_dirty = true;
+            if *done >= progress.goal {
+                progress.new = true;
+            }
+        }
+    }
+    u32::from(*done) << 16 | u32::from(progress.goal)
 }
 
 pub(crate) fn add_score(mut caller: C, peer_id: u32, board_id: u32, new_score: i32) -> i32 {
