@@ -1,5 +1,6 @@
 use super::ring::RingBuf;
 use super::*;
+use alloc::boxed::Box;
 use firefly_device::*;
 
 const SYNC_EVERY: Duration = Duration::from_ms(5);
@@ -11,9 +12,15 @@ type Addr = <NetworkImpl as Network>::Addr;
 pub(crate) struct FSPeer {
     /// If address is None, the peer is the current device.
     pub addr: Option<Addr>,
+    /// The human-readable name of the device.
     pub name: heapless::String<16>,
+    /// The peer's index in /sys/friends.
     pub friend_id: u16,
     pub states: RingBuf<FrameState>,
+    /// The peer's progress for each badge.
+    pub badges: Box<[u16]>,
+    /// The peer's top score for each board.
+    pub scores: Box<[i16]>,
 }
 
 pub(crate) struct FrameSyncer {

@@ -1,5 +1,6 @@
 use super::NetcodeError;
 use crate::config::FullID;
+use alloc::boxed::Box;
 use firefly_device::InputState;
 use serde::{Deserialize, Serialize};
 
@@ -64,7 +65,7 @@ pub(crate) enum Req {
 #[derive(Serialize, Deserialize)]
 pub(crate) enum Resp {
     Intro(Intro),
-    Start(FullID),
+    Start(Start),
     State(FrameState),
 }
 
@@ -74,8 +75,8 @@ impl From<FrameState> for Resp {
     }
 }
 
-impl From<FullID> for Resp {
-    fn from(v: FullID) -> Self {
+impl From<Start> for Resp {
+    fn from(v: Start) -> Self {
         Self::Start(v)
     }
 }
@@ -98,6 +99,16 @@ pub(crate) struct FrameState {
     pub input: Input,
     // rand: Option<...>
     // rand_key: Option<...>
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub(crate) struct Start {
+    /// The full ID of the app to run.
+    pub id: FullID,
+    /// The peer's progress for each badge.
+    pub badges: Box<[u16]>,
+    /// The peer's top score for each board.
+    pub scores: Box<[i16]>,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize)]

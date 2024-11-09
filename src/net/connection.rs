@@ -1,5 +1,6 @@
 use super::*;
 use crate::FullID;
+use alloc::boxed::Box;
 use embedded_io::{Read, Write};
 use firefly_device::*;
 use ring::RingBuf;
@@ -13,8 +14,30 @@ type Addr = <NetworkImpl as Network>::Addr;
 pub(crate) struct Peer {
     /// If address is None, the peer is the current device.
     pub addr: Option<Addr>,
+    /// The human-readable name of the device.
     pub name: heapless::String<16>,
-    pub ready: bool,
+    /// Not None when the peer is ready to start teh selected app.
+    pub intro: Option<AppIntro>,
+}
+
+impl Peer {
+    fn ready(&self) -> bool {
+        self.intro.is_some()
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct AppIntro {
+    /// The peer's progress for each badge.
+    badges: Box<[u16]>,
+    /// The peer's top score for each board.
+    scores: Box<[i16]>,
+}
+
+#[derive(Clone)]
+pub(crate) enum IdOrIntro {
+    ID(FullID),
+    Intro(AppIntro),
 }
 
 pub(crate) enum ConnectionStatus {
@@ -35,10 +58,15 @@ pub(crate) enum ConnectionStatus {
 /// This object is allocated while your are in the launcher.
 /// Its job is to launch an app for everyone when someone picks one to play.
 pub(crate) struct Connection {
-    pub app: Option<FullID>,
+    /// In the initial state, a prepared intro for the current device.
+    /// Later, when the app to be launched is known, contains the id of the app to launch
+    /// and the intro moves into [`Peer`] corresponding to the local device.
+    pub app: IdOrIntro,
     pub peers: heapless::Vec<Peer, MAX_PEERS>,
     pub(super) net: NetworkImpl,
+    /// The last time when the device checked if other devices are ready to start.
     pub(super) last_sync: Option<Instant>,
+    /// The last time when the device announced that it's ready to start the app.
     pub(super) last_ready: Option<Instant>,
 }
 
@@ -48,25 +76,35 @@ impl Connection {
         if let Err(err) = res {
             device.log_error("netcode", err);
         }
-        let all_ready = self.peers.iter().all(|p| p.ready);
+        let all_ready = self.peers.iter().all(|p| p.ready());
         if all_ready {
             return ConnectionStatus::Launching;
         }
         match self.app {
-            Some(_) => ConnectionStatus::Ready,
-            None => ConnectionStatus::Waiting,
+            IdOrIntro::Intro(_) => ConnectionStatus::Waiting,
+            IdOrIntro::ID(_) => ConnectionStatus::Ready,
         }
     }
 
     pub fn set_app(&mut self, app: FullID) -> Result<(), NetcodeError> {
-        if self.app.is_some() {
+        let IdOrIntro::Intro(intro) = &self.app else {
+            // App already was picked, cannot pick a new one.
+            //
+            // TODO: Broadcast an error if the new app doesn't match the old one.
             return Ok(());
-        }
-        self.broadcast(Resp::Start(app.clone()).into())?;
-        self.app = Some(app);
+        };
+        // TODO: reduce the amount of `.clone()` in this function.
+        let intro = intro.clone();
+        let resp = Resp::Start(Start {
+            id: app.clone(),
+            badges: intro.badges.clone(),
+            scores: intro.scores.clone(),
+        });
+        self.broadcast(resp.into())?;
+        self.app = IdOrIntro::ID(app);
         for peer in self.peers.iter_mut() {
             if peer.addr.is_none() {
-                peer.ready = true;
+                peer.intro = Some(intro.clone());
             }
         }
         Ok(())
@@ -75,6 +113,7 @@ impl Connection {
     pub(crate) fn finalize(self, device: &DeviceImpl) -> FrameSyncer {
         let mut peers = heapless::Vec::<FSPeer, 8>::new();
         for peer in self.peers {
+            let intro = peer.intro.unwrap();
             // TODO: don't open the file again for each peer. Detect all IDs in one go.
             let friend_id = get_friend_id(device, peer.name.as_str());
             let peer = FSPeer {
@@ -82,6 +121,8 @@ impl Connection {
                 name: peer.name,
                 states: RingBuf::new(),
                 friend_id: friend_id.unwrap_or(0),
+                badges: intro.badges,
+                scores: intro.scores,
             };
             peers.push(peer).ok().unwrap();
         }
@@ -120,7 +161,7 @@ impl Connection {
     fn ready(&mut self, now: Instant) -> Result<(), NetcodeError> {
         // Say we're ready only if we are actually ready:
         // if we know the next app to launch.
-        let Some(app) = &self.app else {
+        let IdOrIntro::ID(app) = &self.app else {
             return Ok(());
         };
         if let Some(prev) = self.last_ready {
@@ -129,8 +170,24 @@ impl Connection {
             }
         }
         self.last_ready = Some(now);
-        self.broadcast(Resp::Start(app.clone()).into())?;
+        let me = self.get_me();
+        let intro = me.intro.as_ref().unwrap();
+        let resp = Resp::Start(Start {
+            id: app.clone(),
+            badges: intro.badges.clone(),
+            scores: intro.scores.clone(),
+        });
+        self.broadcast(resp.into())?;
         Ok(())
+    }
+
+    fn get_me(&self) -> &Peer {
+        for peer in &self.peers {
+            if peer.addr.is_none() {
+                return peer;
+            }
+        }
+        unreachable!("could not find the current device in the list of peers");
     }
 
     fn handle_message(
@@ -150,24 +207,55 @@ impl Connection {
 
     fn handle_req(&mut self, addr: Addr, req: Req) -> Result<(), NetcodeError> {
         if matches!(req, Req::Start) {
-            if let Some(app) = &self.app {
-                let msg = Message::Resp(Resp::Start(app.clone()));
-                let mut buf = alloc::vec![0u8; MSG_SIZE];
-                let raw = msg.encode(&mut buf)?;
-                self.net.send(addr, raw)?;
-            }
+            self.handle_start_req(addr)?;
         }
         Ok(())
     }
 
+    /// Handle a start request.
+    ///
+    /// The request is sent by other devices to check if the current device
+    /// is ready to start an app.
+    fn handle_start_req(&mut self, addr: Addr) -> Result<(), NetcodeError> {
+        let IdOrIntro::ID(app) = &self.app else {
+            return Ok(());
+        };
+        let me = self.get_me();
+        let Some(intro) = &me.intro else {
+            return Ok(());
+        };
+        let resp = Start {
+            id: app.clone(),
+            badges: intro.badges.clone(),
+            scores: intro.scores.clone(),
+        };
+        let resp = Message::Resp(resp.into());
+        let mut buf = alloc::vec![0u8; MSG_SIZE];
+        let raw = resp.encode(&mut buf)?;
+        self.net.send(addr, raw)?;
+        Ok(())
+    }
+
     fn handle_resp(&mut self, addr: Addr, resp: Resp) -> Result<(), NetcodeError> {
-        if let Resp::Start(app) = resp {
-            self.set_app(app)?;
-            if let Some(peer) = self.get_peer(addr) {
-                peer.ready = true;
-            }
+        if let Resp::Start(intro) = resp {
+            self.handle_start_resp(intro, addr)?;
         }
         Ok(())
+    }
+
+    /// Handle a start response.
+    ///
+    /// The response arrives when another device is ready to start an app.
+    /// This response contains info about the app that needs to be started
+    /// as well as some app-specific peer info, like the progress earning badges.
+    fn handle_start_resp(&mut self, intro: Start, addr: Addr) -> Result<(), NetcodeError> {
+        self.set_app(intro.id)?;
+        Ok(if let Some(peer) = self.get_peer(addr) {
+            peer.intro = Some(AppIntro {
+                badges: intro.badges,
+                scores: intro.scores,
+            });
+        })
     }
 
     fn broadcast(&mut self, msg: Message) -> Result<(), NetcodeError> {

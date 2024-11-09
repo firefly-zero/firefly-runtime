@@ -236,10 +236,12 @@ impl State {
     fn update_connection(&mut self, mut connection: Connection) -> NetHandler {
         let status = connection.update(&self.device);
         if matches!(status, ConnectionStatus::Launching) {
-            self.next.clone_from(&connection.app);
-            self.exit = true;
-            let syncer = connection.finalize(&self.device);
-            return NetHandler::FrameSyncer(syncer);
+            if let IdOrIntro::ID(app_id) = &connection.app {
+                self.next = Some(app_id.clone());
+                self.exit = true;
+                let syncer = connection.finalize(&self.device);
+                return NetHandler::FrameSyncer(syncer);
+            }
         }
         NetHandler::Connection(connection)
     }
