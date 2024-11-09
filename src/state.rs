@@ -113,7 +113,7 @@ impl State {
             //       (and replacing FrameSyncer with Connection)
             NetHandler::FrameSyncer(_) => todo!("cannot re-launch running app"),
             NetHandler::Connection(c) => {
-                let res = c.set_app(app);
+                let res = c.set_app(&self.device, app);
                 if let Err(err) = res {
                     self.device.log_error("netcode", err);
                 }
@@ -236,7 +236,7 @@ impl State {
     fn update_connection(&mut self, mut connection: Connection) -> NetHandler {
         let status = connection.update(&self.device);
         if matches!(status, ConnectionStatus::Launching) {
-            if let IdOrIntro::ID(app_id) = &connection.app {
+            if let Some(app_id) = &connection.app {
                 self.next = Some(app_id.clone());
                 self.exit = true;
                 let syncer = connection.finalize(&self.device);

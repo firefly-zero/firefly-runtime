@@ -3,6 +3,7 @@ use crate::FullID;
 use alloc::boxed::Box;
 use embedded_io::{Read, Write};
 use firefly_device::*;
+use firefly_types::{Encode, Stats};
 use ring::RingBuf;
 
 const SYNC_EVERY: Duration = Duration::from_ms(100);
@@ -34,12 +35,6 @@ pub(crate) struct AppIntro {
     scores: Box<[i16]>,
 }
 
-#[derive(Clone)]
-pub(crate) enum IdOrIntro {
-    ID(FullID),
-    Intro(AppIntro),
-}
-
 pub(crate) enum ConnectionStatus {
     /// Waiting for one of the players to pick an app to launch.
     Waiting,
@@ -61,7 +56,7 @@ pub(crate) struct Connection {
     /// In the initial state, a prepared intro for the current device.
     /// Later, when the app to be launched is known, contains the id of the app to launch
     /// and the intro moves into [`Peer`] corresponding to the local device.
-    pub app: IdOrIntro,
+    pub app: Option<FullID>,
     pub peers: heapless::Vec<Peer, MAX_PEERS>,
     pub(super) net: NetworkImpl,
     /// The last time when the device checked if other devices are ready to start.
@@ -81,33 +76,80 @@ impl Connection {
             return ConnectionStatus::Launching;
         }
         match self.app {
-            IdOrIntro::Intro(_) => ConnectionStatus::Waiting,
-            IdOrIntro::ID(_) => ConnectionStatus::Ready,
+            Some(_) => ConnectionStatus::Ready,
+            None => ConnectionStatus::Waiting,
         }
     }
 
-    pub fn set_app(&mut self, app: FullID) -> Result<(), NetcodeError> {
-        let IdOrIntro::Intro(intro) = &self.app else {
+    pub fn set_app(&mut self, device: &DeviceImpl, app: FullID) -> Result<(), NetcodeError> {
+        if self.app.is_some() {
             // App already was picked, cannot pick a new one.
             //
             // TODO: Broadcast an error if the new app doesn't match the old one.
             return Ok(());
         };
+        let intro = self.make_intro(device, &app)?;
         // TODO: reduce the amount of `.clone()` in this function.
-        let intro = intro.clone();
         let resp = Resp::Start(Start {
             id: app.clone(),
             badges: intro.badges.clone(),
             scores: intro.scores.clone(),
         });
         self.broadcast(resp.into())?;
-        self.app = IdOrIntro::ID(app);
+        self.app = Some(app);
         for peer in self.peers.iter_mut() {
             if peer.addr.is_none() {
                 peer.intro = Some(intro.clone());
             }
         }
         Ok(())
+    }
+
+    fn make_intro(&mut self, device: &DeviceImpl, id: &FullID) -> Result<AppIntro, NetcodeError> {
+        let me = self.get_me_mut();
+        debug_assert!(me.intro.is_none());
+
+        // check if the stats file even exists
+        let stats_path = &["data", id.author(), id.app(), "stats"];
+        let Some(size) = device.get_file_size(stats_path) else {
+            return Ok(AppIntro {
+                badges: Box::new([]),
+                scores: Box::new([]),
+            });
+        };
+
+        if size == 0 {
+            return Err(NetcodeError::StatsError("file is empty"));
+        }
+        let Some(mut stream) = device.open_file(stats_path) else {
+            return Err(NetcodeError::StatsError("cannot open stats file"));
+        };
+        let mut raw = alloc::vec![0u8; size as usize];
+        let res = stream.read(&mut raw);
+        if res.is_err() {
+            return Err(NetcodeError::StatsError("cannot read stats file"));
+        }
+        let stats = match Stats::decode(&raw) {
+            Ok(stats) => stats,
+            Err(_) => {
+                return Err(NetcodeError::StatsError("cannot decode stats"));
+            }
+        };
+
+        let mut badges = alloc::vec::Vec::new();
+        let mut scores = alloc::vec::Vec::new();
+        for badge in stats.badges {
+            badges.push(badge.done);
+        }
+        for score in stats.scores {
+            scores.push(score.me[0]);
+        }
+
+        let intro = AppIntro {
+            badges: badges.into_boxed_slice(),
+            scores: scores.into_boxed_slice(),
+        };
+        Ok(intro)
     }
 
     pub(crate) fn finalize(self, device: &DeviceImpl) -> FrameSyncer {
@@ -140,7 +182,7 @@ impl Connection {
         self.sync(now)?;
         self.ready(now)?;
         if let Some((addr, msg)) = self.net.recv()? {
-            self.handle_message(addr, msg)?;
+            self.handle_message(device, addr, msg)?;
         }
         Ok(())
     }
@@ -161,7 +203,7 @@ impl Connection {
     fn ready(&mut self, now: Instant) -> Result<(), NetcodeError> {
         // Say we're ready only if we are actually ready:
         // if we know the next app to launch.
-        let IdOrIntro::ID(app) = &self.app else {
+        let Some(app) = &self.app else {
             return Ok(());
         };
         if let Some(prev) = self.last_ready {
@@ -190,8 +232,18 @@ impl Connection {
         unreachable!("could not find the current device in the list of peers");
     }
 
+    fn get_me_mut(&mut self) -> &mut Peer {
+        for peer in &mut self.peers {
+            if peer.addr.is_none() {
+                return peer;
+            }
+        }
+        unreachable!("could not find the current device in the list of peers");
+    }
+
     fn handle_message(
         &mut self,
+        device: &DeviceImpl,
         addr: Addr,
         raw: heapless::Vec<u8, MSG_SIZE>,
     ) -> Result<(), NetcodeError> {
@@ -201,7 +253,7 @@ impl Connection {
         let msg = Message::decode(&raw)?;
         match msg {
             Message::Req(req) => self.handle_req(addr, req),
-            Message::Resp(resp) => self.handle_resp(addr, resp),
+            Message::Resp(resp) => self.handle_resp(device, addr, resp),
         }
     }
 
@@ -217,7 +269,7 @@ impl Connection {
     /// The request is sent by other devices to check if the current device
     /// is ready to start an app.
     fn handle_start_req(&mut self, addr: Addr) -> Result<(), NetcodeError> {
-        let IdOrIntro::ID(app) = &self.app else {
+        let Some(app) = &self.app else {
             return Ok(());
         };
         let me = self.get_me();
@@ -236,9 +288,14 @@ impl Connection {
         Ok(())
     }
 
-    fn handle_resp(&mut self, addr: Addr, resp: Resp) -> Result<(), NetcodeError> {
+    fn handle_resp(
+        &mut self,
+        device: &DeviceImpl,
+        addr: Addr,
+        resp: Resp,
+    ) -> Result<(), NetcodeError> {
         if let Resp::Start(intro) = resp {
-            self.handle_start_resp(intro, addr)?;
+            self.handle_start_resp(device, intro, addr)?;
         }
         Ok(())
     }
@@ -248,14 +305,20 @@ impl Connection {
     /// The response arrives when another device is ready to start an app.
     /// This response contains info about the app that needs to be started
     /// as well as some app-specific peer info, like the progress earning badges.
-    fn handle_start_resp(&mut self, intro: Start, addr: Addr) -> Result<(), NetcodeError> {
-        self.set_app(intro.id)?;
-        Ok(if let Some(peer) = self.get_peer(addr) {
+    fn handle_start_resp(
+        &mut self,
+        device: &DeviceImpl,
+        intro: Start,
+        addr: Addr,
+    ) -> Result<(), NetcodeError> {
+        self.set_app(device, intro.id)?;
+        if let Some(peer) = self.get_peer(addr) {
             peer.intro = Some(AppIntro {
                 badges: intro.badges,
                 scores: intro.scores,
             });
-        })
+        };
+        Ok(())
     }
 
     fn broadcast(&mut self, msg: Message) -> Result<(), NetcodeError> {

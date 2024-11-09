@@ -9,6 +9,7 @@ pub(crate) enum NetcodeError {
     PeerListFull,
     UnknownPeer,
     FrameTimeout,
+    StatsError(&'static str),
 }
 
 impl From<firefly_device::NetworkError> for NetcodeError {
@@ -29,6 +30,7 @@ impl fmt::Display for NetcodeError {
             EmptyBufferOut => write!(f, "serializer produced empty message"),
             UnknownPeer => write!(f, "received message from unknown peer"),
             FrameTimeout => write!(f, "timed out waiting for frame state"),
+            StatsError(msg) => write!(f, "{msg}"),
         }
     }
 }
