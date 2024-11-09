@@ -1,8 +1,7 @@
-use crate::config::FullID;
-use serde::{Deserialize, Serialize};
-
 use super::NetcodeError;
+use crate::config::FullID;
 use firefly_device::InputState;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub(crate) enum Message {

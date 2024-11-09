@@ -1,6 +1,5 @@
 use crate::error::HostError;
-use crate::state::NetHandler;
-use crate::state::State;
+use crate::state::{NetHandler, State};
 use firefly_device::Device;
 
 type C<'a> = wasmi::Caller<'a, State>;

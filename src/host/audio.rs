@@ -1,10 +1,9 @@
+use super::fs::get_file_name;
 use crate::error::HostError;
 use crate::state::State;
 use alloc::boxed::Box;
 use firefly_audio::*;
 use firefly_device::Device;
-
-use super::fs::get_file_name;
 
 type C<'a> = wasmi::Caller<'a, State>;
 

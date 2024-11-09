@@ -1,6 +1,5 @@
-use crate::FullID;
-
 use super::*;
+use crate::FullID;
 use embedded_io::{Read, Write};
 use firefly_device::*;
 use ring::RingBuf;
@@ -196,6 +195,9 @@ impl Connection {
 
 /// Get the ID that can be used to referer to the device from scores (`FriendScore`).
 fn get_friend_id(device: &DeviceImpl, device_name: &str) -> Option<u16> {
+    if device_name.len() > 16 {
+        return None;
+    }
     let device_name = device_name.as_bytes();
     let path = &["sys", "friends"];
     let Some(mut stream) = device.open_file(path) else {

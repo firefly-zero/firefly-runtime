@@ -1,7 +1,6 @@
 use crate::canvas::Canvas;
 use crate::color::BPPAdapter;
-use crate::error::Error;
-use crate::error::HostError;
+use crate::error::{Error, HostError};
 use crate::state::State;
 use core::convert::Infallible;
 use embedded_graphics::image::{Image, ImageRaw, ImageRawLE};

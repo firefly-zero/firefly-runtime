@@ -1,10 +1,8 @@
+use crate::state::State;
 use core::convert::Infallible;
-
 use embedded_graphics::pixelcolor::Gray4;
 use embedded_graphics::prelude::*;
 use embedded_graphics::Pixel;
-
-use crate::state::State;
 
 const PPB: usize = 2;
 
