@@ -15,7 +15,7 @@ pub(crate) struct FSPeer {
     /// The human-readable name of the device.
     pub name: heapless::String<16>,
     /// The peer's index in /sys/friends.
-    pub friend_id: u16,
+    pub friend_id: Option<u16>,
     pub states: RingBuf<FrameState>,
     /// The peer's progress for each badge.
     pub badges: Box<[u16]>,

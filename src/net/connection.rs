@@ -156,13 +156,17 @@ impl Connection {
         let mut peers = heapless::Vec::<FSPeer, 8>::new();
         for peer in self.peers {
             let intro = peer.intro.unwrap();
-            // TODO: don't open the file again for each peer. Detect all IDs in one go.
-            let friend_id = get_friend_id(device, peer.name.as_str());
+            let friend_id = if peer.addr.is_none() {
+                None
+            } else {
+                // TODO: don't open the file again for each peer. Detect all IDs in one go.
+                get_friend_id(device, peer.name.as_str())
+            };
             let peer = FSPeer {
                 addr: peer.addr,
                 name: peer.name,
                 states: RingBuf::new(),
-                friend_id: friend_id.unwrap_or(0),
+                friend_id,
                 badges: intro.badges,
                 scores: intro.scores,
             };

@@ -1,4 +1,5 @@
 use crate::error::HostError;
+use crate::net::FSPeer;
 use crate::state::{NetHandler, State};
 use firefly_types::FriendScore;
 
@@ -7,13 +8,15 @@ type C<'a> = wasmi::Caller<'a, State>;
 pub(crate) fn add_progress(mut caller: C, peer_id: u32, badge_id: u32, val: i32) -> u32 {
     let state = caller.data_mut();
     state.called = "stats.add_progress";
-    let handler = state.net_handler.get_mut();
-    let friend_id = get_friend_id(handler, peer_id);
-    if friend_id.is_some() {
-        add_progress_me(state, badge_id, val)
+    let mut handler = state.net_handler.replace(NetHandler::None);
+    let peer = get_friend(&mut handler, peer_id);
+    let result = if let Some(peer) = peer {
+        add_progress_friend(state, peer, badge_id, val)
     } else {
-        add_progress_friend(state, peer_id, badge_id, val)
-    }
+        add_progress_me(state, badge_id, val)
+    };
+    state.net_handler.replace(handler);
+    result
 }
 
 pub(crate) fn add_progress_me(state: &mut State, badge_id: u32, val: i32) -> u32 {
@@ -49,7 +52,12 @@ pub(crate) fn add_progress_me(state: &mut State, badge_id: u32, val: i32) -> u32
     u32::from(progress.done) << 16 | u32::from(progress.goal)
 }
 
-pub(crate) fn add_progress_friend(state: &mut State, peer_id: u32, badge_id: u32, val: i32) -> u32 {
+pub(crate) fn add_progress_friend(
+    state: &mut State,
+    peer: &mut FSPeer,
+    badge_id: u32,
+    val: i32,
+) -> u32 {
     let Some(stats) = &mut state.app_stats else {
         state.log_error(HostError::NoStats);
         return 0;
@@ -62,13 +70,6 @@ pub(crate) fn add_progress_friend(state: &mut State, peer_id: u32, badge_id: u32
             HostError::NoBadge(badge_id)
         };
         state.log_error(err);
-        return 0;
-    };
-    let NetHandler::FrameSyncer(handler) = state.net_handler.get_mut() else {
-        unreachable!("tried to add peer progress outside the frame syncer");
-    };
-    let Some(peer) = handler.peers.get_mut(peer_id as usize) else {
-        state.log_error(HostError::UnknownPeer(peer_id));
         return 0;
     };
     let idx = (badge_id - 1) as usize;
@@ -118,12 +119,13 @@ pub(crate) fn add_score(mut caller: C, peer_id: u32, board_id: u32, new_score: i
     };
 
     let handler = state.net_handler.get_mut();
-    let friend_id = get_friend_id(handler, peer_id);
+    let peer = get_friend(handler, peer_id);
     let Ok(new_score) = i16::try_from(new_score) else {
         state.log_error(HostError::ValueTooBig);
         return 0;
     };
-    if let Some(friend_id) = friend_id {
+    if let Some(peer) = peer {
+        let friend_id = peer.friend_id.unwrap();
         insert_friend_score(&mut scores.friends, friend_id, new_score);
         for friend in scores.friends.iter() {
             if friend.index == friend_id {
@@ -136,19 +138,20 @@ pub(crate) fn add_score(mut caller: C, peer_id: u32, board_id: u32, new_score: i
     i32::from(personal_best)
 }
 
-/// Get the friend's ID for the given peer to be used in scores.
+/// Get the peer with the given ID but only if it's not .
 ///
 /// Returns None if the given peer is this device.
-fn get_friend_id(handler: &mut NetHandler, peer_id: u32) -> Option<u16> {
+fn get_friend(handler: &mut NetHandler, peer_id: u32) -> Option<&mut FSPeer> {
     if peer_id == 0xff {
         return None;
     }
     let NetHandler::FrameSyncer(syncer) = handler else {
         return None;
     };
-    let peer = syncer.peers.get(peer_id as usize)?;
+    let peer = syncer.peers.get_mut(peer_id as usize)?;
     peer.addr?;
-    Some(peer.friend_id)
+    peer.friend_id?;
+    Some(peer)
 }
 
 fn insert_my_score(scores: &mut [i16; 8], new_score: i16) {
