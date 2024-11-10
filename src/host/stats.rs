@@ -176,20 +176,30 @@ fn insert_my_score(scores: &mut [i16; 8], new_score: i16) {
     scores[idx] = new_score;
 }
 
+/// Insert a friend's score into the friends' scoreboard.
+///
+/// It tries to keep the board diverse: if possible, it will remove the lowest score
+/// of the same person rather than of someone else.
 fn insert_friend_score(scores: &mut [FriendScore; 8], friend_id: u16, new_score: i16) {
-    let mut idx = None;
-    for (i, friend) in scores.iter().enumerate() {
-        if new_score > friend.score {
-            idx = Some(i);
-            break;
-        }
-    }
-    let Some(idx) = idx else { return };
-    scores[idx..].rotate_right(1);
-    scores[idx] = FriendScore {
+    // Skip all scores higher than the new one.
+    let iter = scores.iter_mut().skip_while(|f| new_score < f.score);
+    // In the upcoming shift of scores, insert first the new score.
+    let mut prev = FriendScore {
         index: friend_id,
         score: new_score,
     };
+    for friend in iter {
+        let same_person = friend.index == friend_id;
+        // Shift all scores to the right.
+        core::mem::swap(friend, &mut prev);
+        // Stop shifting when hitting the same person.
+        // It's better to keep only the highest score from the same person
+        // rather than remove highest (but lower than the new one) scores
+        // of other people. We want to keep the scoreboards diverse.
+        if same_person {
+            break;
+        }
+    }
 }
 
 #[cfg(test)]
