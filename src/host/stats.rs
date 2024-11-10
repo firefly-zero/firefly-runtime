@@ -181,6 +181,7 @@ fn insert_my_score(scores: &mut [i16; 8], new_score: i16) {
 /// It tries to keep the board diverse: if possible, it will remove the lowest score
 /// of the same person rather than of someone else.
 fn insert_friend_score(scores: &mut [FriendScore; 8], friend_id: u16, new_score: i16) {
+    let full = scores.last().unwrap().score != 0;
     // Skip all scores higher than the new one.
     let iter = scores.iter_mut().skip_while(|f| new_score < f.score);
     // In the upcoming shift of scores, insert first the new score.
@@ -196,7 +197,7 @@ fn insert_friend_score(scores: &mut [FriendScore; 8], friend_id: u16, new_score:
         // It's better to keep only the highest score from the same person
         // rather than remove highest (but lower than the new one) scores
         // of other people. We want to keep the scoreboards diverse.
-        if same_person {
+        if full && same_person {
             break;
         }
     }
@@ -233,5 +234,40 @@ mod tests {
         assert_eq!(scores, [20, 15, 13, 13, 7, 7, 6, 3]);
         insert_my_score(&mut scores, 14);
         assert_eq!(scores, [20, 15, 14, 13, 13, 7, 7, 6]);
+    }
+
+    fn new_score(i: u16, s: i16) -> FriendScore {
+        FriendScore { index: i, score: s }
+    }
+
+    #[test]
+    fn test_insert_friend_score() {
+        let mut scores = [
+            new_score(1, 43),
+            new_score(1, 30),
+            new_score(3, 28),
+            new_score(4, 28),
+            new_score(3, 20),
+            new_score(5, 15),
+            new_score(0, 0),
+            new_score(0, 0),
+        ];
+        insert_friend_score(&mut scores, 6, 55);
+        insert_friend_score(&mut scores, 6, 16);
+        insert_friend_score(&mut scores, 6, 2);
+        insert_friend_score(&mut scores, 3, 4);
+        insert_friend_score(&mut scores, 3, 26);
+
+        let expected = [
+            new_score(6, 55),
+            new_score(1, 43),
+            new_score(1, 30),
+            new_score(3, 28),
+            new_score(4, 28),
+            new_score(3, 26),
+            new_score(6, 16),
+            new_score(5, 15),
+        ];
+        assert_eq!(scores, expected);
     }
 }
