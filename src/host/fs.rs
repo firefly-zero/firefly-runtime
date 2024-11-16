@@ -1,5 +1,5 @@
-use crate::error::HostError;
 use crate::state::State;
+use crate::{error::HostError, NetHandler};
 use embedded_io::{Read, Write};
 use firefly_device::Device;
 use firefly_types::validate_path_part;
@@ -82,6 +82,11 @@ pub(crate) fn load_file(
                 state.log_error(HostError::FileNotFound);
                 return 0;
             };
+            let handler = state.net_handler.get_mut();
+            if !matches!(handler, NetHandler::None) {
+                state.log_error(HostError::DataFileInNet);
+                return 0;
+            }
             file
         }
     };
