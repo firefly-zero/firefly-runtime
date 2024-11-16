@@ -11,7 +11,7 @@ embedded-graphics = "0.8.1"
 embedded-io = { version = "0.6.1", default-features = false }
 firefly-audio = "0.2.0"
 firefly-device = { path = "../firefly-device" }
-firefly-types = { version = "0.3.0" }
+firefly-types = { version = "0.4.0" }
 heapless = { version = "0.8.0", features = ["serde"] }
 libflate = { version = "2.1.0", default-features = false }
 postcard = "1.0.8"

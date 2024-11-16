@@ -354,12 +354,11 @@ where
         let Some(resp) = stats.as_message(now) else {
             return Ok(());
         };
-        let mut buf = alloc::vec![0u8; 32];
-        let encoded = match resp.encode(&mut buf) {
+        let encoded = match resp.encode_vec() {
             Ok(encoded) => encoded,
             Err(err) => return Err(Error::SerialEncode(err)),
         };
-        let res = self.serial.send(encoded);
+        let res = self.serial.send(&encoded);
         if let Err(err) = res {
             return Err(Error::SerialSend(err));
         }
@@ -379,12 +378,11 @@ where
                 match cheat.call(&mut self.store, (a, b)) {
                     Ok((result,)) => {
                         let resp = serial::Response::Cheat(result);
-                        let mut buf = alloc::vec![0u8; 32];
-                        let encoded = match resp.encode(&mut buf) {
+                        let encoded = match resp.encode_vec() {
                             Ok(encoded) => encoded,
                             Err(err) => return Err(Error::SerialEncode(err)),
                         };
-                        let res = self.serial.send(encoded);
+                        let res = self.serial.send(&encoded);
                         if let Err(err) = res {
                             return Err(Error::SerialSend(err));
                         }

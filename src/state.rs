@@ -142,16 +142,14 @@ impl State {
         let Some(stats) = &self.app_stats else {
             return;
         };
-        let mut buf = alloc::vec![0u8; stats.size()];
-        let res = stats.encode(&mut buf);
-        if res.is_err() {
+        let Ok(res) = stats.encode_vec() else {
             return;
-        }
+        };
         let stats_path = &["data", self.id.author(), self.id.app(), "stats"];
         let Some(mut stream) = self.device.create_file(stats_path) else {
             return;
         };
-        _ = stream.write_all(&buf);
+        _ = stream.write_all(&res);
     }
 
     /// Update the state: read inputs, handle system commands.
