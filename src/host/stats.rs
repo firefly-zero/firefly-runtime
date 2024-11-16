@@ -5,6 +5,9 @@ use firefly_types::FriendScore;
 
 type C<'a> = wasmi::Caller<'a, State>;
 
+/// The peer_id representing the "combined"
+const COMBINED: u32 = 0xff;
+
 pub(crate) fn add_progress(mut caller: C, peer_id: u32, badge_id: u32, val: i32) -> u32 {
     let state = caller.data_mut();
     state.called = "stats.add_progress";
@@ -12,7 +15,7 @@ pub(crate) fn add_progress(mut caller: C, peer_id: u32, badge_id: u32, val: i32)
     let peer = get_friend(&mut handler, peer_id);
     let result = if let Some(peer) = peer {
         add_progress_friend(state, peer, badge_id, val)
-    } else if peer_id == 0xff {
+    } else if peer_id == COMBINED {
         add_progress_everyone(state, &mut handler, badge_id, val)
     } else {
         add_progress_me(state, badge_id, val)
@@ -160,6 +163,39 @@ pub(crate) fn add_score(mut caller: C, peer_id: u32, board_id: u32, new_score: i
             *max_score = new_score;
         };
         i32::from(*max_score)
+    } else if peer_id == COMBINED {
+        let NetHandler::FrameSyncer(syncer) = handler else {
+            insert_my_score(&mut scores.me, new_score);
+            let personal_best = scores.me[0];
+            return i32::from(personal_best);
+        };
+        let mut lowest: i32 = i32::MAX;
+        for peer in syncer.peers.iter_mut() {
+            let personal_best = if let Some(friend_id) = peer.friend_id {
+                insert_friend_score(&mut scores.friends, friend_id, new_score);
+                let Some(max_score) = peer.scores.get_mut(board_idx) else {
+                    let err = if peer.scores.is_empty() {
+                        HostError::NoBoards
+                    } else {
+                        HostError::NoBoard(board_id)
+                    };
+                    state.log_error(err);
+                    return 0;
+                };
+                if new_score > *max_score {
+                    *max_score = new_score;
+                };
+                i32::from(*max_score)
+            } else {
+                insert_my_score(&mut scores.me, new_score);
+                let personal_best = scores.me[0];
+                i32::from(personal_best)
+            };
+            if personal_best < lowest {
+                lowest = personal_best;
+            }
+        }
+        lowest
     } else {
         insert_my_score(&mut scores.me, new_score);
         let personal_best = scores.me[0];
@@ -171,7 +207,7 @@ pub(crate) fn add_score(mut caller: C, peer_id: u32, board_id: u32, new_score: i
 ///
 /// Returns None if the given peer is this device.
 fn get_friend(handler: &mut NetHandler, peer_id: u32) -> Option<&mut FSPeer> {
-    if peer_id == 0xff {
+    if peer_id == COMBINED {
         return None;
     }
     let NetHandler::FrameSyncer(syncer) = handler else {
