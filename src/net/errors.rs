@@ -3,7 +3,7 @@ use core::fmt;
 pub(crate) enum NetcodeError {
     Serialize(postcard::Error),
     Deserialize(postcard::Error),
-    Network(firefly_device::NetworkError),
+    Network(firefly_hal::NetworkError),
     EmptyBufferIn,
     EmptyBufferOut,
     PeerListFull,
@@ -12,8 +12,8 @@ pub(crate) enum NetcodeError {
     StatsError(&'static str),
 }
 
-impl From<firefly_device::NetworkError> for NetcodeError {
-    fn from(v: firefly_device::NetworkError) -> Self {
+impl From<firefly_hal::NetworkError> for NetcodeError {
+    fn from(v: firefly_hal::NetworkError) -> Self {
         Self::Network(v)
     }
 }

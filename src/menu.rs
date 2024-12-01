@@ -9,7 +9,7 @@ use embedded_graphics::primitives::{
     CornerRadii, PrimitiveStyle, Rectangle, RoundedRectangle, StyledDrawable,
 };
 use embedded_graphics::text::Text;
-use firefly_device::InputState;
+use firefly_hal::InputState;
 
 const LINE_HEIGHT: i32 = 12;
 

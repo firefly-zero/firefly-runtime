@@ -1,5 +1,5 @@
 use super::*;
-use firefly_device::*;
+use firefly_hal::*;
 
 const ADVERTISE_EVERY: Duration = Duration::from_ms(100);
 const MAX_PEERS: usize = 7;

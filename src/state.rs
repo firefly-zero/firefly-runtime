@@ -8,7 +8,7 @@ use crate::png::save_png;
 use core::cell::Cell;
 use core::fmt::Display;
 use embedded_io::{Read, Write};
-use firefly_device::*;
+use firefly_hal::*;
 use firefly_types::Encode;
 
 #[allow(private_interfaces)]

@@ -9,7 +9,7 @@ use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
 use embedded_io::Read;
-use firefly_device::*;
+use firefly_hal::*;
 use firefly_types::*;
 
 /// Default frames per second.

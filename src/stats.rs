@@ -1,4 +1,4 @@
-use firefly_device::{Duration, Instant};
+use firefly_hal::{Duration, Instant};
 use firefly_types::serial;
 
 // One kilobyte.

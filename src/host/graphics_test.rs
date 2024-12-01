@@ -7,7 +7,7 @@ use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mock_display::MockDisplay;
 use embedded_graphics::pixelcolor::Rgb888;
 use embedded_graphics::primitives::Rectangle;
-use firefly_device::{DeviceConfig, DeviceImpl};
+use firefly_hal::{DeviceConfig, DeviceImpl};
 use std::path::PathBuf;
 
 // const N: i32 = 0;

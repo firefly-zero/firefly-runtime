@@ -20,9 +20,9 @@ pub enum Error {
     SerialEncode(postcard::Error),
     SerialDecode(postcard::Error),
 
-    SerialStart(firefly_device::NetworkError),
-    SerialSend(firefly_device::NetworkError),
-    SerialRecv(firefly_device::NetworkError),
+    SerialStart(firefly_hal::NetworkError),
+    SerialSend(firefly_hal::NetworkError),
+    SerialRecv(firefly_hal::NetworkError),
 
     CheatUndefined,
     CheatInNet,

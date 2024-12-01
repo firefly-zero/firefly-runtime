@@ -1,7 +1,7 @@
 use crate::config::FullID;
 use crate::host::misc::*;
 use crate::state::{NetHandler, State};
-use firefly_device::{DeviceConfig, DeviceImpl};
+use firefly_hal::{DeviceConfig, DeviceImpl};
 use heapless::String;
 use std::path::PathBuf;
 

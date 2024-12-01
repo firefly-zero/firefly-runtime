@@ -4,7 +4,7 @@ use crate::state::NetHandler;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
-use firefly_device::*;
+use firefly_hal::*;
 use firefly_types::validate_id;
 use heapless::String;
 use serde::{Deserialize, Serialize};

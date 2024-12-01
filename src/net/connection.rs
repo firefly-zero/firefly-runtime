@@ -2,7 +2,7 @@ use super::*;
 use crate::FullID;
 use alloc::boxed::Box;
 use embedded_io::{Read, Write};
-use firefly_device::*;
+use firefly_hal::*;
 use firefly_types::{Encode, Stats};
 use ring::RingBuf;
 

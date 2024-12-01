@@ -1,7 +1,7 @@
 use super::ring::RingBuf;
 use super::*;
 use alloc::boxed::Box;
-use firefly_device::*;
+use firefly_hal::*;
 
 const SYNC_EVERY: Duration = Duration::from_ms(5);
 const FRAME_TIMEOUT: Duration = Duration::from_ms(100);

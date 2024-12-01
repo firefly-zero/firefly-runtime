@@ -9,7 +9,7 @@ use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::RgbColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::text::Text;
-use firefly_device::InputState;
+use firefly_hal::InputState;
 
 const FONT_HEIGHT: i32 = 10;
 const FONT_WIDTH: i32 = 6;

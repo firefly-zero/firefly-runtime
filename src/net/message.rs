@@ -1,7 +1,7 @@
 use super::NetcodeError;
 use crate::config::FullID;
 use alloc::boxed::Box;
-use firefly_device::InputState;
+use firefly_hal::InputState;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
