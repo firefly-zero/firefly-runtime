@@ -66,7 +66,7 @@ pub(crate) struct Connection {
 }
 
 impl Connection {
-    pub fn update(&mut self, device: &DeviceImpl) -> ConnectionStatus {
+    pub fn update(&mut self, device: &mut DeviceImpl) -> ConnectionStatus {
         let res = self.update_inner(device);
         if let Err(err) = res {
             device.log_error("netcode", err);
@@ -81,7 +81,7 @@ impl Connection {
         }
     }
 
-    pub fn set_app(&mut self, device: &DeviceImpl, app: FullID) -> Result<(), NetcodeError> {
+    pub fn set_app(&mut self, device: &mut DeviceImpl, app: FullID) -> Result<(), NetcodeError> {
         if self.app.is_some() {
             // App already was picked, cannot pick a new one.
             //
@@ -105,7 +105,11 @@ impl Connection {
         Ok(())
     }
 
-    fn make_intro(&mut self, device: &DeviceImpl, id: &FullID) -> Result<AppIntro, NetcodeError> {
+    fn make_intro(
+        &mut self,
+        device: &mut DeviceImpl,
+        id: &FullID,
+    ) -> Result<AppIntro, NetcodeError> {
         let me = self.get_me_mut();
         debug_assert!(me.intro.is_none());
 
@@ -152,7 +156,7 @@ impl Connection {
         Ok(intro)
     }
 
-    pub(crate) fn finalize(self, device: &DeviceImpl) -> FrameSyncer {
+    pub(crate) fn finalize(self, device: &mut DeviceImpl) -> FrameSyncer {
         let mut peers = heapless::Vec::<FSPeer, 8>::new();
         for peer in self.peers {
             let intro = peer.intro.unwrap();
@@ -181,7 +185,7 @@ impl Connection {
         }
     }
 
-    fn update_inner(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
+    fn update_inner(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         let now = device.now();
         self.sync(now)?;
         self.ready(now)?;
@@ -247,7 +251,7 @@ impl Connection {
 
     fn handle_message(
         &mut self,
-        device: &DeviceImpl,
+        device: &mut DeviceImpl,
         addr: Addr,
         raw: heapless::Vec<u8, MSG_SIZE>,
     ) -> Result<(), NetcodeError> {
@@ -294,7 +298,7 @@ impl Connection {
 
     fn handle_resp(
         &mut self,
-        device: &DeviceImpl,
+        device: &mut DeviceImpl,
         addr: Addr,
         resp: Resp,
     ) -> Result<(), NetcodeError> {
@@ -311,7 +315,7 @@ impl Connection {
     /// as well as some app-specific peer info, like the progress earning badges.
     fn handle_start_resp(
         &mut self,
-        device: &DeviceImpl,
+        device: &mut DeviceImpl,
         intro: Start,
         addr: Addr,
     ) -> Result<(), NetcodeError> {
@@ -349,7 +353,7 @@ impl Connection {
 }
 
 /// Get the ID that can be used to referer to the device from scores (`FriendScore`).
-fn get_friend_id(device: &DeviceImpl, device_name: &str) -> Option<u16> {
+fn get_friend_id(device: &mut DeviceImpl, device_name: &str) -> Option<u16> {
     if device_name.len() > 16 {
         return None;
     }

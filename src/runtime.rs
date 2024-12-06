@@ -46,10 +46,10 @@ where
     C: RgbColor + FromRGB,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
-    pub fn new(config: RuntimeConfig<D, C>) -> Result<Self, Error> {
+    pub fn new(mut config: RuntimeConfig<D, C>) -> Result<Self, Error> {
         let id = match config.id {
             Some(id) => id,
-            None => match detect_launcher(&config.device) {
+            None => match detect_launcher(&mut config.device) {
                 Some(id) => id,
                 None => return Err(Error::NoLauncher),
             },
@@ -428,14 +428,14 @@ where
     }
 }
 
-fn detect_launcher(device: &DeviceImpl) -> Option<FullID> {
+fn detect_launcher(device: &mut DeviceImpl) -> Option<FullID> {
     if let Some(id) = get_short_meta("launcher", device) {
         return Some(id);
     }
     get_short_meta("new-app", device)
 }
 
-fn get_short_meta(fname: &str, device: &DeviceImpl) -> Option<FullID> {
+fn get_short_meta(fname: &str, device: &mut DeviceImpl) -> Option<FullID> {
     let path = &["sys", fname];
     let mut file = device.open_file(path)?;
     let bytes = &mut [0; 64];
