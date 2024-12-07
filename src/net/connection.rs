@@ -194,6 +194,8 @@ impl Connection {
                 name: peer.name,
                 states: RingBuf::new(),
                 friend_id,
+                // TODO: don't keep these in memory for the current device.
+                // They are already stored in State.
                 badges: intro.badges,
                 scores: intro.scores,
             };
