@@ -11,6 +11,8 @@ pub(crate) enum NetcodeError {
     FrameTimeout,
     StatsError(&'static str),
     StatsFileError(firefly_hal::FSError),
+    StashError(&'static str),
+    StashFileError(firefly_hal::FSError),
 }
 
 impl From<firefly_hal::NetworkError> for NetcodeError {
@@ -33,6 +35,8 @@ impl fmt::Display for NetcodeError {
             FrameTimeout => write!(f, "timed out waiting for frame state"),
             StatsError(msg) => write!(f, "{msg}"),
             StatsFileError(err) => write!(f, "cannot open stats file: {err}"),
+            StashError(msg) => write!(f, "{msg}"),
+            StashFileError(err) => write!(f, "cannot open stash file: {err}"),
         }
     }
 }

@@ -109,6 +109,8 @@ pub(crate) struct Start {
     pub badges: Box<[u16]>,
     /// The peer's top score for each board.
     pub scores: Box<[i16]>,
+    /// The peer's stash, shared state preserved across games.
+    pub stash: Box<[u8]>,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize)]

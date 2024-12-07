@@ -33,6 +33,8 @@ pub(crate) struct AppIntro {
     badges: Box<[u16]>,
     /// The peer's top score for each board.
     scores: Box<[i16]>,
+    /// The peer's stash, shared state preserved across games.
+    pub stash: alloc::vec::Vec<u8>,
 }
 
 pub(crate) enum ConnectionStatus {
@@ -94,14 +96,12 @@ impl Connection {
             id: app.clone(),
             badges: intro.badges.clone(),
             scores: intro.scores.clone(),
+            stash: intro.stash.clone().into(),
         });
         self.broadcast(resp.into())?;
         self.app = Some(app);
-        for peer in self.peers.iter_mut() {
-            if peer.addr.is_none() {
-                peer.intro = Some(intro.clone());
-            }
-        }
+        let me = self.get_me_mut();
+        me.intro = Some(intro);
         Ok(())
     }
 
@@ -113,12 +113,32 @@ impl Connection {
         let me = self.get_me_mut();
         debug_assert!(me.intro.is_none());
 
+        // read stash file
+        let stash_path = &["data", id.author(), id.app(), "stash"];
+        let stash = match device.open_file(stash_path) {
+            Ok(mut stream) => {
+                let mut stash = alloc::vec::Vec::with_capacity(81);
+                let res = stream.read_exact(&mut stash[..]);
+                match res {
+                    Ok(_) => return Err(NetcodeError::StashError("stash file is too big")),
+                    Err(embedded_io::ReadExactError::UnexpectedEof) => {}
+                    Err(embedded_io::ReadExactError::Other(err)) => {
+                        return Err(NetcodeError::StashFileError(err.into()))
+                    }
+                }
+                stash
+            }
+            Err(FSError::NotFound) => alloc::vec::Vec::new(),
+            Err(err) => return Err(NetcodeError::StashFileError(err)),
+        };
+
         // check if the stats file even exists
         let stats_path = &["data", id.author(), id.app(), "stats"];
         let Ok(size) = device.get_file_size(stats_path) else {
             return Ok(AppIntro {
                 badges: Box::new([]),
                 scores: Box::new([]),
+                stash,
             });
         };
 
@@ -153,6 +173,7 @@ impl Connection {
         let intro = AppIntro {
             badges: badges.into_boxed_slice(),
             scores: scores.into_boxed_slice(),
+            stash,
         };
         Ok(intro)
     }
@@ -227,6 +248,7 @@ impl Connection {
             id: app.clone(),
             badges: intro.badges.clone(),
             scores: intro.scores.clone(),
+            stash: intro.stash.clone().into_boxed_slice(),
         });
         self.broadcast(resp.into())?;
         Ok(())
@@ -289,6 +311,7 @@ impl Connection {
             id: app.clone(),
             badges: intro.badges.clone(),
             scores: intro.scores.clone(),
+            stash: intro.stash.clone().into_boxed_slice(),
         };
         let resp = Message::Resp(resp.into());
         let mut buf = alloc::vec![0u8; MSG_SIZE];
@@ -325,6 +348,7 @@ impl Connection {
             peer.intro = Some(AppIntro {
                 badges: intro.badges,
                 scores: intro.scores,
+                stash: intro.stash.to_vec(),
             });
         };
         Ok(())
