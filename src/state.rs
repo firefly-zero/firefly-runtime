@@ -216,6 +216,7 @@ impl State {
         };
         let res = stream.write_all(&self.stash[..]);
         if let Err(err) = res {
+            let err = FSError::from(err);
             self.log_error(err);
         }
     }
@@ -245,6 +246,7 @@ impl State {
         };
         let res = stream.write_all(&res);
         if let Err(err) = res {
+            let err = FSError::from(err);
             self.log_error(err);
         }
     }
