@@ -101,6 +101,7 @@ where
 
         let mut state = State::new(id.clone(), config.device, config.net_handler);
         state.load_app_stats()?;
+        state.load_stash()?;
 
         let stream = match state.device.open_file(bin_path) {
             Ok(file) => file,

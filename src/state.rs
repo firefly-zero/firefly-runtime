@@ -93,23 +93,23 @@ impl State {
             name: None,
             app_stats: None,
             app_stats_dirty: false,
-            stash: alloc::vec::Vec::new(), // TODO!
+            stash: alloc::vec::Vec::new(),
             stash_dirty: false,
         }
     }
 
     /// Read app stats from FS.
     pub(crate) fn load_app_stats(&mut self) -> Result<(), Error> {
-        let stats_path = &["data", self.id.author(), self.id.app(), "stats"];
-        let Ok(size) = self.device.get_file_size(stats_path) else {
+        let path = &["data", self.id.author(), self.id.app(), "stats"];
+        let Ok(size) = self.device.get_file_size(path) else {
             return Ok(());
         };
         if size == 0 {
-            return Err(Error::FileEmpty(stats_path.join("/")));
+            return Err(Error::FileEmpty(path.join("/")));
         }
-        let mut stream = match self.device.open_file(stats_path) {
+        let mut stream = match self.device.open_file(path) {
             Ok(file) => file,
-            Err(err) => return Err(Error::OpenFile(stats_path.join("/"), err)),
+            Err(err) => return Err(Error::OpenFile(path.join("/"), err)),
         };
         let mut raw = alloc::vec![0u8; size as usize];
         let res = stream.read(&mut raw);
@@ -121,6 +121,29 @@ impl State {
             Err(err) => return Err(Error::DecodeStats(err)),
         };
         self.app_stats = Some(stats);
+        Ok(())
+    }
+
+    /// Read stash from FS.
+    pub(crate) fn load_stash(&mut self) -> Result<(), Error> {
+        let path = &["data", self.id.author(), self.id.app(), "stash"];
+        let Ok(size) = self.device.get_file_size(path) else {
+            return Ok(());
+        };
+        if size == 0 {
+            return Err(Error::FileEmpty(path.join("/")));
+        }
+        let mut stream = match self.device.open_file(path) {
+            Ok(file) => file,
+            Err(err) => return Err(Error::OpenFile(path.join("/"), err)),
+        };
+        if self.stash.len() < size as usize {
+            self.stash.reserve(size as usize - self.stash.len());
+        }
+        let res = stream.read(&mut self.stash);
+        if res.is_err() {
+            return Err(Error::ReadStash);
+        }
         Ok(())
     }
 

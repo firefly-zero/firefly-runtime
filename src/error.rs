@@ -12,6 +12,7 @@ pub enum Error {
     CannotDisplay,
     ReadMeta,
     ReadStats,
+    ReadStash,
     AuthorIDMismatch,
     AppIDMismatch,
 
@@ -41,7 +42,8 @@ impl fmt::Display for Error {
             Error::InvalidWidth => write!(f, "the image has invalid width"),
             Error::CannotDisplay => write!(f, "failed to draw on the display"),
             Error::ReadMeta => write!(f, "cannot read _meta"),
-            Error::ReadStats => write!(f, "cannot read _meta"),
+            Error::ReadStats => write!(f, "cannot read app stats"),
+            Error::ReadStash => write!(f, "cannot read app stash"),
             Error::AuthorIDMismatch => write!(f, "author ID in meta and in path don't match"),
             Error::AppIDMismatch => write!(f, "app ID in meta and in path don't match"),
             Error::DecodeMeta(err) => write!(f, "cannot decode _meta: {err}"),
