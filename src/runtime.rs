@@ -76,6 +76,7 @@ where
         if meta.app_id != id.app() {
             return Err(Error::AppIDMismatch);
         }
+        let sudo = meta.sudo;
 
         let mut serial = config.device.serial();
         let res = serial.start();
@@ -99,27 +100,7 @@ where
         };
 
         let mut state = State::new(id.clone(), config.device, config.net_handler);
-
-        let stats_path = &["data", id.author(), id.app(), "stats"];
-        if let Ok(size) = state.device.get_file_size(stats_path) {
-            if size == 0 {
-                return Err(Error::FileEmpty(stats_path.join("/")));
-            }
-            let mut stream = match state.device.open_file(stats_path) {
-                Ok(file) => file,
-                Err(err) => return Err(Error::OpenFile(stats_path.join("/"), err)),
-            };
-            let mut raw = alloc::vec![0u8; size as usize];
-            let res = stream.read(&mut raw);
-            if res.is_err() {
-                return Err(Error::ReadStats);
-            }
-            let stats = match Stats::decode(&raw) {
-                Ok(stats) => stats,
-                Err(err) => return Err(Error::DecodeStats(err)),
-            };
-            state.app_stats = Some(stats)
-        }
+        state.load_app_stats()?;
 
         let stream = match state.device.open_file(bin_path) {
             Ok(file) => file,
@@ -130,7 +111,7 @@ where
         let instance = {
             let module = wasmi::Module::new_streaming(&engine, stream)?;
             let mut linker = wasmi::Linker::<State>::new(&engine);
-            link(&mut linker, meta.sudo)?;
+            link(&mut linker, sudo)?;
             let instance_pre = linker.instantiate(&mut store, &module)?;
             instance_pre.start(&mut store)?
         };

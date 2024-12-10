@@ -3,8 +3,8 @@ use crate::config::FullID;
 use crate::error::RuntimeStats;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
-use crate::net::*;
 use crate::png::save_png;
+use crate::{net::*, Error};
 use core::cell::Cell;
 use core::fmt::Display;
 use embedded_io::{Read, Write};
@@ -65,7 +65,7 @@ pub(crate) struct State {
 
     pub app_stats: Option<firefly_types::Stats>,
     pub app_stats_dirty: bool,
-    pub stash: Option<alloc::boxed::Box<[u8]>>,
+    pub stash: alloc::vec::Vec<u8>,
     pub stash_dirty: bool,
 
     pub net_handler: Cell<NetHandler>,
@@ -93,9 +93,35 @@ impl State {
             name: None,
             app_stats: None,
             app_stats_dirty: false,
-            stash: None,
+            stash: alloc::vec::Vec::new(), // TODO!
             stash_dirty: false,
         }
+    }
+
+    /// Read app stats from FS.
+    pub(crate) fn load_app_stats(&mut self) -> Result<(), Error> {
+        let stats_path = &["data", self.id.author(), self.id.app(), "stats"];
+        let Ok(size) = self.device.get_file_size(stats_path) else {
+            return Ok(());
+        };
+        if size == 0 {
+            return Err(Error::FileEmpty(stats_path.join("/")));
+        }
+        let mut stream = match self.device.open_file(stats_path) {
+            Ok(file) => file,
+            Err(err) => return Err(Error::OpenFile(stats_path.join("/"), err)),
+        };
+        let mut raw = alloc::vec![0u8; size as usize];
+        let res = stream.read(&mut raw);
+        if res.is_err() {
+            return Err(Error::ReadStats);
+        }
+        let stats = match firefly_types::Stats::decode(&raw) {
+            Ok(stats) => stats,
+            Err(err) => return Err(Error::DecodeStats(err)),
+        };
+        self.app_stats = Some(stats);
+        Ok(())
     }
 
     pub(crate) fn runtime_stats(&self) -> RuntimeStats {
@@ -144,13 +170,20 @@ impl State {
 
     /// Dump stash (if any) on disk.
     pub(crate) fn save_stash(&mut self) {
-        let Some(stash) = &self.stash else {
-            return;
-        };
         if !self.stash_dirty {
             return;
         }
         let stash_path = &["data", self.id.author(), self.id.app(), "stash"];
+
+        // If the stash is empty, remove the stash file instead of storing an empty file.
+        if self.stash.is_empty() {
+            let res = self.device.remove_file(stash_path);
+            if let Err(err) = res {
+                self.log_error(err);
+            }
+            return;
+        };
+
         let mut stream = match self.device.create_file(stash_path) {
             Ok(stream) => stream,
             Err(err) => {
@@ -158,13 +191,13 @@ impl State {
                 return;
             }
         };
-        let res = stream.write_all(&stash[..]);
+        let res = stream.write_all(&self.stash[..]);
         if let Err(err) = res {
             self.log_error(err);
         }
     }
 
-    /// Dump app stats on disk.
+    /// Dump app stats (if changed) on disk.
     pub(crate) fn save_app_stats(&mut self) {
         let Some(stats) = &self.app_stats else {
             return;
