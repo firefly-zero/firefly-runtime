@@ -198,6 +198,7 @@ impl Connection {
                 // They are already stored in State.
                 badges: intro.badges,
                 scores: intro.scores,
+                stash: intro.stash,
             };
             peers.push(peer).ok().unwrap();
         }

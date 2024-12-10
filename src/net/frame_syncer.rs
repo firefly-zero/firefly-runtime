@@ -21,6 +21,8 @@ pub(crate) struct FSPeer {
     pub badges: Box<[u16]>,
     /// The peer's top score for each board.
     pub scores: Box<[i16]>,
+    /// The peer's shared state (save files, character, inventory, etc).
+    pub stash: alloc::vec::Vec<u8>,
 }
 
 pub(crate) struct FrameSyncer {

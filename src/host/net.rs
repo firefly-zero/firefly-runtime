@@ -54,11 +54,15 @@ pub(crate) fn save_stash(mut caller: C, peer_id: u32, buf_ptr: u32, buf_len: u32
         state.log_error(HostError::OomPointer);
         return;
     };
+    if buf.len() > 80 {
+        state.log_error("stash size cannot exceed 80 bytes");
+        return;
+    }
 
     let mut handler = state.net_handler.replace(NetHandler::None);
     let peer = get_friend(&mut handler, peer_id);
     match peer {
-        Some(peer) => save_stash_friend(state, peer, buf),
+        Some(peer) => save_stash_friend(peer, buf),
         None => {
             let buf = alloc::vec::Vec::from(buf);
             state.stash = Some(buf.into_boxed_slice());
@@ -68,6 +72,21 @@ pub(crate) fn save_stash(mut caller: C, peer_id: u32, buf_ptr: u32, buf_len: u32
     state.net_handler.replace(handler);
 }
 
-fn save_stash_friend(state: &mut State, peer: &mut FSPeer, buf: &[u8]) {
-    todo!()
+/// Store the stash of the given peer (that isn't the current device).
+///
+/// We keep the stash updates just in case the game want to load them back
+/// using `net.load_stash`. However, we don't preserve them anywhere in the FS
+/// after the game is closed. It's responsibility of each device to keep their own
+/// stash and then share it when starting the game.
+fn save_stash_friend(peer: &mut FSPeer, buf: &[u8]) {
+    let stash_len = peer.stash.len();
+    let buf_len = buf.len();
+    if stash_len < buf_len {
+        peer.stash.copy_from_slice(&buf[..stash_len]);
+        peer.stash.extend_from_slice(&buf[stash_len..]);
+    } else {
+        peer.stash.truncate(buf_len);
+        peer.stash.shrink_to_fit();
+        peer.stash.copy_from_slice(buf);
+    }
 }
