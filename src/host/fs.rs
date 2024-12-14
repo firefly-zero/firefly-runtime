@@ -1,5 +1,5 @@
 use crate::state::State;
-use crate::utils::read_into;
+use crate::utils::{read_into, write_all};
 use crate::{error::HostError, NetHandler};
 use embedded_io::Write;
 use firefly_hal::Device;
@@ -157,7 +157,7 @@ pub(crate) fn dump_file(
         state.log_error(HostError::OomPointer);
         return 0;
     };
-    let Ok(file_size) = file.write(buf) else {
+    let Ok(file_size) = write_all(&mut file, buf) else {
         state.log_error(HostError::FileWrite);
         return 0;
     };

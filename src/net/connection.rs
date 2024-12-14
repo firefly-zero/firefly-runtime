@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    utils::{read_all, read_into},
+    utils::{read_all, read_into, write_all},
     FullID,
 };
 use alloc::boxed::Box;
@@ -385,7 +385,7 @@ fn get_friend_id(device: &mut DeviceImpl, device_name: &str) -> Option<u16> {
     let Ok(mut stream) = device.open_file(path) else {
         let mut stream = device.create_file(path).ok()?;
         stream.write(&[device_name.len() as u8]).ok()?;
-        stream.write(device_name).ok()?;
+        write_all(stream, device_name).ok()?;
         return Some(1);
     };
 
@@ -407,6 +407,6 @@ fn get_friend_id(device: &mut DeviceImpl, device_name: &str) -> Option<u16> {
 
     let mut stream = device.append_file(path).ok()?;
     stream.write(&[device_name.len() as u8]).ok()?;
-    stream.write(device_name).ok()?;
+    write_all(stream, device_name).ok()?;
     Some(i + 1)
 }
