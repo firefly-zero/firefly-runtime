@@ -21,6 +21,27 @@ where
     Ok(result)
 }
 
+/// Read stream into the buffer.
+///
+/// Returns the number of bytes read.
+pub(crate) fn read_into<R, E>(mut stream: R, buf: &mut [u8]) -> Result<usize, E>
+where
+    R: embedded_io::Read<Error = E>,
+    E: embedded_io::Error,
+{
+    let mut buf = buf;
+    let mut filled = 0;
+    while !buf.is_empty() {
+        let n = stream.read(buf)?;
+        if n == 0 {
+            break;
+        }
+        filled += n;
+        buf = &mut buf[n..];
+    }
+    Ok(filled)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

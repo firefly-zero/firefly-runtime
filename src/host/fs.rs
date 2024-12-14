@@ -1,6 +1,7 @@
 use crate::state::State;
+use crate::utils::read_into;
 use crate::{error::HostError, NetHandler};
-use embedded_io::{Read, Write};
+use embedded_io::Write;
 use firefly_hal::Device;
 use firefly_types::validate_path_part;
 
@@ -80,7 +81,7 @@ pub(crate) fn load_file(
     };
 
     let path = &["roms", state.id.author(), state.id.app(), name];
-    let mut file = match state.device.open_file(path) {
+    let file = match state.device.open_file(path) {
         Ok(file) => file,
         Err(err) => {
             let path = &["data", state.id.author(), state.id.app(), "etc", name];
@@ -102,7 +103,8 @@ pub(crate) fn load_file(
         state.log_error(HostError::OomPointer);
         return 0;
     };
-    let Ok(file_size) = file.read(buf) else {
+    // TODO: read all
+    let Ok(file_size) = read_into(file, buf) else {
         state.log_error(HostError::FileRead);
         return 0;
     };
