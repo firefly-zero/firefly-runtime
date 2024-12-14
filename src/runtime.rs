@@ -5,10 +5,10 @@ use crate::frame_buffer::HEIGHT;
 use crate::linking::link;
 use crate::state::{NetHandler, State};
 use crate::stats::StatsTracker;
+use crate::utils::read_all;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
-use embedded_io::Read;
 use firefly_hal::*;
 use firefly_types::*;
 
@@ -57,16 +57,15 @@ where
         id.validate()?;
 
         let meta_path = &["roms", id.author(), id.app(), "_meta"];
-        let mut file = match config.device.open_file(meta_path) {
+        let file = match config.device.open_file(meta_path) {
             Ok(file) => file,
             Err(err) => return Err(Error::OpenFile(meta_path.join("/"), err)),
         };
-        let bytes = &mut [0; 64];
-        let res = file.read(bytes);
-        if res.is_err() {
-            return Err(Error::ReadMeta);
-        }
-        let meta = match Meta::decode(bytes) {
+        let bytes = match read_all(file) {
+            Ok(bytes) => bytes,
+            Err(_) => return Err(Error::ReadMeta),
+        };
+        let meta = match Meta::decode(&bytes[..]) {
             Ok(meta) => meta,
             Err(err) => return Err(Error::DecodeMeta(err)),
         };
@@ -421,10 +420,9 @@ fn detect_launcher(device: &mut DeviceImpl) -> Option<FullID> {
 
 fn get_short_meta(fname: &str, device: &mut DeviceImpl) -> Option<FullID> {
     let path = &["sys", fname];
-    let mut file = device.open_file(path).ok()?;
-    let bytes = &mut [0; 64];
-    file.read(bytes).ok()?;
-    let meta = ShortMeta::decode(bytes).ok()?;
+    let file = device.open_file(path).ok()?;
+    let bytes = read_all(file).ok()?;
+    let meta = ShortMeta::decode(&bytes[..]).ok()?;
     let author = meta.author_id.try_into().ok()?;
     let app = meta.app_id.try_into().ok()?;
     let id = FullID::new(author, app);

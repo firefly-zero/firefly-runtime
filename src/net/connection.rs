@@ -1,5 +1,8 @@
 use super::*;
-use crate::{utils::read_all, FullID};
+use crate::{
+    utils::{read_all, read_into},
+    FullID,
+};
 use alloc::boxed::Box;
 use embedded_io::{Read, Write};
 use firefly_hal::*;
@@ -395,7 +398,7 @@ fn get_friend_id(device: &mut DeviceImpl, device_name: &str) -> Option<u16> {
             break;
         }
         let size = usize::from(buf[0]);
-        stream.read(&mut buf[1..=size]).ok()?;
+        read_into(&mut stream, &mut buf[1..=size]).ok()?;
         if &buf[1..=size] == device_name {
             return Some(i);
         }

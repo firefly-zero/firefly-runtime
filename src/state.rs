@@ -4,11 +4,11 @@ use crate::error::RuntimeStats;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
 use crate::png::save_png;
-use crate::utils::read_all;
+use crate::utils::{read_all, read_into};
 use crate::{net::*, Error};
 use core::cell::Cell;
 use core::fmt::Display;
-use embedded_io::{Read, Write};
+use embedded_io::Write;
 use firefly_hal::*;
 use firefly_types::Encode;
 
@@ -388,8 +388,8 @@ impl State {
 
     fn read_name(&mut self) -> Option<heapless::String<16>> {
         let mut buf = heapless::Vec::<u8, 16>::from_slice(&[0; 16]).unwrap();
-        let mut file = self.device.open_file(&["sys", "name"]).ok()?;
-        let size = file.read(&mut buf).ok()?;
+        let file = self.device.open_file(&["sys", "name"]).ok()?;
+        let size = read_into(file, &mut buf).ok()?;
         buf.truncate(size);
         let name = heapless::String::<16>::from_utf8(buf).unwrap();
         Some(name)

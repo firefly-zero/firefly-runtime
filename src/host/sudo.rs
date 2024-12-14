@@ -1,7 +1,6 @@
-use crate::config::FullID;
 use crate::error::HostError;
 use crate::state::State;
-use embedded_io::Read;
+use crate::{config::FullID, utils::read_into};
 use firefly_hal::Device;
 use firefly_types::{validate_id, validate_path_part};
 use heapless::Vec;
@@ -183,14 +182,14 @@ pub(crate) fn load_file(
         }
     }
 
-    let mut file = match state.device.open_file(&path) {
+    let file = match state.device.open_file(&path) {
         Ok(file) => file,
         Err(err) => {
             state.log_error(err);
             return 0;
         }
     };
-    let Ok(file_size) = file.read(buf) else {
+    let Ok(file_size) = read_into(file, buf) else {
         state.log_error(HostError::FileRead);
         return 0;
     };
