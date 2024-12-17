@@ -27,6 +27,7 @@ where
     store: wasmi::Store<State>,
     update: Option<wasmi::TypedFunc<(), ()>>,
     render: Option<wasmi::TypedFunc<(), ()>>,
+    before_exit: Option<wasmi::TypedFunc<(), ()>>,
     cheat: Option<wasmi::TypedFunc<(i32, i32), (i32,)>>,
     handle_menu: Option<wasmi::TypedFunc<(u32,), ()>>,
     render_line: Option<wasmi::TypedFunc<(i32,), (i32,)>>,
@@ -122,6 +123,7 @@ where
             store,
             update: None,
             render: None,
+            before_exit: None,
             cheat: None,
             handle_menu: None,
             render_line: None,
@@ -163,6 +165,7 @@ where
         // Other functions defined by our spec.
         self.update = ins.get_typed_func(&self.store, "update").ok();
         self.render = ins.get_typed_func(&self.store, "render").ok();
+        self.before_exit = ins.get_typed_func(&self.store, "before_exit").ok();
         self.cheat = ins.get_typed_func(&self.store, "cheat").ok();
         self.handle_menu = ins.get_typed_func(&self.store, "handle_menu").ok();
         self.render_line = ins.get_typed_func(&self.store, "render_line").ok();
@@ -247,18 +250,25 @@ where
         self.prev_time = state.device.now();
     }
 
-    /// When runtime is created, it takes ownership of [Device]. This method releases it.
-    pub fn into_config(self) -> RuntimeConfig<D, C> {
+    /// Gracefully stop the runtime.
+    ///
+    /// 1. Calls `before_exit` callback.
+    /// 2. Persists stash and update stats.
+    /// 3. Releases [`Device`] ownership.
+    /// 3. Tells which app to run next.
+    pub fn finalize(mut self) -> Result<RuntimeConfig<D, C>, Error> {
+        self.call_callback("before_exit", self.before_exit)?;
         let mut state = self.store.into_data();
         state.save_stash();
         state.save_app_stats();
         let net_handler = state.net_handler.replace(NetHandler::None);
-        RuntimeConfig {
+        let config = RuntimeConfig {
             id: state.next,
             device: state.device,
             display: self.display,
             net_handler,
-        }
+        };
+        Ok(config)
     }
 
     pub fn device_mut(&mut self) -> &mut DeviceImpl {
