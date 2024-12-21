@@ -85,12 +85,22 @@ pub(crate) fn list_dirs(
     }
 
     let mut pos = 0;
+    let mut size_error = false;
     let res = state.device.iter_dir(&path, |_kind, entry_name| {
         buf[pos] = entry_name.len() as u8;
-        // TODO: It can panic! Don't trust that the buffer is long enough. Make it safe.
-        buf[(pos + 1)..(pos + 1 + entry_name.len())].copy_from_slice(entry_name);
-        pos += entry_name.len() + 1;
+        match buf.get_mut((pos + 1)..(pos + 1 + entry_name.len())) {
+            Some(buf) => {
+                buf.copy_from_slice(entry_name);
+                pos += entry_name.len() + 1;
+            }
+            None => {
+                size_error = true;
+            }
+        };
     });
+    if size_error {
+        state.log_error("buffer is not big enough to fit all entries");
+    }
     if let Err(err) = res {
         state.log_error(err);
     }
@@ -146,7 +156,13 @@ pub fn get_file_size(mut caller: C, path_ptr: u32, path_len: u32) -> u32 {
             return 0;
         }
     }
-    state.device.get_file_size(&path).unwrap_or(0)
+    match state.device.get_file_size(&path) {
+        Ok(file_size) => file_size,
+        Err(err) => {
+            state.log_error(HostError::FileRead(err));
+            0
+        }
+    }
 }
 
 pub(crate) fn load_file(
@@ -174,24 +190,27 @@ pub(crate) fn load_file(
         state.log_error(HostError::FileNameUtf8);
         return 0;
     };
-    let path: Vec<&str, MAX_DEPTH> = path.split('/').collect();
-    for part in &path {
+    let parts: Vec<&str, MAX_DEPTH> = path.split('/').collect();
+    for part in &parts {
         if let Err(err) = validate_path_part(part) {
             state.log_error(HostError::FileName(err));
             return 0;
         }
     }
 
-    let file = match state.device.open_file(&path) {
+    let file = match state.device.open_file(&parts) {
         Ok(file) => file,
         Err(err) => {
             state.log_error(err);
             return 0;
         }
     };
-    let Ok(file_size) = read_into(file, buf) else {
-        state.log_error(HostError::FileRead);
-        return 0;
+    let file_size = match read_into(file, buf) {
+        Ok(file_size) => file_size,
+        Err(err) => {
+            state.log_error(HostError::FileRead(err.into()));
+            return 0;
+        }
     };
     if file_size != buf_len as usize {
         state.log_error(HostError::BufferSize);

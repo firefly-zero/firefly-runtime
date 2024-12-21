@@ -103,10 +103,12 @@ pub(crate) fn load_file(
         state.log_error(HostError::OomPointer);
         return 0;
     };
-    // TODO: read all
-    let Ok(file_size) = read_into(file, buf) else {
-        state.log_error(HostError::FileRead);
-        return 0;
+    let file_size = match read_into(file, buf) {
+        Ok(file_size) => file_size,
+        Err(err) => {
+            state.log_error(HostError::FileRead(err.into()));
+            return 0;
+        }
     };
     if file_size != buf_len {
         state.log_error(HostError::BufferSize);
