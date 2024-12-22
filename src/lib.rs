@@ -20,7 +20,7 @@ mod state;
 mod stats;
 mod utils;
 
-pub use config::{FullID, RuntimeConfig};
+pub use config::{FullID, FullIDError, RuntimeConfig};
 pub use error::Error;
 pub use frame_buffer::{HEIGHT, WIDTH};
 pub use runtime::Runtime;

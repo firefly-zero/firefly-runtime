@@ -1,6 +1,7 @@
 use crate::color::FromRGB;
 use crate::error::Error;
 use crate::state::NetHandler;
+use core::fmt;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
@@ -19,6 +20,28 @@ where
     pub device: DeviceImpl,
     pub display: D,
     pub net_handler: NetHandler,
+}
+
+pub enum FullIDError {
+    NoDot,
+    LongAuthor,
+    LongApp,
+}
+
+impl FullIDError {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::NoDot => "the full app ID must contain a dot",
+            Self::LongAuthor => "author ID is too long",
+            Self::LongApp => "app ID is too long",
+        }
+    }
+}
+
+impl fmt::Display for FullIDError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 /// The author and app ID combo. Must be unique. Cannot be changed.
@@ -49,5 +72,23 @@ impl FullID {
             return Err(Error::InvalidAppID(err));
         }
         Ok(())
+    }
+}
+
+impl TryFrom<&str> for FullID {
+    type Error = FullIDError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let Some(dot) = value.find('.') else {
+            return Err(FullIDError::NoDot);
+        };
+        let (author_id, app_id) = value.split_at(dot);
+        let Ok(author_id) = heapless::String::try_from(author_id) else {
+            return Err(FullIDError::LongAuthor);
+        };
+        let Ok(app_id) = heapless::String::try_from(&app_id[1..]) else {
+            return Err(FullIDError::LongApp);
+        };
+        Ok(FullID::new(author_id, app_id))
     }
 }
