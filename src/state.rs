@@ -4,10 +4,11 @@ use crate::error::RuntimeStats;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
 use crate::png::save_png;
-use crate::utils::{read_all, read_all_into, read_into};
+use crate::utils::{read_all, read_all_into};
 use crate::{net::*, Error};
 use core::cell::Cell;
 use core::fmt::Display;
+use core::str::FromStr;
 use embedded_io::Write;
 use firefly_hal::*;
 use firefly_types::Encode;
@@ -405,21 +406,13 @@ impl State {
         if !matches!(self.net_handler.get_mut(), NetHandler::None) {
             return;
         }
-        let name = self.read_name().unwrap_or_default();
+        let name = &self.get_settings().name;
+        let name = heapless::String::from_str(name).unwrap_or_default();
         // TODO: validate the name
         let me = MyInfo { name, version: 1 };
         let net = self.device.network();
         self.net_handler
             .set(NetHandler::Connector(Connector::new(me, net)));
-    }
-
-    fn read_name(&mut self) -> Option<heapless::String<16>> {
-        let mut buf = heapless::Vec::<u8, 16>::from_slice(&[0; 16]).unwrap();
-        let file = self.device.open_file(&["sys", "name"]).ok()?;
-        let size = read_into(file, &mut buf).ok()?;
-        buf.truncate(size);
-        let name = heapless::String::<16>::from_utf8(buf).unwrap();
-        Some(name)
     }
 
     fn frame_state(&self) -> FrameState {
