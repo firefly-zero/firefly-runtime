@@ -21,9 +21,9 @@ pub enum NetHandler {
     FrameSyncer(FrameSyncer),
 }
 
-pub(crate) struct State {
+pub(crate) struct State<'a> {
     /// Access to peripherals.
-    pub device: DeviceImpl,
+    pub device: DeviceImpl<'a>,
 
     /// The app menu manager.
     pub menu: Menu,
@@ -74,10 +74,10 @@ pub(crate) struct State {
     pub connect_scene: Option<ConnectScene>,
 }
 
-impl State {
+impl<'a> State<'a> {
     pub(crate) fn new(
         id: FullID,
-        device: DeviceImpl,
+        device: DeviceImpl<'a>,
         net_handler: NetHandler,
         launcher: bool,
     ) -> Self {

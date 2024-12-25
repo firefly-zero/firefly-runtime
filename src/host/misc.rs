@@ -2,7 +2,7 @@ use crate::error::HostError;
 use crate::state::{NetHandler, State};
 use firefly_hal::Device;
 
-type C<'a> = wasmi::Caller<'a, State>;
+type C<'a> = wasmi::Caller<'a, State<'a>>;
 
 /// Write a debug log message into console.
 pub(crate) fn log_debug(mut caller: C, ptr: u32, len: u32) {
@@ -114,7 +114,7 @@ fn is_online(state: &mut State) -> bool {
     matches!(handler, NetHandler::FrameSyncer(_))
 }
 
-fn get_name_for_peer(state: &mut State, index: u32) -> &str {
+fn get_name_for_peer<'a>(state: &'a mut State<'a>, index: u32) -> &'a str {
     let handler = state.net_handler.get_mut();
     let NetHandler::FrameSyncer(syncer) = handler else {
         // It could've been type safe with pattern matching but then

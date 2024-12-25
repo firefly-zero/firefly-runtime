@@ -10,8 +10,8 @@ crc32fast = { version = "1.4.2", default-features = false }
 embedded-graphics = "0.8.1"
 embedded-io = "0.6.1"
 firefly-audio = "0.2.0"
-firefly-hal = { git = "https://github.com/firefly-zero/firefly-hal" }
-# firefly-hal = { path = "../../firefly-hal" }
+# firefly-hal = { git = "https://github.com/firefly-zero/firefly-hal" }
+firefly-hal = { path = "../../firefly-hal" }
 firefly-types = { version = "0.4.0" }
 heapless = { version = "0.8.0", features = ["serde"] }
 libflate = { version = "2.1.0", default-features = false }

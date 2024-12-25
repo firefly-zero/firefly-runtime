@@ -17,14 +17,14 @@ const FPS: u32 = 60;
 const KB: u32 = 1024;
 const FUEL_PER_CALL: u64 = 1_000_000;
 
-pub struct Runtime<D, C>
+pub struct Runtime<'a, D, C>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
 {
     display: D,
     instance: wasmi::Instance,
-    store: wasmi::Store<State>,
+    store: wasmi::Store<State<'a>>,
     update: Option<wasmi::TypedFunc<(), ()>>,
     render: Option<wasmi::TypedFunc<(), ()>>,
     before_exit: Option<wasmi::TypedFunc<(), ()>>,
@@ -41,13 +41,13 @@ where
     serial: SerialImpl,
 }
 
-impl<D, C> Runtime<D, C>
+impl<'a, D, C> Runtime<'a, D, C>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
-    pub fn new(mut config: RuntimeConfig<D, C>) -> Result<Self, Error> {
+    pub fn new(mut config: RuntimeConfig<'a, D, C>) -> Result<Self, Error> {
         let id = match config.id {
             Some(id) => id,
             None => match detect_launcher(&mut config.device) {
@@ -108,7 +108,7 @@ where
             Ok(file) => file,
             Err(err) => return Err(Error::OpenFile(bin_path.join("/"), err)),
         };
-        let mut store = wasmi::Store::<State>::new(&engine, state);
+        let mut store = wasmi::Store::<State<'a>>::new(&engine, state);
         _ = store.set_fuel(FUEL_PER_CALL);
         let instance = {
             let module = wasmi::Module::new_streaming(&engine, stream)?;
@@ -257,7 +257,7 @@ where
     /// 2. Persists stash and update stats.
     /// 3. Releases [`Device`] ownership.
     /// 3. Tells which app to run next.
-    pub fn finalize(mut self) -> Result<RuntimeConfig<D, C>, Error> {
+    pub fn finalize(mut self) -> Result<RuntimeConfig<'a, D, C>, Error> {
         self.call_callback("before_exit", self.before_exit)?;
         let mut state = self.store.into_data();
         state.save_stash();
@@ -272,7 +272,7 @@ where
         Ok(config)
     }
 
-    pub fn device_mut(&mut self) -> &mut DeviceImpl {
+    pub fn device_mut<'b: 'a>(&'b mut self) -> &'b mut DeviceImpl<'b> {
         let state = self.store.data_mut();
         &mut state.device
     }
@@ -388,7 +388,8 @@ where
                 }
             }
             serial::Request::Stats(stats) => {
-                let now = self.device_mut().now();
+                let state = self.store.data_mut();
+                let now = state.device.now();
                 if stats && self.stats.is_none() {
                     self.stats = Some(StatsTracker::new(now));
                 };

@@ -10,7 +10,7 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
 use embedded_graphics::text::Text;
 
-type C<'a> = wasmi::Caller<'a, State>;
+type C<'a> = wasmi::Caller<'a, State<'a>>;
 
 /// Set every pixel of the frame buffer to the given color.
 pub(crate) fn clear_screen(mut caller: C, color: i32) {
@@ -520,11 +520,11 @@ fn get_shape_style(fill_color: u32, stroke_color: u32, stroke_width: u32) -> Pri
 }
 
 /// Get State from Store and a slice of bytes from Memory in the given range.
-fn get_bytes<'b>(
-    caller: &'b mut wasmi::Caller<'_, State>,
+fn get_bytes<'a, 'b, 'c>(
+    caller: &'b mut wasmi::Caller<'a, State<'b>>,
     ptr: u32,
     len: u32,
-) -> Option<(&'b mut State, &'b [u8])> {
+) -> Option<(&'b mut State<'b>, &'b [u8])> {
     let state = caller.data();
     let Some(memory) = state.memory else {
         state.log_error(HostError::MemoryNotFound);

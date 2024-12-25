@@ -3,7 +3,7 @@ use crate::net::FSPeer;
 use crate::state::{NetHandler, State};
 use firefly_types::FriendScore;
 
-type C<'a> = wasmi::Caller<'a, State>;
+type C<'a> = wasmi::Caller<'a, State<'a>>;
 
 /// The peer_id representing the "combined"
 const COMBINED: u32 = 0xff;
