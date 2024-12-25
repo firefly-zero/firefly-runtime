@@ -359,8 +359,16 @@ pub(crate) fn draw_text(
 pub(crate) fn set_canvas(mut caller: C, ptr: u32, len: u32) {
     const HEADER: usize = 5 + 8;
     let state = caller.data_mut();
-    state.called = "graphics.set_canvas";
-    let Some((state, image_bytes)) = get_bytes(&mut caller, ptr, len) else {
+    let Some(memory) = state.memory else {
+        state.log_error(HostError::MemoryNotFound);
+        return;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let uptr = ptr as usize;
+    let ulen = len as usize;
+    let maybe_buf = data.get(uptr..(uptr + ulen));
+    let Some(image_bytes) = &maybe_buf else {
+        state.log_error(HostError::OomPointer);
         return;
     };
     if image_bytes.len() <= HEADER {
@@ -415,7 +423,17 @@ pub(crate) fn draw_image(mut caller: C, ptr: u32, len: u32, x: i32, y: i32) {
 
 fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Option<Rectangle>) {
     // retrieve the raw data from memory
-    let Some((state, image_bytes)) = get_bytes(&mut caller, ptr, len) else {
+    let state = caller.data();
+    let Some(memory) = state.memory else {
+        state.log_error(HostError::MemoryNotFound);
+        return;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let ptr = ptr as usize;
+    let len = len as usize;
+    let maybe_buf = data.get(ptr..(ptr + len));
+    let Some(image_bytes) = &maybe_buf else {
+        state.log_error(HostError::OomPointer);
         return;
     };
     if image_bytes.len() < 7 {
@@ -520,11 +538,11 @@ fn get_shape_style(fill_color: u32, stroke_color: u32, stroke_width: u32) -> Pri
 }
 
 /// Get State from Store and a slice of bytes from Memory in the given range.
-fn get_bytes<'a, 'b, 'c>(
-    caller: &'b mut wasmi::Caller<'a, State<'b>>,
+fn get_bytes<'a>(
+    caller: &'a mut C<'a>,
     ptr: u32,
     len: u32,
-) -> Option<(&'b mut State<'b>, &'b [u8])> {
+) -> Option<(&'a mut State<'a>, &'a [u8])> {
     let state = caller.data();
     let Some(memory) = state.memory else {
         state.log_error(HostError::MemoryNotFound);
