@@ -19,7 +19,7 @@ where
     pub id: Option<FullID>,
     pub device: DeviceImpl<'a>,
     pub display: D,
-    pub net_handler: NetHandler,
+    pub net_handler: NetHandler<'a>,
 }
 
 pub enum FullIDError {
