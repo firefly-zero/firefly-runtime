@@ -272,7 +272,7 @@ where
         Ok(config)
     }
 
-    pub fn device_mut<'b: 'a>(&'b mut self) -> &'b mut DeviceImpl<'b> {
+    pub fn device_mut(&mut self) -> &mut DeviceImpl<'a> {
         let state = self.store.data_mut();
         &mut state.device
     }
