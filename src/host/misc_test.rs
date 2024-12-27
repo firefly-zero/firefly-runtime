@@ -78,7 +78,7 @@ fn wrap_input(a: &[i32]) -> Vec<wasmi::Val> {
     res
 }
 
-fn make_store() -> wasmi::Store<State> {
+fn make_store<'a>() -> wasmi::Store<State<'a>> {
     let engine = wasmi::Engine::default();
     let root = PathBuf::from("/tmp");
     let config = DeviceConfig {

@@ -4,7 +4,6 @@ use firefly_hal::*;
 const ADVERTISE_EVERY: Duration = Duration::from_ms(100);
 const MAX_PEERS: usize = 7;
 const MSG_SIZE: usize = 64;
-type Addr = <NetworkImpl as Network>::Addr;
 
 pub(crate) struct MyInfo {
     pub name: heapless::String<16>,
@@ -23,9 +22,9 @@ pub(crate) struct PeerInfo {
 /// If you play games with friends, you establish the connection once
 /// at the beginning of the evening and it stays on as long as
 /// all the devices are turned on.
-pub(crate) struct Connector {
+pub(crate) struct Connector<'a> {
     pub me: MyInfo,
-    net: NetworkImpl,
+    net: NetworkImpl<'a>,
     last_advertisement: Option<Instant>,
     peer_addrs: heapless::Vec<Addr, MAX_PEERS>,
     peer_infos: heapless::Vec<PeerInfo, MAX_PEERS>,
@@ -33,8 +32,8 @@ pub(crate) struct Connector {
     stopped: bool,
 }
 
-impl Connector {
-    pub fn new(me: MyInfo, net: NetworkImpl) -> Self {
+impl<'a> Connector<'a> {
+    pub fn new(me: MyInfo, net: NetworkImpl<'a>) -> Self {
         Self {
             me,
             net,
@@ -74,7 +73,7 @@ impl Connector {
         Ok(())
     }
 
-    pub fn finalize(self) -> Connection {
+    pub fn finalize(self) -> Connection<'a> {
         let mut peers = heapless::Vec::<Peer, 8>::new();
         for peer in self.peer_infos {
             let peer = Peer {

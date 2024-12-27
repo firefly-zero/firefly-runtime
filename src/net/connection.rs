@@ -13,7 +13,6 @@ const SYNC_EVERY: Duration = Duration::from_ms(100);
 const READY_EVERY: Duration = Duration::from_ms(100);
 const MAX_PEERS: usize = 8;
 const MSG_SIZE: usize = 64;
-type Addr = <NetworkImpl as Network>::Addr;
 
 pub(crate) struct Peer {
     /// If address is None, the peer is the current device.
@@ -57,20 +56,20 @@ pub(crate) enum ConnectionStatus {
 ///
 /// This object is allocated while your are in the launcher.
 /// Its job is to launch an app for everyone when someone picks one to play.
-pub(crate) struct Connection {
+pub(crate) struct Connection<'a> {
     /// In the initial state, a prepared intro for the current device.
     /// Later, when the app to be launched is known, contains the id of the app to launch
     /// and the intro moves into [`Peer`] corresponding to the local device.
     pub app: Option<FullID>,
     pub peers: heapless::Vec<Peer, MAX_PEERS>,
-    pub(super) net: NetworkImpl,
+    pub(super) net: NetworkImpl<'a>,
     /// The last time when the device checked if other devices are ready to start.
     pub(super) last_sync: Option<Instant>,
     /// The last time when the device announced that it's ready to start the app.
     pub(super) last_ready: Option<Instant>,
 }
 
-impl Connection {
+impl<'a> Connection<'a> {
     pub fn update(&mut self, device: &mut DeviceImpl) -> ConnectionStatus {
         let res = self.update_inner(device);
         if let Err(err) = res {
@@ -169,7 +168,7 @@ impl Connection {
         Ok(intro)
     }
 
-    pub(crate) fn finalize(self, device: &mut DeviceImpl) -> FrameSyncer {
+    pub(crate) fn finalize(self, device: &mut DeviceImpl) -> FrameSyncer<'a> {
         let mut peers = heapless::Vec::<FSPeer, 8>::new();
         for peer in self.peers {
             let intro = peer.intro.unwrap();

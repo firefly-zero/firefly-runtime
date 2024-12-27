@@ -14,16 +14,16 @@ use firefly_hal::*;
 use firefly_types::Encode;
 
 #[allow(private_interfaces)]
-pub enum NetHandler {
+pub enum NetHandler<'a> {
     None,
-    Connector(Connector),
-    Connection(Connection),
-    FrameSyncer(FrameSyncer),
+    Connector(Connector<'a>),
+    Connection(Connection<'a>),
+    FrameSyncer(FrameSyncer<'a>),
 }
 
-pub(crate) struct State {
+pub(crate) struct State<'a> {
     /// Access to peripherals.
-    pub device: DeviceImpl,
+    pub device: DeviceImpl<'a>,
 
     /// The app menu manager.
     pub menu: Menu,
@@ -70,15 +70,15 @@ pub(crate) struct State {
     pub stash: alloc::vec::Vec<u8>,
     pub stash_dirty: bool,
 
-    pub net_handler: Cell<NetHandler>,
+    pub net_handler: Cell<NetHandler<'a>>,
     pub connect_scene: Option<ConnectScene>,
 }
 
-impl State {
+impl<'a> State<'a> {
     pub(crate) fn new(
         id: FullID,
-        device: DeviceImpl,
-        net_handler: NetHandler,
+        device: DeviceImpl<'a>,
+        net_handler: NetHandler<'a>,
         launcher: bool,
     ) -> Self {
         let offline = matches!(net_handler, NetHandler::None);
@@ -319,7 +319,7 @@ impl State {
         self.net_handler.replace(handler);
     }
 
-    fn update_connector(&mut self, mut connector: Connector) -> NetHandler {
+    fn update_connector<'b>(&mut self, mut connector: Connector<'b>) -> NetHandler<'b> {
         connector.update(&self.device);
         let Some(scene) = self.connect_scene.as_mut() else {
             return NetHandler::Connector(connector);
@@ -352,7 +352,7 @@ impl State {
         }
     }
 
-    fn update_connection(&mut self, mut connection: Connection) -> NetHandler {
+    fn update_connection<'b>(&mut self, mut connection: Connection<'b>) -> NetHandler<'b> {
         let status = connection.update(&mut self.device);
         if matches!(status, ConnectionStatus::Launching) {
             if let Some(app_id) = &connection.app {
@@ -365,7 +365,7 @@ impl State {
         NetHandler::Connection(connection)
     }
 
-    fn update_syncer(&mut self, mut syncer: FrameSyncer) -> NetHandler {
+    fn update_syncer<'b>(&mut self, mut syncer: FrameSyncer<'b>) -> NetHandler<'b> {
         let frame_state = self.frame_state();
         syncer.advance(&self.device, frame_state);
         while !syncer.ready() {

@@ -5,7 +5,8 @@ use crate::{
 
 use super::stats::get_friend;
 
-type C<'a> = wasmi::Caller<'a, State>;
+type C<'a, 'b> = wasmi::Caller<'a, State<'b>>;
+
 
 /// Get the index of the local peer.
 pub(crate) fn get_me(mut caller: C) -> u32 {

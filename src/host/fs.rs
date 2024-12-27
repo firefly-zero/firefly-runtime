@@ -5,7 +5,8 @@ use embedded_io::Write;
 use firefly_hal::Device;
 use firefly_types::validate_path_part;
 
-type C<'a> = wasmi::Caller<'a, State>;
+type C<'a, 'b> = wasmi::Caller<'a, State<'b>>;
+
 
 /// DEPRECATED
 pub(crate) fn get_rom_file_size(caller: C, path_ptr: u32, path_len: u32) -> u32 {

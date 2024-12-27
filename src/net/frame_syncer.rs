@@ -7,7 +7,6 @@ const SYNC_EVERY: Duration = Duration::from_ms(5);
 const FRAME_TIMEOUT: Duration = Duration::from_ms(100);
 const MAX_PEERS: usize = 8;
 const MSG_SIZE: usize = 64;
-type Addr = <NetworkImpl as Network>::Addr;
 
 pub(crate) struct FSPeer {
     /// If address is None, the peer is the current device.
@@ -25,15 +24,15 @@ pub(crate) struct FSPeer {
     pub stash: alloc::vec::Vec<u8>,
 }
 
-pub(crate) struct FrameSyncer {
+pub(crate) struct FrameSyncer<'a> {
     pub frame: u32,
     pub peers: heapless::Vec<FSPeer, MAX_PEERS>,
     pub(super) last_sync: Option<Instant>,
     pub(super) last_advance: Option<Instant>,
-    pub(super) net: NetworkImpl,
+    pub(super) net: NetworkImpl<'a>,
 }
 
-impl FrameSyncer {
+impl<'a> FrameSyncer<'a> {
     /// Check if we have the state of the current frame for all connected peers.
     pub fn ready(&self) -> bool {
         for peer in &self.peers {

@@ -5,7 +5,8 @@ use firefly_hal::Device;
 use firefly_types::{validate_id, validate_path_part};
 use heapless::Vec;
 
-type C<'a> = wasmi::Caller<'a, State>;
+type C<'a, 'b> = wasmi::Caller<'a, State<'b>>;
+
 
 /// How many parts at most a file path can have
 ///

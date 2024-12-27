@@ -11,15 +11,15 @@ use heapless::String;
 use serde::{Deserialize, Serialize};
 
 /// Contains the basic information and resources needed to run an app.
-pub struct RuntimeConfig<D, C>
+pub struct RuntimeConfig<'a, D, C>
 where
     D: DrawTarget<Color = C> + OriginDimensions,
     C: RgbColor + FromRGB,
 {
     pub id: Option<FullID>,
-    pub device: DeviceImpl,
+    pub device: DeviceImpl<'a>,
     pub display: D,
-    pub net_handler: NetHandler,
+    pub net_handler: NetHandler<'a>,
 }
 
 pub enum FullIDError {

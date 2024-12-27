@@ -3,7 +3,7 @@ use crate::net::FSPeer;
 use crate::state::{NetHandler, State};
 use firefly_types::FriendScore;
 
-type C<'a> = wasmi::Caller<'a, State>;
+type C<'a, 'b> = wasmi::Caller<'a, State<'b>>;
 
 /// The peer_id representing the "combined"
 const COMBINED: u32 = 0xff;
@@ -207,7 +207,10 @@ pub(crate) fn add_score(mut caller: C, peer_id: u32, board_id: u32, new_score: i
 /// Get the peer with the given ID but only if it's not the current device.
 ///
 /// Returns None if the given peer is this device.
-pub(crate) fn get_friend(handler: &mut NetHandler, peer_id: u32) -> Option<&mut FSPeer> {
+pub(crate) fn get_friend<'b>(
+    handler: &'b mut NetHandler<'_>,
+    peer_id: u32,
+) -> Option<&'b mut FSPeer> {
     if peer_id == COMBINED {
         return None;
     }
