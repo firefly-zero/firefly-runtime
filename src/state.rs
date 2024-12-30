@@ -381,22 +381,26 @@ impl<'a> State<'a> {
 
     /// Save the current frame buffer into a PNG file.
     fn take_screenshot(&mut self) {
+        let old_app = self.called;
+        self.called = "take screenshot";
         let dir_path = &["data", self.id.author(), self.id.app(), "shots"];
         let mut index = 1;
-        let res = self.device.iter_dir(dir_path, |_, _| index += 1);
-        if let Err(err) = res {
-            self.log_error(err);
-        }
+        _ = self.device.iter_dir(dir_path, |_, _| index += 1);
         let file_name = alloc::format!("{}.png", index);
         let path = &["data", self.id.author(), self.id.app(), "shots", &file_name];
         let mut file = match self.device.create_file(path) {
             Ok(file) => file,
             Err(err) => {
                 self.log_error(err);
+                self.called = old_app;
                 return;
             }
         };
-        save_png(&mut file, &self.frame.palette, &*self.frame.data).unwrap();
+        let res = save_png(&mut file, &self.frame.palette, &*self.frame.data);
+        if let Err(err) = res {
+            self.log_error(err);
+        }
+        self.called = old_app;
     }
 
     fn connect(&mut self) {
