@@ -139,11 +139,7 @@ impl<'a> FrameSyncer<'a> {
         Ok(())
     }
 
-    fn handle_message(
-        &mut self,
-        addr: Addr,
-        raw: heapless::Vec<u8, MSG_SIZE>,
-    ) -> Result<(), NetcodeError> {
+    fn handle_message(&mut self, addr: Addr, raw: Box<[u8]>) -> Result<(), NetcodeError> {
         if !self.peers.iter().any(|p| p.addr == Some(addr)) {
             return Err(NetcodeError::UnknownPeer);
         }

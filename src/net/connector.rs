@@ -1,4 +1,5 @@
 use super::*;
+use alloc::boxed::Box;
 use firefly_hal::*;
 
 const ADVERTISE_EVERY: Duration = Duration::from_ms(100);
@@ -131,7 +132,7 @@ impl<'a> Connector<'a> {
         &mut self,
         device: &DeviceImpl,
         addr: Addr,
-        raw: heapless::Vec<u8, MSG_SIZE>,
+        raw: Box<[u8]>,
     ) -> Result<(), NetcodeError> {
         if !self.peer_addrs.contains(&addr) {
             device.log_debug("netcode", "new device discovered");

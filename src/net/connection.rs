@@ -269,7 +269,7 @@ impl<'a> Connection<'a> {
         &mut self,
         device: &mut DeviceImpl,
         addr: Addr,
-        raw: heapless::Vec<u8, MSG_SIZE>,
+        raw: Box<[u8]>,
     ) -> Result<(), NetcodeError> {
         if !self.peers.iter().any(|p| p.addr == Some(addr)) {
             return Err(NetcodeError::UnknownPeer);
