@@ -398,6 +398,7 @@ impl<'a> State<'a> {
         };
         let res = save_png(&mut file, &self.frame.palette, &*self.frame.data);
         if let Err(err) = res {
+            let err: firefly_hal::FSError = err.into();
             self.log_error(err);
         }
         self.called = old_app;
