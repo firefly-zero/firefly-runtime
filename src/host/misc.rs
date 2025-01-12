@@ -65,6 +65,13 @@ pub(crate) fn set_seed(mut caller: C, seed: u32) {
 pub(crate) fn get_random(mut caller: C) -> u32 {
     let state = caller.data_mut();
     state.called = "misc.get_random";
+
+    // Use true RNG if no seed set by the app and it's not a multiplayer.
+    let handler = state.net_handler.get_mut();
+    if matches!(handler, NetHandler::None) && state.seed == 0 {
+        return state.device.random();
+    }
+
     let mut x = state.seed;
     if x == 0 {
         x = 1;

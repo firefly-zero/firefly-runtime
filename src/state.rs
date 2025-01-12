@@ -423,7 +423,10 @@ impl<'a> State<'a> {
     fn frame_state(&self) -> FrameState {
         let input = self.input.clone().unwrap_or_default();
         FrameState {
+            // No need to set frame number here,
+            // it will be set by FrameSyncer.advance.
             frame: 0,
+            rand: self.seed,
             input: Input {
                 pad: input.pad.map(Into::into),
                 buttons: input.buttons,

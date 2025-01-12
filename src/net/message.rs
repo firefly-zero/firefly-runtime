@@ -96,8 +96,8 @@ pub(crate) struct Intro {
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub(crate) struct FrameState {
     pub frame: u32,
+    pub rand: u32,
     pub input: Input,
-    // rand: Option<...>
     // rand_key: Option<...>
 }
 
