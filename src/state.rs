@@ -43,6 +43,10 @@ pub(crate) struct State<'a> {
     /// The current state of the randomization function.
     pub seed: u32,
 
+    /// If true, the current seed is set by the app and must not be randomized
+    /// using true RNG.
+    pub lock_seed: bool,
+
     /// Pointer to the app memory.
     ///
     /// Might be None if the app doesn't have guest memory defined.
@@ -90,6 +94,7 @@ impl<'a> State<'a> {
             menu: Menu::new(offline, launcher),
             audio: firefly_audio::Manager::new(),
             seed: 0,
+            lock_seed: false,
             memory: None,
             next: None,
             exit: false,
@@ -368,7 +373,8 @@ impl<'a> State<'a> {
     fn update_syncer<'b>(&mut self, mut syncer: FrameSyncer<'b>) -> NetHandler<'b> {
         let input = self.input.clone().unwrap_or_default();
         // Sync random seed only once a second to avoid poking true RNG too often.
-        let sync_rand = syncer.frame % 60 == 21;
+        // Also, don't sync it if the seed is locked by the app.
+        let sync_rand = !self.lock_seed && syncer.frame % 60 == 21;
         let rand = if sync_rand { self.device.random() } else { 0 };
         let frame_state = FrameState {
             // No need to set frame number here,
