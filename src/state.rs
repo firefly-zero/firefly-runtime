@@ -371,11 +371,13 @@ impl<'a> State<'a> {
     }
 
     fn update_syncer<'b>(&mut self, mut syncer: FrameSyncer<'b>) -> NetHandler<'b> {
-        let input = self.input.clone().unwrap_or_default();
-        // Sync random seed only once a second to avoid poking true RNG too often.
-        // Also, don't sync it if the seed is locked by the app.
-        let sync_rand = !self.lock_seed && syncer.frame % 60 == 21;
+        // * Don't sync seed if it is locked by the app (misc.set_seed was called).
+        // * Don't sync seed if misc.get_random was never called.
+        // * Don't sync seed too often to avoid poking true RNG too often.
+        let sync_rand = !self.lock_seed && self.seed != 0 && syncer.frame % 60 == 21;
         let rand = if sync_rand { self.device.random() } else { 0 };
+
+        let input = self.input.clone().unwrap_or_default();
         let frame_state = FrameState {
             // No need to set frame number here,
             // it will be set by FrameSyncer.advance.
