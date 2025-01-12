@@ -88,10 +88,7 @@ impl<'a> State<'a> {
         let offline = matches!(net_handler, NetHandler::None);
         let seed = match &net_handler {
             NetHandler::FrameSyncer(syncer) => syncer.initial_seed,
-            _ => {
-                device.log_debug("init", "using the default seed");
-                0
-            }
+            _ => 0,
         };
         Self {
             device,
