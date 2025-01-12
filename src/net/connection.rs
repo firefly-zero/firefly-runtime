@@ -388,11 +388,15 @@ fn get_friend_id(device: &mut DeviceImpl, device_name: &str) -> Option<u16> {
     let mut buf = [0u8; 17];
     let mut i = 1;
     loop {
-        let res = stream.read(&mut buf[..1]);
-        if res.is_err() {
-            break;
+        match stream.read(&mut buf[..1]) {
+            Ok(0) => break,
+            Ok(_) => {}
+            Err(_) => break,
         }
         let size = usize::from(buf[0]);
+        if size == 0 {
+            continue;
+        }
         read_into(&mut stream, &mut buf[1..=size]).ok()?;
         if &buf[1..=size] == device_name {
             return Some(i);
