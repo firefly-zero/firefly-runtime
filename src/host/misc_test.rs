@@ -39,13 +39,16 @@ fn test_set_seed() {
 #[test]
 fn test_get_random() {
     let mut store = make_store();
-    let state = store.data_mut();
-    state.seed = 13;
+
+    let func = wasmi::Func::wrap(&mut store, set_seed);
+    let inputs = wrap_input(&[13]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
     let func = wasmi::Func::wrap(&mut store, get_random);
     let mut outputs = wrap_input(&[0]);
     func.call(&mut store, &[], &mut outputs).unwrap();
+
     assert_eq!(outputs.len(), 1);
-    // Hardcoded value that might change if we change the random algorithm.
     let expected = 3514797;
     assert_eq!(outputs[0].i32(), Some(expected));
     let state = store.data();
