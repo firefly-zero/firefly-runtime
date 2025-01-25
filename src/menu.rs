@@ -3,7 +3,7 @@ use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{OriginDimensions, Point, Size};
 use embedded_graphics::mono_font::ascii::FONT_6X9;
 use embedded_graphics::mono_font::MonoTextStyle;
-use embedded_graphics::pixelcolor::RgbColor;
+use embedded_graphics::pixelcolor::{Rgb888, RgbColor};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{
     CornerRadii, PrimitiveStyle, Rectangle, RoundedRectangle, StyledDrawable,
@@ -193,9 +193,9 @@ impl Menu {
             return Ok(());
         }
         let corners = CornerRadii::new(Size::new_equal(4));
-        let white = C::from_rgb(0xf4, 0xf4, 0xf4);
-        let black = C::from_rgb(0x1a, 0x1c, 0x2c);
-        let blue = C::from_rgb(0x3b, 0x5d, 0xc9);
+        let white = convert_color::<C>(0xf4, 0xf4, 0xf4);
+        let black = convert_color::<C>(0x1a, 0x1c, 0x2c);
+        let blue = convert_color::<C>(0x3b, 0x5d, 0xc9);
         let box_style = PrimitiveStyle::with_stroke(black, 1);
         let mut black_style = MonoTextStyle::new(&FONT_6X9, black);
         black_style.background_color = Some(white);
@@ -222,4 +222,17 @@ impl Menu {
         }
         Ok(())
     }
+}
+
+fn convert_color<C>(r: u8, g: u8, b: u8) -> C
+where
+    C: RgbColor + FromRGB,
+{
+    let r = r as u32 * C::MAX_R as u32 / Rgb888::MAX_R as u32;
+    let g = g as u32 * C::MAX_G as u32 / Rgb888::MAX_G as u32;
+    let b = b as u32 * C::MAX_B as u32 / Rgb888::MAX_B as u32;
+    debug_assert!(r < 256);
+    debug_assert!(g < 256);
+    debug_assert!(b < 256);
+    C::from_rgb(r as u8, g as u8, b as u8)
 }
