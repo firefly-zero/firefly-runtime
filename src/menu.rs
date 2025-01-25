@@ -197,8 +197,10 @@ impl Menu {
         let black = C::from_rgb(0x1a, 0x1c, 0x2c);
         let blue = C::from_rgb(0x3b, 0x5d, 0xc9);
         let box_style = PrimitiveStyle::with_stroke(black, 1);
-        let black_style = MonoTextStyle::new(&FONT_6X9, black);
-        let blue_style = MonoTextStyle::new(&FONT_6X9, blue);
+        let mut black_style = MonoTextStyle::new(&FONT_6X9, black);
+        black_style.background_color = Some(white);
+        let mut blue_style = MonoTextStyle::new(&FONT_6X9, blue);
+        blue_style.background_color = Some(white);
 
         display.clear(white)?;
         let items = self.app_items.iter().chain(self.sys_items.iter());
