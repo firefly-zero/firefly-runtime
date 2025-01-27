@@ -1,7 +1,6 @@
 use super::Connector;
 use crate::color::FromRGB;
 use crate::frame_buffer::WIDTH;
-use crate::state::{NetHandler, State};
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{OriginDimensions, Point};
 use embedded_graphics::mono_font::ascii::FONT_6X9;
@@ -52,6 +51,7 @@ pub(crate) struct ConnectScene {
     frame: usize,
     buttons: Buttons,
     stopped: bool,
+    hash: usize,
 }
 
 impl ConnectScene {
@@ -60,6 +60,7 @@ impl ConnectScene {
             frame: 0,
             buttons: Buttons::new(&None),
             stopped: false,
+            hash: 0,
         }
     }
 
@@ -100,19 +101,17 @@ impl ConnectScene {
         None
     }
 
-    pub fn render<D, C, E>(&self, state: &State, display: &mut D) -> Result<(), E>
+    pub fn render<D, C, E>(&mut self, connector: &Connector, display: &mut D) -> Result<(), E>
     where
         D: DrawTarget<Color = C, Error = E> + OriginDimensions,
         C: RgbColor + FromRGB,
     {
-        let connector = state.net_handler.replace(NetHandler::None);
-        let res = if let NetHandler::Connector(connector) = &connector {
-            self.render_inner(connector, display)
-        } else {
-            Ok(())
-        };
-        state.net_handler.replace(connector);
-        res
+        let hash = self.calculate_hash(connector);
+        if self.hash == hash {
+            return Ok(());
+        }
+        self.hash = hash;
+        self.render_inner(connector, display)
     }
 
     /// Show the connector state.
@@ -224,5 +223,19 @@ impl ConnectScene {
             }
         }
         Ok(())
+    }
+
+    /// Calculate the state hash.
+    ///
+    /// If the hash has changed, we need to re-render the UI.
+    fn calculate_hash(&self, connector: &Connector) -> usize {
+        let mut hash = 0;
+        hash += connector.peer_addrs().len();
+        hash += connector.peer_infos().len();
+        hash += self.frame / 15;
+        hash += usize::from(self.buttons.any) * 32;
+        hash += usize::from(self.buttons.a) * 64;
+        hash += usize::from(self.buttons.a) * 128;
+        hash
     }
 }

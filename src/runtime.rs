@@ -193,10 +193,12 @@ where
         let menu_was_active = state.menu.active();
         let menu_index = state.update();
 
-        if let Some(scene) = &state.connect_scene {
-            let res = scene.render(state, &mut self.display);
-            if res.is_err() {
-                return Err(Error::CannotDisplay);
+        if let Some(scene) = &mut state.connect_scene {
+            if let NetHandler::Connector(connector) = &state.net_handler.get_mut() {
+                let res = scene.render(connector, &mut self.display);
+                if res.is_err() {
+                    return Err(Error::CannotDisplay);
+                }
             }
             return Ok(false);
         }
