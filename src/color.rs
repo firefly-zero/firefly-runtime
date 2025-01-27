@@ -67,12 +67,21 @@ where
 pub trait FromRGB {
     /// The white background color.
     const BG: Self;
+    /// The primary black text color.
+    const PRIMARY: Self;
+    /// The dark blue accent color.
+    const ACCENT: Self;
+    /// The gray muted text color.
+    const MUTED: Self;
 
     fn from_rgb(r: u8, g: u8, b: u8) -> Self;
 }
 
 impl FromRGB for Rgb565 {
     const BG: Self = new_rgb565(0xf4, 0xf4, 0xf4);
+    const PRIMARY: Self = new_rgb565(0x1a, 0x1c, 0x2c);
+    const ACCENT: Self = new_rgb565(0x3b, 0x5d, 0xc9);
+    const MUTED: Self = new_rgb565(0x94, 0xb0, 0xc2);
 
     fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         new_rgb565(r, g, b)
@@ -81,6 +90,9 @@ impl FromRGB for Rgb565 {
 
 impl FromRGB for Rgb888 {
     const BG: Self = Self::new(0xf4, 0xf4, 0xf4);
+    const PRIMARY: Self = Self::new(0x1a, 0x1c, 0x2c);
+    const ACCENT: Self = Self::new(0x3b, 0x5d, 0xc9);
+    const MUTED: Self = Self::new(0x94, 0xb0, 0xc2);
 
     fn from_rgb(r: u8, g: u8, b: u8) -> Self {
         Self::new(r, g, b)
