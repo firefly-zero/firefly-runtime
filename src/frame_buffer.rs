@@ -244,13 +244,7 @@ where
     C: RgbColor + FromRGB,
 {
     let rgb888 = palette[luma as usize];
-    let r = rgb888.r() as u32 * C::MAX_R as u32 / Rgb888::MAX_R as u32;
-    let g = rgb888.g() as u32 * C::MAX_G as u32 / Rgb888::MAX_G as u32;
-    let b = rgb888.b() as u32 * C::MAX_B as u32 / Rgb888::MAX_B as u32;
-    debug_assert!(r < 256);
-    debug_assert!(g < 256);
-    debug_assert!(b < 256);
-    C::from_rgb(r as u8, g as u8, b as u8)
+    C::from_rgb(rgb888.r(), rgb888.g(), rgb888.b())
 }
 
 /// Duplicate the color and pack into 1 byte.

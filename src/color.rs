@@ -63,60 +63,32 @@ where
     }
 }
 
-/// Create RGB (or BGR) color from R, G, and B components.
-///
-/// All RGB colors implemented in embedded_graphics provide exactly the same
-/// new `method` but this method is not part of any trait.
-/// So, we have to make our own.
+/// Create RGB (or BGR) color from R, G, and B components in 0-255 range.
 pub trait FromRGB {
     fn from_rgb(r: u8, g: u8, b: u8) -> Self;
 }
 
-impl FromRGB for Rgb555 {
-    fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::new(r, g, b)
-    }
-}
-
-impl FromRGB for Bgr555 {
-    fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::new(r, g, b)
-    }
-}
-
 impl FromRGB for Rgb565 {
     fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::new(r, g, b)
-    }
-}
-
-impl FromRGB for Bgr565 {
-    fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::new(r, g, b)
-    }
-}
-
-impl FromRGB for Rgb666 {
-    fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::new(r, g, b)
-    }
-}
-
-impl FromRGB for Bgr666 {
-    fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::new(r, g, b)
+        let r = r as u32 * Self::MAX_R as u32 / Rgb888::MAX_R as u32;
+        let g = g as u32 * Self::MAX_G as u32 / Rgb888::MAX_G as u32;
+        let b = b as u32 * Self::MAX_B as u32 / Rgb888::MAX_B as u32;
+        debug_assert!(r < 256);
+        debug_assert!(g < 256);
+        debug_assert!(b < 256);
+        Self::new(r as u8, g as u8, b as u8)
     }
 }
 
 impl FromRGB for Rgb888 {
     fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::new(r, g, b)
-    }
-}
-
-impl FromRGB for Bgr888 {
-    fn from_rgb(r: u8, g: u8, b: u8) -> Self {
-        Self::new(r, g, b)
+        let r = r as u32 * Self::MAX_R as u32 / Rgb888::MAX_R as u32;
+        let g = g as u32 * Self::MAX_G as u32 / Rgb888::MAX_G as u32;
+        let b = b as u32 * Self::MAX_B as u32 / Rgb888::MAX_B as u32;
+        debug_assert!(r < 256);
+        debug_assert!(g < 256);
+        debug_assert!(b < 256);
+        Self::new(r as u8, g as u8, b as u8)
     }
 }
 

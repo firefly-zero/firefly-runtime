@@ -146,7 +146,7 @@ where
         Ok(runtime)
     }
 
-    pub fn display(&mut self) -> &mut D {
+    pub fn display_mut(&mut self) -> &mut D {
         &mut self.display
     }
 

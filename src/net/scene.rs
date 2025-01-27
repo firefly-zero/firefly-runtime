@@ -131,7 +131,8 @@ impl ConnectScene {
         // Render gray "Connecting..." message
         if !self.stopped {
             let gray = C::from_rgb(0x94, 0xb0, 0xc2);
-            let text_style = MonoTextStyle::new(&FONT_6X9, gray);
+            let mut text_style = MonoTextStyle::new(&FONT_6X9, gray);
+            text_style.background_color = Some(C::WHITE);
             let point = Point::new(X, Y - FONT_HEIGHT);
             let text = "Connecting...";
             let text = Text::new(text, point, text_style);
@@ -142,7 +143,8 @@ impl ConnectScene {
         // It is sliced over time to show that the device is not frozen.
         if !self.stopped {
             let quarter_second = self.frame / 15;
-            let text_style = MonoTextStyle::new(&FONT_6X9, black);
+            let mut text_style = MonoTextStyle::new(&FONT_6X9, black);
+            text_style.background_color = Some(C::WHITE);
             let text = "Connecting...";
             let (shift, text) = if quarter_second % 28 >= 14 {
                 (quarter_second as i32 % 14, &text[quarter_second % 14..])
@@ -157,14 +159,16 @@ impl ConnectScene {
         // Show the current device name.
         {
             let point = Point::new(X, Y);
-            let text_style = MonoTextStyle::new(&FONT_6X9, black);
+            let mut text_style = MonoTextStyle::new(&FONT_6X9, black);
+            text_style.background_color = Some(C::WHITE);
             let text = Text::new("you:", point, text_style);
             text.draw(display)?;
         }
         {
             let blue = C::from_rgb(0x3b, 0x5d, 0xc9);
             let point = Point::new(X + FONT_WIDTH * 5, Y);
-            let text_style = MonoTextStyle::new(&FONT_6X9, blue);
+            let mut text_style = MonoTextStyle::new(&FONT_6X9, blue);
+            text_style.background_color = Some(C::WHITE);
             let text = if connector.me.name.is_empty() {
                 "<empty>"
             } else {
@@ -179,9 +183,10 @@ impl ConnectScene {
         // Show gray "press any button to stop" at the bottom of the screen.
         {
             let gray = C::from_rgb(0x94, 0xb0, 0xc2);
-            let text_style = MonoTextStyle::new(&FONT_6X9, gray);
+            let mut text_style = MonoTextStyle::new(&FONT_6X9, gray);
+            text_style.background_color = Some(C::WHITE);
             let text = if self.stopped {
-                "press A to continue / B to cancel"
+                "press S to continue / E to cancel"
             } else {
                 "(press any button to stop)"
             };
@@ -201,7 +206,8 @@ impl ConnectScene {
         C: RgbColor + FromRGB,
     {
         let blue = C::from_rgb(0x3b, 0x5d, 0xc9);
-        let text_style = MonoTextStyle::new(&FONT_6X9, blue);
+        let mut text_style = MonoTextStyle::new(&FONT_6X9, blue);
+        text_style.background_color = Some(C::WHITE);
         let mut addrs = connector.peer_addrs().clone();
         let peers = connector.peer_infos();
         let peer_count = peers.len() as i32;
