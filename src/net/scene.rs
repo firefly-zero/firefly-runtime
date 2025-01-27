@@ -36,7 +36,7 @@ impl Buttons {
             Some(input) => Self {
                 a: input.a(),
                 b: input.b(),
-                any: input.buttons != 0,
+                any: (input.buttons & 0b1111) != 0,
             },
             None => Self {
                 a: false,
