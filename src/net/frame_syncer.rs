@@ -3,7 +3,7 @@ use super::*;
 use alloc::boxed::Box;
 use firefly_hal::*;
 
-const SYNC_EVERY: Duration = Duration::from_ms(5);
+const SYNC_EVERY: Duration = Duration::from_ms(20);
 const FRAME_TIMEOUT: Duration = Duration::from_ms(5000);
 const MAX_PEERS: usize = 8;
 const MSG_SIZE: usize = 64;
@@ -117,11 +117,12 @@ impl FrameSyncer<'_> {
                 }
             }
         }
+        let now = device.now();
+        self.last_sync = Some(now);
     }
 
     fn update_inner(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
-        let now = device.now();
-        self.sync(now)?;
+        self.sync(device)?;
         if let Some((addr, msg)) = self.net.recv()? {
             self.handle_message(addr, msg)?;
         }
@@ -130,7 +131,8 @@ impl FrameSyncer<'_> {
 
     /// Get every connected peer with unknown state for the current frame
     /// and send them a request for that state.
-    fn sync(&mut self, now: Instant) -> Result<(), NetcodeError> {
+    fn sync(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
+        let now = device.now();
         if let Some(prev) = self.last_sync {
             if now - prev < SYNC_EVERY {
                 return Ok(());
