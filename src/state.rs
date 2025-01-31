@@ -290,12 +290,17 @@ impl<'a> State<'a> {
         // Get combined input for all peers.
         //
         // In offline mode, it's just the input.
-        // For multi-player game, it is the combined input of all player.
-        // We use it to ensure that all players open the menu simultaneously.
+        // For multi-player game, it is the combined input of all player,
+        // unless in launcher (Connector or Connection).
+        // We use it to ensure that all players open the app menu simultaneously.
         let input = match self.net_handler.get_mut() {
+            // single-player
             NetHandler::None => self.input.clone(),
+            // shouldn't be reachable
             NetHandler::Connector(_) => return None,
-            NetHandler::Connection(_) => return None,
+            // in launcher
+            NetHandler::Connection(_) => self.input.clone(),
+            // in game
             NetHandler::FrameSyncer(syncer) => {
                 // TODO: if menu is open, we need to adjust sync timeout
                 // for the frame syncer.
