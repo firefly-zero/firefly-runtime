@@ -257,7 +257,8 @@ where
             self.lagging_frames = 0;
         }
         self.delay();
-        let should_render = self.n_frames % self.render_every == 0;
+        let state = self.store.data();
+        let should_render = state.exit || self.n_frames % self.render_every == 0;
         if should_render {
             let fuel_render = self.call_callback("render", self.render)?;
             if let Some(stats) = &mut self.stats {
