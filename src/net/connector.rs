@@ -99,6 +99,7 @@ impl<'a> Connector<'a> {
             last_sync: None,
             last_ready: None,
             seed: None,
+            started_at: None,
         }
     }
 

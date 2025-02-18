@@ -376,13 +376,21 @@ impl<'a> State<'a> {
 
     fn update_connection<'b>(&mut self, mut connection: Connection<'b>) -> NetHandler<'b> {
         let status = connection.update(&mut self.device);
-        if matches!(status, ConnectionStatus::Launching) {
-            if let Some(app_id) = &connection.app {
-                self.next = Some(app_id.clone());
-                self.exit = true;
-                let syncer = connection.finalize(&mut self.device);
-                return NetHandler::FrameSyncer(syncer);
+        match status {
+            ConnectionStatus::Launching => {
+                if let Some(app_id) = &connection.app {
+                    self.next = Some(app_id.clone());
+                    self.exit = true;
+                    let syncer = connection.finalize(&mut self.device);
+                    return NetHandler::FrameSyncer(syncer);
+                }
             }
+            ConnectionStatus::Timeout => {
+                let msg = "timed out waiting for other devices to launch the app";
+                self.device.log_error("netcode", msg);
+                return NetHandler::None;
+            }
+            _ => (),
         }
         NetHandler::Connection(connection)
     }

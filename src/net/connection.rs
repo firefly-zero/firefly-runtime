@@ -11,6 +11,7 @@ use ring::RingBuf;
 
 const SYNC_EVERY: Duration = Duration::from_ms(100);
 const READY_EVERY: Duration = Duration::from_ms(100);
+const START_TIMEOUT: Duration = Duration::from_ms(10_000);
 const MAX_PEERS: usize = 8;
 const MSG_SIZE: usize = 64;
 
@@ -48,6 +49,8 @@ pub(crate) enum ConnectionStatus {
     Ready,
     /// Everyone agreed to play, launch the app.
     Launching,
+    /// We wanted to start an app but didn't get intros from some peers.
+    Timeout,
 }
 
 /// Connection is a result of connector.
@@ -70,10 +73,18 @@ pub(crate) struct Connection<'a> {
     pub(super) last_sync: Option<Instant>,
     /// The last time when the device announced that it's ready to start the app.
     pub(super) last_ready: Option<Instant>,
+    /// The moment when we knew which app to launch.
+    pub(super) started_at: Option<Instant>,
 }
 
 impl<'a> Connection<'a> {
     pub fn update(&mut self, device: &mut DeviceImpl) -> ConnectionStatus {
+        if let Some(started_at) = self.started_at {
+            let now = device.now();
+            if now - started_at > START_TIMEOUT {
+                return ConnectionStatus::Timeout;
+            }
+        }
         let res = self.update_inner(device);
         if let Err(err) = res {
             device.log_error("netcode", err);
@@ -114,6 +125,7 @@ impl<'a> Connection<'a> {
         });
         self.broadcast(resp.into())?;
         self.app = Some(app);
+        self.started_at = Some(device.now());
         let me = self.get_me_mut();
         me.intro = Some(intro);
         Ok(())
