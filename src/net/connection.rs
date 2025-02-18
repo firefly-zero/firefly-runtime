@@ -167,6 +167,7 @@ impl<'a> Connection<'a> {
             frame: 0,
             last_advance: None,
             initial_seed: seed,
+            app: self.app.unwrap(),
         }
     }
 

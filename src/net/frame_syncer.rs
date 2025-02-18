@@ -1,5 +1,6 @@
 use super::ring::RingBuf;
 use super::*;
+use crate::config::FullID;
 use alloc::boxed::Box;
 use firefly_hal::*;
 
@@ -28,6 +29,7 @@ pub(crate) struct FrameSyncer<'a> {
     pub frame: u32,
     pub peers: heapless::Vec<FSPeer, MAX_PEERS>,
     pub initial_seed: u32,
+    pub app: FullID,
     pub(super) last_sync: Option<Instant>,
     pub(super) last_advance: Option<Instant>,
     pub(super) net: NetworkImpl<'a>,
@@ -172,16 +174,39 @@ impl FrameSyncer<'_> {
         // A peer requested a state for a specific frame.
         // Send them the state if available.
         // If not, send nothing, let them timeout.
-        if let Req::State(frame) = req {
-            let me = self.get_me();
-            let state = me.states.get(frame);
-            if let Some(state) = state {
-                let msg = Message::Resp(Resp::State(state));
-                let mut buf = alloc::vec![0u8; MSG_SIZE];
-                let raw = msg.encode(&mut buf)?;
-                self.net.send(addr, raw)?;
-            }
+        match req {
+            Req::State(frame) => self.handle_state_req(addr, frame)?,
+            Req::Start => self.handle_start_req(addr)?,
+            _ => return Err(NetcodeError::UnexpectedRequest),
         }
+        Ok(())
+    }
+
+    fn handle_start_req(&mut self, addr: Addr) -> Result<(), NetcodeError> {
+        let me = self.get_me();
+        let resp = Start {
+            id: self.app.clone(),
+            badges: me.badges.clone(),
+            scores: me.scores.clone(),
+            stash: me.stash.clone().into_boxed_slice(),
+            seed: self.initial_seed,
+        };
+        let resp = Message::Resp(resp.into());
+        let mut buf = alloc::vec![0u8; MSG_SIZE];
+        let raw = resp.encode(&mut buf)?;
+        self.net.send(addr, raw)?;
+        Ok(())
+    }
+
+    fn handle_state_req(&mut self, addr: Addr, frame: u32) -> Result<(), NetcodeError> {
+        let me = self.get_me();
+        let state = me.states.get(frame);
+        if let Some(state) = state {
+            let msg = Message::Resp(Resp::State(state));
+            let mut buf = alloc::vec![0u8; MSG_SIZE];
+            let raw = msg.encode(&mut buf)?;
+            self.net.send(addr, raw)?;
+        };
         Ok(())
     }
 
