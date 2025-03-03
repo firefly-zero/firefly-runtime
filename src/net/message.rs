@@ -70,24 +70,6 @@ pub(crate) enum Resp {
     State(FrameState),
 }
 
-impl From<FrameState> for Resp {
-    fn from(v: FrameState) -> Self {
-        Self::State(v)
-    }
-}
-
-impl From<Start> for Resp {
-    fn from(v: Start) -> Self {
-        Self::Start(v)
-    }
-}
-
-impl From<Intro> for Resp {
-    fn from(v: Intro) -> Self {
-        Self::Intro(v)
-    }
-}
-
 #[derive(Serialize, Deserialize)]
 pub(crate) struct Intro {
     pub name: heapless::String<16>,
@@ -106,7 +88,7 @@ pub(crate) struct FrameState {
     pub action: Action,
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub(crate) enum Action {
     /// No action.
     None,

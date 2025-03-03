@@ -136,7 +136,7 @@ pub(crate) fn quit(mut caller: C) {
     let state = caller.data_mut();
     state.called = "misc.quit";
     let state = caller.data_mut();
-    state.exit = true;
+    state.set_next(None);
 }
 
 /// Stop the currently running app and start it again.
@@ -144,5 +144,5 @@ pub(crate) fn restart(mut caller: C) {
     let state = caller.data_mut();
     state.called = "misc.restart";
     let state = caller.data_mut();
-    state.set_next(state.id.clone());
+    state.set_next(Some(state.id.clone()));
 }

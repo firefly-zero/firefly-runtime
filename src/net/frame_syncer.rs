@@ -85,6 +85,20 @@ impl FrameSyncer<'_> {
         Ok(())
     }
 
+    pub fn get_action(&mut self) -> Action {
+        let mut action = Action::None;
+        for peer in &self.peers {
+            let Some(state) = peer.states.get_current() else {
+                // We don't do the action until all peers are ready.
+                return Action::None;
+            };
+            if state.action != Action::None {
+                action = state.action;
+            }
+        }
+        action
+    }
+
     /// Go to the next frame and set that frame's state.
     ///
     /// It will also broadcast the new frame state to all connected peers.
@@ -191,7 +205,7 @@ impl FrameSyncer<'_> {
             stash: me.stash.clone().into_boxed_slice(),
             seed: self.initial_seed,
         };
-        let resp = Message::Resp(resp.into());
+        let resp = Message::Resp(Resp::Start(resp));
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = resp.encode(&mut buf)?;
         self.net.send(addr, raw)?;

@@ -7,7 +7,6 @@ use heapless::Vec;
 
 type C<'a, 'b> = wasmi::Caller<'a, State<'b>>;
 
-
 /// How many parts at most a file path can have
 ///
 /// The current value is 4, assuming the flat and consistent structure:
@@ -128,7 +127,7 @@ pub(crate) fn run_app(mut caller: C, author_ptr: u32, author_len: u32, app_ptr: 
     // validated the ID length earlier.
     let author_id = author_id.try_into().unwrap();
     let app_id = app_id.try_into().unwrap();
-    state.set_next(FullID::new(author_id, app_id));
+    state.set_next(Some(FullID::new(author_id, app_id)));
 }
 
 pub fn get_file_size(mut caller: C, path_ptr: u32, path_len: u32) -> u32 {

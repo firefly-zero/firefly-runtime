@@ -187,7 +187,12 @@ impl Menu {
 
     /// Open the menu (if closed).
     pub fn activate(&mut self) {
-        self.active = true
+        self.active = true;
+    }
+
+    /// Close the menu (if open).
+    pub fn deactivate(&mut self) {
+        self.active = false;
     }
 
     pub fn render<D, C, E>(&mut self, display: &mut D) -> Result<(), E>

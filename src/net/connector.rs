@@ -194,7 +194,7 @@ impl<'a> Connector<'a> {
             name: self.me.name.clone(),
             version: self.me.version,
         };
-        let msg = Message::Resp(intro.into());
+        let msg = Message::Resp(Resp::Intro(intro));
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
         self.net.send(addr, raw)?;

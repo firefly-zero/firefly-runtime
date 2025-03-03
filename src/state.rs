@@ -76,6 +76,7 @@ pub(crate) struct State<'a> {
 
     pub net_handler: Cell<NetHandler<'a>>,
     pub connect_scene: Option<ConnectScene>,
+    action: Action,
 }
 
 impl<'a> State<'a> {
@@ -111,6 +112,7 @@ impl<'a> State<'a> {
             app_stats_dirty: false,
             stash: alloc::vec::Vec::new(),
             stash_dirty: false,
+            action: Action::None,
         }
     }
 
@@ -156,18 +158,23 @@ impl<'a> State<'a> {
     }
 
     /// Set ID of the next app to run and close the currently running one.
-    pub(crate) fn set_next(&mut self, app: FullID) {
+    pub(crate) fn set_next(&mut self, app: Option<FullID>) {
         match self.net_handler.get_mut() {
             NetHandler::None => {
-                self.next = Some(app);
+                self.next = app;
                 self.exit = true;
             }
             NetHandler::Connector(_) => unreachable!("cannot launch app while connecting"),
-            // TODO: support restarting an app
-            // TODO: support leaving back to menu
-            //       (and replacing FrameSyncer with Connection)
-            NetHandler::FrameSyncer(_) => todo!("cannot re-launch running app"),
+            NetHandler::FrameSyncer(_) => {
+                let action = match app {
+                    Some(id) if id == self.id => Action::Restart,
+                    Some(_) => panic!("cannot launch another app in multiplayer"),
+                    None => Action::Exit,
+                };
+                self.action = action;
+            }
             NetHandler::Connection(c) => {
+                let Some(app) = app else { return };
                 let res = c.set_app(&mut self.device, app);
                 if let Err(err) = res {
                     self.device.log_error("netcode", err);
@@ -304,7 +311,21 @@ impl<'a> State<'a> {
             NetHandler::FrameSyncer(syncer) => {
                 // TODO: if menu is open, we need to adjust sync timeout
                 // for the frame syncer.
-                Some(syncer.get_combined_input())
+                match &self.input {
+                    Some(input) => {
+                        // In frame syncer, use shared input for the menu button
+                        // (if one player presses it, press it for everyone)
+                        // and local input for all other buttons.
+                        let mut input = input.clone();
+                        if syncer.get_combined_input().menu() {
+                            input.buttons |= 0b10000;
+                        } else {
+                            input.buttons &= !0b10000;
+                        };
+                        Some(input)
+                    }
+                    None => todo!(),
+                }
             }
         };
 
@@ -315,9 +336,9 @@ impl<'a> State<'a> {
                 MenuItem::Connect => self.connect(),
                 MenuItem::Disconnect => self.disconnect(),
                 MenuItem::ScreenShot => self.take_screenshot(),
-                MenuItem::Restart => self.set_next(self.id.clone()),
+                MenuItem::Restart => self.set_next(Some(self.id.clone())),
                 // TODO: quit the app for everyone
-                MenuItem::Quit => self.exit = true,
+                MenuItem::Quit => self.set_next(None),
             };
         };
         None
@@ -379,8 +400,7 @@ impl<'a> State<'a> {
         match status {
             ConnectionStatus::Launching => {
                 if let Some(app_id) = &connection.app {
-                    self.next = Some(app_id.clone());
-                    self.exit = true;
+                    self.set_next(Some(app_id.clone()));
                     let syncer = connection.finalize(&mut self.device);
                     return NetHandler::FrameSyncer(syncer);
                 }
@@ -388,7 +408,7 @@ impl<'a> State<'a> {
             ConnectionStatus::Timeout => {
                 let msg = "timed out waiting for other devices to launch the app";
                 self.device.log_error("netcode", msg);
-                self.exit = true;
+                self.set_next(None);
                 return NetHandler::None;
             }
             _ => (),
@@ -404,11 +424,6 @@ impl<'a> State<'a> {
         let rand = if sync_rand { self.device.random() } else { 0 };
 
         let input = self.input.clone().unwrap_or_default();
-        let action = match &self.next {
-            Some(id) if id == &self.id => Action::Restart,
-            Some(_) => Action::Exit,
-            None => Action::None,
-        };
         let frame_state = FrameState {
             // No need to set frame number here,
             // it will be set by FrameSyncer.advance.
@@ -418,7 +433,7 @@ impl<'a> State<'a> {
                 pad: input.pad.map(Into::into),
                 buttons: input.buttons,
             },
-            action,
+            action: self.action,
         };
 
         syncer.advance(&mut self.device, frame_state);
@@ -426,10 +441,27 @@ impl<'a> State<'a> {
             let res = syncer.update(&self.device);
             if let Err(err) = res {
                 self.device.log_error("netcode", err);
-                self.exit = true;
+                self.set_next(None);
                 return NetHandler::None;
             }
         }
+
+        let action = syncer.get_action();
+        match action {
+            Action::None => (),
+            Action::Restart => {
+                self.next = Some(self.id.clone());
+                self.exit = true;
+                self.menu.deactivate();
+                // TODO: reset FrameSyncer
+            }
+            Action::Exit => {
+                self.exit = true;
+                self.menu.deactivate();
+                // TODO: replace FrameSyncer with Connection
+            }
+        }
+
         if sync_rand {
             let seed = syncer.get_seed();
             if seed != 0 {

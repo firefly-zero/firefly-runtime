@@ -4,7 +4,6 @@ use firefly_hal::Device;
 
 type C<'a, 'b> = wasmi::Caller<'a, State<'b>>;
 
-
 pub(crate) fn environ_get(_caller: C, _environ: i32, _environ_buf: i32) -> i32 {
     0
 }
@@ -60,7 +59,7 @@ pub(crate) fn fd_write(_fd: i32, _ciov_buf: i32, _ciov_buf_len: i32, _offset0: i
 pub(crate) fn proc_exit(mut caller: C, _rval: i32) {
     let state = caller.data_mut();
     state.called = "wasi_snapshot_preview1.proc_exit";
-    state.exit = true;
+    state.set_next(None);
     // TODO: Apps expect that the guest code will stop execution after calling proc_exit.
     // Clang inserts "unreachable" right after that. Can we signal from here to wasmi
     // to stop execution?
