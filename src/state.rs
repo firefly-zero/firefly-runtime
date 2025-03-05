@@ -324,7 +324,16 @@ impl<'a> State<'a> {
                         };
                         Some(input)
                     }
-                    None => todo!(),
+                    None => {
+                        if syncer.get_combined_input().menu() {
+                            Some(InputState {
+                                pad: None,
+                                buttons: 0b10000,
+                            })
+                        } else {
+                            None
+                        }
+                    }
                 }
             }
         };
@@ -337,7 +346,6 @@ impl<'a> State<'a> {
                 MenuItem::Disconnect => self.disconnect(),
                 MenuItem::ScreenShot => self.take_screenshot(),
                 MenuItem::Restart => self.set_next(Some(self.id.clone())),
-                // TODO: quit the app for everyone
                 MenuItem::Quit => self.set_next(None),
             };
         };
@@ -453,12 +461,11 @@ impl<'a> State<'a> {
                 self.next = Some(self.id.clone());
                 self.exit = true;
                 self.menu.deactivate();
-                // TODO: reset FrameSyncer
             }
             Action::Exit => {
                 self.exit = true;
                 self.menu.deactivate();
-                // TODO: replace FrameSyncer with Connection
+                return NetHandler::Connection(syncer.into_connection());
             }
         }
 

@@ -35,7 +35,7 @@ pub(crate) struct FrameSyncer<'a> {
     pub(super) net: NetworkImpl<'a>,
 }
 
-impl FrameSyncer<'_> {
+impl<'a> FrameSyncer<'a> {
     /// Check if we have the state of the current frame for all connected peers.
     pub fn ready(&self) -> bool {
         for peer in &self.peers {
@@ -45,6 +45,27 @@ impl FrameSyncer<'_> {
             }
         }
         true
+    }
+
+    pub fn into_connection(self) -> Connection<'a> {
+        let mut peers = heapless::Vec::<Peer, 8>::new();
+        for peer in self.peers {
+            let peer = Peer {
+                addr: peer.addr,
+                name: peer.name,
+                intro: None,
+            };
+            peers.push(peer).ok().unwrap();
+        }
+        Connection {
+            app: None,
+            seed: None,
+            peers,
+            net: self.net,
+            last_sync: None,
+            last_ready: None,
+            started_at: None,
+        }
     }
 
     /// Get combined input of all peers.
