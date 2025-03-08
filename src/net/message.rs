@@ -68,6 +68,7 @@ pub(crate) enum Resp {
     Intro(Intro),
     Start(Start),
     State(FrameState),
+    Disconnect,
 }
 
 #[derive(Serialize, Deserialize)]

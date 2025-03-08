@@ -240,6 +240,17 @@ impl ConnectScene {
                 text.draw(display)?;
             }
         }
+
+        // Draw empty rectangle at the end to hide devices
+        // that were connected but now are disconnected.
+        {
+            let line = connector.peer_addrs().len() as i32 + 1;
+            let point = Point::new(X, Y + FONT_HEIGHT * line);
+            let text = "                ";
+            let text = Text::new(text, point, text_style);
+            text.draw(display)?;
+        }
+
         Ok(())
     }
 

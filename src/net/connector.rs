@@ -70,6 +70,7 @@ impl<'a> Connector<'a> {
     /// Stop all network operations.
     pub fn cancel(&mut self) -> Result<(), NetcodeError> {
         self.stopped = true;
+        self.send_disconnect()?;
         self.net.stop()?;
         Ok(())
     }
@@ -164,10 +165,11 @@ impl<'a> Connector<'a> {
     }
 
     fn handle_resp(&mut self, addr: Addr, resp: Resp) -> Result<(), NetcodeError> {
-        if let Resp::Intro(intro) = resp {
-            self.handle_intro(addr, intro)?;
+        match resp {
+            Resp::Intro(intro) => self.handle_intro(addr, intro),
+            Resp::Disconnect => self.handle_disconnect(addr),
+            _ => Ok(()),
         }
-        Ok(())
     }
 
     fn handle_intro(&mut self, addr: Addr, intro: Intro) -> Result<(), NetcodeError> {
@@ -192,15 +194,51 @@ impl<'a> Connector<'a> {
         Ok(())
     }
 
+    fn handle_disconnect(&mut self, addr: Addr) -> Result<(), NetcodeError> {
+        let maybe_index = self
+            .peer_infos
+            .iter()
+            .enumerate()
+            .find(|(_, info)| info.addr == addr);
+        if let Some((index, _)) = maybe_index {
+            self.peer_infos.remove(index);
+        }
+
+        let maybe_index = self
+            .peer_addrs
+            .iter()
+            .enumerate()
+            .find(|(_, peer_addr)| **peer_addr == addr);
+        if let Some((index, _)) = maybe_index {
+            self.peer_addrs.remove(index);
+        }
+
+        Ok(())
+    }
+
     fn send_intro(&mut self, _device: &DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
+        let mut name = self.me.name.clone();
+        if firefly_types::validate_name(&name).is_err() {
+            name = "anonymous".try_into().unwrap();
+        }
         let intro = Intro {
-            name: self.me.name.clone(),
+            name,
             version: self.me.version,
         };
         let msg = Message::Resp(Resp::Intro(intro));
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
         self.net.send(addr, raw)?;
+        Ok(())
+    }
+
+    fn send_disconnect(&mut self) -> Result<(), NetcodeError> {
+        let msg = Message::Resp(Resp::Disconnect);
+        let mut buf = alloc::vec![0u8; MSG_SIZE];
+        let raw = msg.encode(&mut buf)?;
+        for addr in &self.peer_addrs {
+            self.net.send(*addr, raw)?;
+        }
         Ok(())
     }
 }
