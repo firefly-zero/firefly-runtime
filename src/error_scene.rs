@@ -4,6 +4,7 @@ use core::fmt::Display;
 use embedded_graphics::{
     mono_font::{ascii::FONT_6X9, MonoTextStyle},
     prelude::*,
+    primitives::{CornerRadii, PrimitiveStyle, Rectangle, RoundedRectangle, StyledDrawable},
     text::Text,
 };
 use firefly_hal::{Device, DeviceImpl, Duration, Instant};
@@ -89,17 +90,33 @@ impl ErrorScene {
             text.draw(display)?;
             self.showed_msg = true;
         }
+
         if !self.showed_btn {
             let color = if self.enabled_btn {
                 C::ACCENT
             } else {
                 C::MUTED
             };
-            let mut text_style = MonoTextStyle::new(&FONT_6X9, color);
-            text_style.background_color = Some(C::BG);
+
             let text = "oh no!";
             let x_shift = (FONT_WIDTH / 2) * text.len() as i32;
             let point = Point::new(CENTER.x - x_shift, 120 - FONT_HEIGHT);
+
+            {
+                let point = Point::new(point.x - 2, point.y - 8);
+                let mut box_style = PrimitiveStyle::with_stroke(color, 1);
+                box_style.fill_color = Some(C::BG);
+                let corners = CornerRadii::new(Size::new_equal(4));
+                let size = Size {
+                    width: (text.len() as i32 * FONT_WIDTH) as u32 + 4,
+                    height: FONT_HEIGHT as u32 + 4,
+                };
+                let rect = RoundedRectangle::new(Rectangle::new(point, size), corners);
+                rect.draw_styled(&box_style, display)?;
+            }
+
+            let mut text_style = MonoTextStyle::new(&FONT_6X9, color);
+            text_style.background_color = Some(C::BG);
             let text = Text::new(text, point, text_style);
             text.draw(display)?;
             self.showed_btn = true;
