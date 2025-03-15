@@ -10,6 +10,7 @@ use firefly_hal::{Device, DeviceImpl, Duration, Instant};
 
 const FONT_HEIGHT: i32 = 10;
 const FONT_WIDTH: i32 = 6;
+const CENTER: Point = Point::new(240 / 2, 160 / 2);
 const BTN_DELAY: Duration = Duration::from_ms(500);
 
 /// An alert popup window showing an error message.
@@ -75,9 +76,15 @@ impl ErrorScene {
             display.clear(C::BG)?;
             let mut text_style = MonoTextStyle::new(&FONT_6X9, C::PRIMARY);
             text_style.background_color = Some(C::BG);
-            let text = alloc::format!("{}", self.msg);
-            let x_shift = (FONT_WIDTH / 2) * text.len() as i32;
-            let point = Point::new(120 - x_shift, 71 - FONT_HEIGHT);
+            let mut text = alloc::format!("{}", self.msg);
+            wrap_text(&mut text);
+            let line_width = text
+                .lines()
+                .map(|line| line.len())
+                .max()
+                .unwrap_or_default();
+            let x_shift = FONT_WIDTH * line_width as i32 / 2;
+            let point = Point::new(CENTER.x - x_shift, 71 - FONT_HEIGHT);
             let text = Text::new(&text, point, text_style);
             text.draw(display)?;
             self.showed_msg = true;
@@ -90,12 +97,28 @@ impl ErrorScene {
             };
             let mut text_style = MonoTextStyle::new(&FONT_6X9, color);
             text_style.background_color = Some(C::BG);
-            let point = Point::new(120 - (FONT_WIDTH / 2) * 6, 120 - FONT_HEIGHT);
             let text = "oh no!";
+            let x_shift = (FONT_WIDTH / 2) * text.len() as i32;
+            let point = Point::new(CENTER.x - x_shift, 120 - FONT_HEIGHT);
             let text = Text::new(text, point, text_style);
             text.draw(display)?;
             self.showed_btn = true;
         }
         Ok(())
+    }
+}
+
+/// Split long lines of text into several lines.
+fn wrap_text(text: &mut str) {
+    let bytes = unsafe { text.as_bytes_mut() };
+    let mut i = 0;
+    for char in bytes {
+        i += 1;
+        if i > 20 && *char == b' ' {
+            *char = b'\n'
+        }
+        if *char == b'\n' {
+            i = 0;
+        }
     }
 }
