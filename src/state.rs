@@ -377,15 +377,20 @@ impl<'a> State<'a> {
     }
 
     fn update_connector<'b>(&mut self, mut connector: Connector<'b>) -> NetHandler<'b> {
+        let Some(scene) = self.connect_scene.as_mut() else {
+            return NetHandler::Connector(connector);
+        };
         let res = connector.update(&self.device);
         if let Err(err) = res {
             self.error = Some(ErrorScene::new(alloc::format!("{}", err)));
             self.device.log_error("netcode", err);
-        }
-
-        let Some(scene) = self.connect_scene.as_mut() else {
+            // The next scene rendering will be called
+            // only when the error popup is closed.
+            // And when it does, we want the connector scene
+            // to redraw the whole frame.
+            scene.redraw();
             return NetHandler::Connector(connector);
-        };
+        }
         let conn_status = scene.update(&self.input);
         let Some(mut conn_status) = conn_status else {
             return NetHandler::Connector(connector);

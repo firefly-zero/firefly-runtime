@@ -73,6 +73,12 @@ impl ConnectScene {
         }
     }
 
+    /// Force the scene to redraw the UI.
+    pub fn redraw(&mut self) {
+        self.rendered = false;
+        self.hash = 0;
+    }
+
     pub fn update(&mut self, input: &Option<InputState>) -> Option<ConnectStatus> {
         let buttons = Buttons::new(input);
         let res = self.update_inner(&buttons);
