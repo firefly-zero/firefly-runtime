@@ -109,16 +109,23 @@ pub(crate) fn get_name(mut caller: C, index: u32, ptr: u32) -> u32 {
             &peer.name
         }
         NetHandler::None => &state.get_settings().name,
-        NetHandler::Connector(connector) => match connector.peer_infos().get(index as usize) {
-            Some(peer) => &peer.name,
-            None => {
-                let peers = connector.peer_infos().len() + connector.peer_addrs().len();
-                if index as usize > peers {
-                    return 0;
+        NetHandler::Connector(connector) => {
+            if index == 0 {
+                &connector.me.name
+            } else {
+                let index = index as usize - 1;
+                match connector.peer_infos().get(index) {
+                    Some(peer) => &peer.name,
+                    None => {
+                        let peers = connector.peer_addrs().len();
+                        if index > peers {
+                            return 0;
+                        }
+                        "???"
+                    }
                 }
-                "???"
             }
-        },
+        }
         NetHandler::Connection(connection) => {
             let Some(peer) = connection.peers.get(index as usize) else {
                 return 0;

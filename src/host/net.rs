@@ -7,7 +7,6 @@ use super::stats::get_friend;
 
 type C<'a, 'b> = wasmi::Caller<'a, State<'b>>;
 
-
 /// Get the index of the local peer.
 pub(crate) fn get_me(mut caller: C) -> u32 {
     let state = caller.data_mut();
@@ -29,14 +28,23 @@ pub(crate) fn get_peers(mut caller: C) -> u32 {
     let state = caller.data_mut();
     state.called = "net.get_peers";
     let handler = state.net_handler.get_mut();
-    let NetHandler::FrameSyncer(syncer) = handler else {
-        return 1;
-    };
-    let mut res = 0u32;
-    for _peer in &syncer.peers {
-        res = res << 1 | 1;
+    match handler {
+        NetHandler::FrameSyncer(syncer) => {
+            let mut res = 0;
+            for _peer in &syncer.peers {
+                res = res << 1 | 1;
+            }
+            res
+        }
+        NetHandler::Connector(connector) => {
+            let mut res = 1;
+            for _peer in connector.peer_addrs() {
+                res = res << 1 | 1;
+            }
+            res
+        }
+        _ => 1,
     }
-    res
 }
 
 pub(crate) fn save_stash(mut caller: C, peer_id: u32, buf_ptr: u32, buf_len: u32) {
