@@ -1,4 +1,5 @@
 use crate::error::HostError;
+use crate::net::ConnectStatus;
 use crate::state::{NetHandler, State};
 use firefly_hal::Device;
 
@@ -153,4 +154,24 @@ pub(crate) fn restart(mut caller: C) {
     state.called = "misc.restart";
     let state = caller.data_mut();
     state.set_next(Some(state.id.clone()));
+}
+
+pub(crate) fn set_conn_status(mut caller: C, val: u32) {
+    let state = caller.data_mut();
+    state.called = "misc.restart";
+    let state = caller.data_mut();
+    let status = match val {
+        1 => ConnectStatus::Stopped,
+        2 => ConnectStatus::Cancelled,
+        3 => ConnectStatus::Finished,
+        _ => {
+            state.log_error("invalid connection status");
+            return;
+        }
+    };
+    let NetHandler::Connector(connector) = state.net_handler.get_mut() else {
+        state.log_error("can set connection status only for connector");
+        return;
+    };
+    connector.status = Some(status);
 }

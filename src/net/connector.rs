@@ -6,6 +6,16 @@ const ADVERTISE_EVERY: Duration = Duration::from_ms(100);
 const MAX_PEERS: usize = 7;
 const MSG_SIZE: usize = 64;
 
+#[derive(PartialEq, Copy, Clone)]
+pub(crate) enum ConnectStatus {
+    /// Stopped listening, [Connector] should do nothing.
+    Stopped,
+    /// Cancelled connecting, destroy [Connector].
+    Cancelled,
+    /// Finished connecting, proceed to multiplayer.
+    Finished,
+}
+
 pub(crate) struct MyInfo {
     pub name: heapless::String<16>,
     pub version: u16,
