@@ -283,6 +283,62 @@ pub(crate) fn draw_sector(
     never_fails(err);
 }
 
+pub(crate) fn draw_qr(
+    mut caller: C,
+    text_ptr: u32,
+    text_len: u32,
+    x: i32,
+    y: i32,
+    black: i32,
+    white: i32,
+) {
+    let state = caller.data_mut();
+    state.called = "graphics.draw_qr";
+
+    // read text from the guest memory
+    let Some(memory) = state.memory else {
+        state.log_error(HostError::MemoryNotFound);
+        return;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let text_ptr = text_ptr as usize;
+    let text_len = text_len as usize;
+    let Some(text_bytes) = &data.get(text_ptr..(text_ptr + text_len)) else {
+        state.log_error(HostError::OomPointer);
+        return;
+    };
+
+    // generate ASCII QR code
+    let Ok(code) = qrcode::QrCode::new(text_bytes) else {
+        state.log_error("QR code cannot be constructed");
+        return;
+    };
+    let ascii_img = code
+        .render::<char>()
+        .dark_color('#')
+        .light_color(' ')
+        .module_dimensions(1, 1)
+        .build();
+
+    // render QR code
+    let width = ascii_img.find('\n').unwrap_or_default() as u32;
+    let area = Rectangle {
+        top_left: Point::new(x, y),
+        size: Size {
+            width,
+            height: width,
+        },
+    };
+    let black = Gray4::new(black as u8 - 1);
+    let white = Gray4::new(white as u8 - 1);
+    let colors = ascii_img.chars().filter_map(|ch| match ch {
+        '#' => Some(black),
+        ' ' => Some(white),
+        _ => None,
+    });
+    never_fails(state.frame.fill_contiguous(&area, colors));
+}
+
 /// Draw a text message using the given font.
 pub(crate) fn draw_text(
     mut caller: C,

@@ -14,6 +14,7 @@ pub(crate) fn link(linker: &mut wasmi::Linker<State>, sudo: bool) -> Result<(), 
     linker.func_wrap("graphics", "draw_triangle", graphics::draw_triangle)?;
     linker.func_wrap("graphics", "draw_arc", graphics::draw_arc)?;
     linker.func_wrap("graphics", "draw_sector", graphics::draw_sector)?;
+    linker.func_wrap("graphics", "draw_qr", graphics::draw_qr)?;
     linker.func_wrap("graphics", "draw_text", graphics::draw_text)?;
     linker.func_wrap("graphics", "draw_image", graphics::draw_image)?;
     linker.func_wrap("graphics", "draw_sub_image", graphics::draw_sub_image)?;
@@ -121,6 +122,7 @@ fn link_aliases(linker: &mut wasmi::Linker<State>) -> Result<(), wasmi::Error> {
     linker.func_wrap("g", "si", graphics::draw_sub_image)?;
     linker.func_wrap("g", "t", graphics::draw_triangle)?;
     linker.func_wrap("g", "x", graphics::draw_text)?;
+    linker.func_wrap("g", "q", graphics::draw_qr)?;
 
     linker.func_wrap("i", "p", input::read_pad)?;
     linker.func_wrap("i", "b", input::read_buttons)?;
