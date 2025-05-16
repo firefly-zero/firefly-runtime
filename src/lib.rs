@@ -21,6 +21,7 @@ mod state;
 mod stats;
 mod utils;
 
+pub use color::Rgb16;
 pub use config::{FullID, FullIDError, RuntimeConfig};
 pub use error::Error;
 pub use frame_buffer::{HEIGHT, WIDTH};

@@ -32,6 +32,35 @@ impl PixelColor for Rgb16 {
     type Raw = RawU16;
 }
 
+impl RgbColor for Rgb16 {
+    const MAX_R: u8 = 32;
+    const MAX_G: u8 = 64;
+    const MAX_B: u8 = 32;
+    const BLACK: Self = Self::from_rgb(0, 0, 0);
+    const RED: Self = Self::from_rgb(255, 0, 0);
+    const GREEN: Self = Self::from_rgb(0, 255, 0);
+    const BLUE: Self = Self::from_rgb(0, 0, 255);
+    const YELLOW: Self = Self::from_rgb(255, 255, 0);
+    const MAGENTA: Self = Self::from_rgb(255, 0, 255);
+    const CYAN: Self = Self::from_rgb(0, 255, 255);
+    const WHITE: Self = Self::from_rgb(255, 255, 255);
+
+    fn r(&self) -> u8 {
+        let (r, _, _) = self.into_rgb();
+        r
+    }
+
+    fn g(&self) -> u8 {
+        let (_, g, _) = self.into_rgb();
+        g
+    }
+
+    fn b(&self) -> u8 {
+        let (_, _, b) = self.into_rgb();
+        b
+    }
+}
+
 impl From<Rgb888> for Rgb16 {
     fn from(c: Rgb888) -> Self {
         let r = u16::from(c.r());
