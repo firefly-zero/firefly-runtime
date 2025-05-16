@@ -60,7 +60,7 @@ impl FrameBuffer {
         self.data.iter().map(|b| {
             let right = self.palette[usize::from(b & 0xF)];
             let left = self.palette[usize::from(b >> 4) & 0xF];
-            (left, right)
+            (right, left)
         })
     }
 }

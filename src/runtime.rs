@@ -344,7 +344,7 @@ where
             }
         } else {
             let state = self.store.data_mut();
-            let res = state.frame.draw(&mut self.display);
+            let res = self.display.render_fb(&mut state.frame);
             if res.is_err() {
                 return Err(Error::CannotDisplay);
             }
