@@ -15,11 +15,12 @@ const PPB: usize = 8 / BPP;
 /// Bytes needed to store all pixels.
 const BUFFER_SIZE: usize = WIDTH * HEIGHT / PPB;
 
-const fn rgb(r: u16, g: u16, b: u16) -> Rgb16 {
-    Rgb16::from_rgb(r, g, b)
+pub trait RenderFB {
+    type Error;
+    fn render_fb(&mut self, frame: &mut FrameBuffer) -> Result<(), Self::Error>;
 }
 
-pub(crate) struct FrameBuffer {
+pub struct FrameBuffer {
     /// Tightly packed pixel data, 4 bits per pixel (2 pixels per byte).
     pub(crate) data: Box<[u8; BUFFER_SIZE]>,
     /// The color palette. Maps 16-color packed pixels to RGB colors.
@@ -34,25 +35,33 @@ impl FrameBuffer {
             palette: [
                 // https://lospec.com/palette-list/sweetie-16
                 // https://github.com/nesbox/TIC-80/wiki/Palette
-                rgb(0x1a, 0x1c, 0x2c), // black
-                rgb(0x5d, 0x27, 0x5d), // purple
-                rgb(0xb1, 0x3e, 0x53), // red
-                rgb(0xef, 0x7d, 0x57), // orange
-                rgb(0xff, 0xcd, 0x75), // yellow
-                rgb(0xa7, 0xf0, 0x70), // light green
-                rgb(0x38, 0xb7, 0x64), // green
-                rgb(0x25, 0x71, 0x79), // dark green
-                rgb(0x29, 0x36, 0x6f), // dark blue
-                rgb(0x3b, 0x5d, 0xc9), // blue
-                rgb(0x41, 0xa6, 0xf6), // light blue
-                rgb(0x73, 0xef, 0xf7), // cyan
-                rgb(0xf4, 0xf4, 0xf4), // white
-                rgb(0x94, 0xb0, 0xc2), // light gray
-                rgb(0x56, 0x6c, 0x86), // gray
-                rgb(0x33, 0x3c, 0x57), // dark gray
+                Rgb16::from_rgb(0x1a, 0x1c, 0x2c), // black
+                Rgb16::from_rgb(0x5d, 0x27, 0x5d), // purple
+                Rgb16::from_rgb(0xb1, 0x3e, 0x53), // red
+                Rgb16::from_rgb(0xef, 0x7d, 0x57), // orange
+                Rgb16::from_rgb(0xff, 0xcd, 0x75), // yellow
+                Rgb16::from_rgb(0xa7, 0xf0, 0x70), // light green
+                Rgb16::from_rgb(0x38, 0xb7, 0x64), // green
+                Rgb16::from_rgb(0x25, 0x71, 0x79), // dark green
+                Rgb16::from_rgb(0x29, 0x36, 0x6f), // dark blue
+                Rgb16::from_rgb(0x3b, 0x5d, 0xc9), // blue
+                Rgb16::from_rgb(0x41, 0xa6, 0xf6), // light blue
+                Rgb16::from_rgb(0x73, 0xef, 0xf7), // cyan
+                Rgb16::from_rgb(0xf4, 0xf4, 0xf4), // white
+                Rgb16::from_rgb(0x94, 0xb0, 0xc2), // light gray
+                Rgb16::from_rgb(0x56, 0x6c, 0x86), // gray
+                Rgb16::from_rgb(0x33, 0x3c, 0x57), // dark gray
             ],
             dirty: false,
         }
+    }
+
+    pub fn iter_pairs(&self) -> impl Iterator<Item = (Rgb16, Rgb16)> + use<'_> {
+        self.data.iter().map(|b| {
+            let right = self.palette[usize::from(b & 0xF)];
+            let left = self.palette[usize::from(b >> 4) & 0xF];
+            (left, right)
+        })
     }
 }
 
@@ -144,7 +153,7 @@ impl DrawTarget for FrameBuffer {
 
 impl FrameBuffer {
     /// Draw the framebuffer on an RGB screen.
-    pub(crate) fn draw<D, C, E>(&mut self, target: &mut D) -> Result<(), E>
+    pub fn draw<D, C, E>(&mut self, target: &mut D) -> Result<(), E>
     where
         C: RgbColor + FromRGB,
         D: DrawTarget<Color = C, Error = E>,

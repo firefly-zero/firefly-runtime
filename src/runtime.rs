@@ -1,7 +1,7 @@
 use crate::color::FromRGB;
 use crate::config::{FullID, RuntimeConfig};
 use crate::error::Error;
-use crate::frame_buffer::HEIGHT;
+use crate::frame_buffer::{RenderFB, HEIGHT};
 use crate::linking::link;
 use crate::state::{NetHandler, State};
 use crate::stats::StatsTracker;
@@ -19,7 +19,7 @@ const FUEL_PER_CALL: u64 = 1_000_000;
 
 pub struct Runtime<'a, D, C>
 where
-    D: DrawTarget<Color = C> + OriginDimensions,
+    D: DrawTarget<Color = C> + RenderFB + OriginDimensions,
     C: RgbColor + FromRGB,
 {
     display: D,
@@ -48,7 +48,7 @@ where
 
 impl<'a, D, C> Runtime<'a, D, C>
 where
-    D: DrawTarget<Color = C> + OriginDimensions,
+    D: DrawTarget<Color = C> + RenderFB + OriginDimensions,
     C: RgbColor + FromRGB,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
@@ -321,7 +321,6 @@ where
 
     /// Draw the frame buffer on the actual screen.
     fn flush_frame(&mut self) -> Result<(), Error> {
-        // self.display.clear(C::BLACK);
         if let Some(render_line) = self.render_line {
             let mut min_y: i32 = 0;
             while min_y < HEIGHT as i32 {
