@@ -1,7 +1,7 @@
 use crate::color::FromRGB;
 use crate::config::{FullID, RuntimeConfig};
 use crate::error::Error;
-use crate::frame_buffer::{RenderFB, HEIGHT};
+use crate::frame_buffer::RenderFB;
 use crate::linking::link;
 use crate::state::{NetHandler, State};
 use crate::stats::StatsTracker;
@@ -31,7 +31,6 @@ where
     before_exit: Option<wasmi::TypedFunc<(), ()>>,
     cheat: Option<wasmi::TypedFunc<(i32, i32), (i32,)>>,
     handle_menu: Option<wasmi::TypedFunc<(u32,), ()>>,
-    render_line: Option<wasmi::TypedFunc<(i32,), (i32,)>>,
 
     /// Time to render a single frame to match the expected FPS.
     per_frame: Duration,
@@ -135,7 +134,6 @@ where
             before_exit: None,
             cheat: None,
             handle_menu: None,
-            render_line: None,
             stats: None,
             per_frame: Duration::from_fps(u32::from(FPS)),
             n_frames: 0,
@@ -182,7 +180,6 @@ where
         self.before_exit = ins.get_typed_func(&self.store, "before_exit").ok();
         self.cheat = ins.get_typed_func(&self.store, "cheat").ok();
         self.handle_menu = ins.get_typed_func(&self.store, "handle_menu").ok();
-        self.render_line = ins.get_typed_func(&self.store, "render_line").ok();
         Ok(())
     }
 
@@ -333,33 +330,10 @@ where
 
     /// Draw the frame buffer on the actual screen.
     fn flush_frame(&mut self) -> Result<(), Error> {
-        if let Some(render_line) = self.render_line {
-            let mut min_y: i32 = 0;
-            while min_y < HEIGHT as i32 {
-                let (max_y,) = match render_line.call(&mut self.store, (min_y,)) {
-                    Ok(max_y) => max_y,
-                    Err(err) => {
-                        let stats = self.store.data().runtime_stats();
-                        return Err(Error::FuncCall("render_line", err, stats));
-                    }
-                };
-                let max_y: i32 = if max_y == 0 { 1000 } else { max_y };
-                let state = self.store.data_mut();
-                _ = state
-                    .frame
-                    .draw_range(&mut self.display, min_y as usize, max_y as usize);
-                // make sure the line number only grows
-                if min_y > max_y {
-                    break;
-                }
-                min_y = max_y;
-            }
-        } else {
-            let state = self.store.data_mut();
-            let res = self.display.render_fb(&mut state.frame);
-            if res.is_err() {
-                return Err(Error::CannotDisplay);
-            }
+        let state = self.store.data_mut();
+        let res = self.display.render_fb(&mut state.frame);
+        if res.is_err() {
+            return Err(Error::CannotDisplay);
         }
         Ok(())
     }

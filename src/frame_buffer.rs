@@ -158,40 +158,17 @@ impl FrameBuffer {
         C: RgbColor + FromRGB,
         D: DrawTarget<Color = C, Error = E>,
     {
-        self.draw_range(target, 0, HEIGHT)
-    }
-
-    pub(crate) fn draw_range<D, C, E>(
-        &mut self,
-        target: &mut D,
-        min_y: usize,
-        max_y: usize,
-    ) -> Result<(), E>
-    where
-        C: RgbColor + FromRGB,
-        D: DrawTarget<Color = C, Error = E>,
-    {
         if !self.dirty {
             return Ok(());
         }
         self.dirty = false;
-        // If the range is empty, don't update the screen.
-        if min_y > max_y {
-            return Ok(());
-        }
         let colors = ColorIter {
             data: &self.data,
             palette: &self.palette,
-            // start iteration from the first line in range
-            index: WIDTH * min_y,
-            // end iteration at the last line in range
-            max_y,
+            index: 0,
             color: PhantomData,
         };
-        let area = Rectangle::new(
-            Point::new(0, min_y as i32),
-            Size::new(WIDTH as u32, max_y as u32),
-        );
+        let area = Rectangle::new(Point::zero(), Size::new(WIDTH as u32, HEIGHT as u32));
         target.fill_contiguous(&area, colors)
     }
 
@@ -226,7 +203,6 @@ where
     data: &'a [u8; BUFFER_SIZE],
     palette: &'a [Rgb16; 16],
     index: usize,
-    max_y: usize,
     color: PhantomData<C>,
 }
 
@@ -237,10 +213,6 @@ where
     type Item = C;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let y = self.index / WIDTH;
-        if y > self.max_y {
-            return None;
-        }
         let byte_index = self.index / PPB;
         let byte = self.data.get(byte_index)?;
         let shift = self.index % PPB;
