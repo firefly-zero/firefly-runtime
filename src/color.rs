@@ -14,7 +14,7 @@ impl Rgb16 {
         let r = r >> 3;
         let g = g >> 2;
         let b = b >> 3;
-        let raw = (b << 11) | (g << 5) | r;
+        let raw = (b << 11) | ((g & 0b_0011_1111) << 5) | (r & 0b_0001_1111);
         let raw = raw.to_le_bytes();
         Self(!raw[0], !raw[1])
     }
@@ -72,7 +72,16 @@ impl From<Rgb888> for Rgb16 {
 
 impl From<Rgb16> for Rgb888 {
     fn from(c: Rgb16) -> Self {
-        let (r, g, b) = c.into_rgb();
+        let (mut r, mut g, mut b) = c.into_rgb();
+        if r == 0b1111_1000 {
+            r = 0xff;
+        }
+        if g == 0b1111_1100 {
+            g = 0xff;
+        }
+        if b == 0b1111_1000 {
+            b = 0xff;
+        }
         Self::new(r, g, b)
     }
 }
