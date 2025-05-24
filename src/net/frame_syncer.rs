@@ -167,7 +167,7 @@ impl<'a> FrameSyncer<'a> {
 
     fn update_inner(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
         self.sync(device)?;
-        if let Some((addr, msg)) = self.net.recv()? {
+        while let Some((addr, msg)) = self.net.recv()? {
             self.handle_message(addr, msg)?;
         }
         Ok(())
