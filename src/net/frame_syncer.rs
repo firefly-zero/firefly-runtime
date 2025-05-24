@@ -95,6 +95,9 @@ impl<'a> FrameSyncer<'a> {
                 seed ^= state.rand;
             };
         }
+        if seed == 0 {
+            seed = 1;
+        }
         seed
     }
 
