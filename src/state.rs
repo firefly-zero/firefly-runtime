@@ -90,7 +90,7 @@ impl<'a> State<'a> {
     ) -> Self {
         let offline = matches!(net_handler, NetHandler::None);
         let seed = match &net_handler {
-            NetHandler::FrameSyncer(syncer) => syncer.initial_seed,
+            NetHandler::FrameSyncer(syncer) => syncer.shared_seed,
             _ => 0,
         };
         Self {

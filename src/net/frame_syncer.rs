@@ -28,7 +28,10 @@ pub(crate) struct FSPeer {
 pub(crate) struct FrameSyncer<'a> {
     pub frame: u32,
     pub peers: heapless::Vec<FSPeer, MAX_PEERS>,
-    pub initial_seed: u32,
+    /// The initial seed of the current device.
+    pub device_seed: u32,
+    /// The combined initial seed of all devices.
+    pub shared_seed: u32,
     pub app: FullID,
     pub(super) last_sync: Option<Instant>,
     pub(super) last_advance: Option<Instant>,
@@ -231,7 +234,7 @@ impl<'a> FrameSyncer<'a> {
             badges: me.badges.clone(),
             scores: me.scores.clone(),
             stash: me.stash.clone().into_boxed_slice(),
-            seed: self.initial_seed,
+            seed: self.device_seed,
         };
         let resp = Message::Resp(Resp::Start(resp));
         let mut buf = alloc::vec![0u8; MSG_SIZE];

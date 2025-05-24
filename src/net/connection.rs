@@ -179,7 +179,8 @@ impl<'a> Connection<'a> {
             last_sync: None,
             frame: 0,
             last_advance: None,
-            initial_seed: seed,
+            device_seed: self.seed.unwrap(),
+            shared_seed: seed,
             app: self.app.unwrap(),
         }
     }
