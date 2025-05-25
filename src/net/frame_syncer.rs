@@ -6,6 +6,7 @@ use firefly_hal::*;
 
 const SYNC_EVERY: Duration = Duration::from_ms(20);
 const FRAME_TIMEOUT: Duration = Duration::from_ms(5000);
+const FIRST_TIMEOUT: Duration = Duration::from_ms(10_000);
 const MAX_PEERS: usize = 8;
 const MSG_SIZE: usize = 64;
 
@@ -106,7 +107,12 @@ impl<'a> FrameSyncer<'a> {
 
     pub fn update(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
         let now = device.now();
-        if now - self.last_advance.unwrap() > FRAME_TIMEOUT {
+        let timeout = if self.frame <= 2 {
+            FIRST_TIMEOUT
+        } else {
+            FRAME_TIMEOUT
+        };
+        if now - self.last_advance.unwrap() > timeout {
             return Err(NetcodeError::FrameTimeout);
         }
         let res = self.update_inner(device);
