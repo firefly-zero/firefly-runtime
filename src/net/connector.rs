@@ -82,7 +82,7 @@ impl<'a> Connector<'a> {
         Ok(())
     }
 
-    pub fn finalize(self) -> Connection<'a> {
+    pub fn finalize(self) -> Box<Connection<'a>> {
         let mut peers = heapless::Vec::<Peer, 8>::new();
         for peer in self.peer_infos {
             let peer = Peer {
@@ -100,7 +100,7 @@ impl<'a> Connector<'a> {
         peers.push(me).ok().unwrap();
         let local_addr = self.net.local_addr();
         peers.sort_by_key(|p| p.addr.unwrap_or(local_addr));
-        Connection {
+        Box::new(Connection {
             peers,
             app: None,
             net: self.net,
@@ -108,7 +108,7 @@ impl<'a> Connector<'a> {
             last_ready: None,
             seed: None,
             started_at: None,
-        }
+        })
     }
 
     pub fn update(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {

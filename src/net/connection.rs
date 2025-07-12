@@ -148,7 +148,7 @@ impl<'a> Connection<'a> {
         }
     }
 
-    pub(crate) fn finalize(self, device: &mut DeviceImpl) -> FrameSyncer<'a> {
+    pub(crate) fn finalize(self, device: &mut DeviceImpl) -> Box<FrameSyncer<'a>> {
         let mut peers = heapless::Vec::<FSPeer, 8>::new();
         let mut seed = 0;
         for peer in self.peers {
@@ -173,7 +173,7 @@ impl<'a> Connection<'a> {
             peers.push(peer).ok().unwrap();
             seed ^= intro.seed;
         }
-        FrameSyncer {
+        Box::new(FrameSyncer {
             peers,
             net: self.net,
             last_sync: None,
@@ -182,7 +182,7 @@ impl<'a> Connection<'a> {
             device_seed: self.seed.unwrap(),
             shared_seed: seed,
             app: self.app.unwrap(),
-        }
+        })
     }
 
     fn update_inner(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {

@@ -7,6 +7,7 @@ use crate::menu::{Menu, MenuItem};
 use crate::png::save_png;
 use crate::utils::{read_all, read_all_into};
 use crate::{net::*, Error};
+use alloc::boxed::Box;
 use core::cell::Cell;
 use core::fmt::Display;
 use core::str::FromStr;
@@ -17,9 +18,9 @@ use firefly_types::Encode;
 #[allow(private_interfaces)]
 pub enum NetHandler<'a> {
     None,
-    Connector(Connector<'a>),
-    Connection(Connection<'a>),
-    FrameSyncer(FrameSyncer<'a>),
+    Connector(Box<Connector<'a>>),
+    Connection(Box<Connection<'a>>),
+    FrameSyncer(Box<FrameSyncer<'a>>),
 }
 
 pub(crate) struct State<'a> {
@@ -373,10 +374,10 @@ impl<'a> State<'a> {
         self.net_handler.replace(handler);
     }
 
-    fn update_connector<'b>(&mut self, mut connector: Connector<'b>) -> NetHandler<'b> {
+    fn update_connector<'b>(&mut self, mut connector: Box<Connector<'b>>) -> NetHandler<'b> {
         let res = connector.update(&self.device);
         if let Err(err) = res {
-            self.error = Some(ErrorScene::new(alloc::format!("{}", err)));
+            self.error = Some(ErrorScene::new(alloc::format!("{err}")));
             self.device.log_error("netcode", err);
             return NetHandler::Connector(connector);
         }
@@ -414,7 +415,7 @@ impl<'a> State<'a> {
         }
     }
 
-    fn update_connection<'b>(&mut self, mut connection: Connection<'b>) -> NetHandler<'b> {
+    fn update_connection<'b>(&mut self, mut connection: Box<Connection<'b>>) -> NetHandler<'b> {
         let status = connection.update(&mut self.device);
         match status {
             ConnectionStatus::Launching => {
@@ -435,7 +436,7 @@ impl<'a> State<'a> {
         NetHandler::Connection(connection)
     }
 
-    fn update_syncer<'b>(&mut self, mut syncer: FrameSyncer<'b>) -> NetHandler<'b> {
+    fn update_syncer<'b>(&mut self, mut syncer: Box<FrameSyncer<'b>>) -> NetHandler<'b> {
         // * Don't sync seed if it is locked by the app (misc.set_seed was called).
         // * Don't sync seed if misc.get_random was never called.
         // * Don't sync seed too often to avoid poking true RNG too often.
@@ -496,7 +497,7 @@ impl<'a> State<'a> {
         let dir_path = &["data", self.id.author(), self.id.app(), "shots"];
         let mut index = 1;
         _ = self.device.iter_dir(dir_path, |_, _| index += 1);
-        let file_name = alloc::format!("{}.png", index);
+        let file_name = alloc::format!("{index}.png");
         let path = &["data", self.id.author(), self.id.app(), "shots", &file_name];
         let mut file = match self.device.create_file(path) {
             Ok(file) => file,
@@ -524,7 +525,7 @@ impl<'a> State<'a> {
         let me = MyInfo { name, version: 1 };
         let net = self.device.network();
         self.net_handler
-            .set(NetHandler::Connector(Connector::new(me, net)));
+            .set(NetHandler::Connector(Box::new(Connector::new(me, net))));
         let id = FullID::new("sys".try_into().unwrap(), "connector".try_into().unwrap());
         self.set_next(Some(id));
     }

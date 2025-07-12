@@ -55,7 +55,7 @@ impl<'a> FrameSyncer<'a> {
     ///
     /// Used when the game exits back into launcher
     /// so that players can launch another app.
-    pub fn into_connection(self) -> Connection<'a> {
+    pub fn into_connection(self) -> Box<Connection<'a>> {
         let mut peers = heapless::Vec::<Peer, 8>::new();
         for peer in self.peers {
             let peer = Peer {
@@ -65,7 +65,7 @@ impl<'a> FrameSyncer<'a> {
             };
             peers.push(peer).ok().unwrap();
         }
-        Connection {
+        Box::new(Connection {
             app: None,
             seed: None,
             peers,
@@ -73,7 +73,7 @@ impl<'a> FrameSyncer<'a> {
             last_sync: None,
             last_ready: None,
             started_at: None,
-        }
+        })
     }
 
     /// Get combined input of all peers.
@@ -185,14 +185,13 @@ impl<'a> FrameSyncer<'a> {
     }
 
     fn update_inner(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
-        self.sync(device)?;
         for _ in 0..4 {
             let Some((addr, msg)) = self.net.recv()? else {
                 break;
             };
             self.handle_message(addr, msg)?;
         }
-        Ok(())
+        self.sync(device)
     }
 
     /// Get every connected peer with unknown state for the current frame
