@@ -12,7 +12,8 @@ type C<'a, 'b> = wasmi::Caller<'a, State<'b>>;
 /// The current value is 4, assuming the flat and consistent structure:
 ///
 /// `{data,roms,sys}/AUTHOR_ID/APP_ID/FILE_NAME`
-const MAX_DEPTH: usize = 4;
+/// `data/AUTHOR_ID/APP_ID/DIR_NAME/FILE_NAME`
+const MAX_DEPTH: usize = 5;
 
 pub(crate) fn list_dirs_buf_size(mut caller: C, path_ptr: u32, path_len: u32) -> u32 {
     let state = caller.data_mut();
