@@ -628,11 +628,11 @@ fn parse_font(bytes: &[u8]) -> Result<MonoFont, &str> {
     }
 
     // read the header
-    let encoding_index = read_u8(bytes, 1) as u32;
-    let char_width = read_u8(bytes, 2) as u32;
-    let char_height = read_u8(bytes, 3) as u32;
-    let baseline = read_u8(bytes, 4) as u32;
-    let image_width = read_u16(bytes, 5) as u32;
+    let encoding_index = read_u8(bytes, 1);
+    let char_width = u32::from(read_u8(bytes, 2));
+    let char_height = u32::from(read_u8(bytes, 3));
+    let baseline = u32::from(read_u8(bytes, 4));
+    let image_width = u32::from(read_u16(bytes, 5));
     let image = ImageRaw::new(&bytes[7..], image_width);
 
     let glyph_mapping: &dyn mapping::GlyphMapping = match encoding_index {
@@ -664,14 +664,14 @@ fn parse_font(bytes: &[u8]) -> Result<MonoFont, &str> {
     Ok(font)
 }
 
-/// Read little-endian u32 from the slice at the given index.
-fn read_u8(bytes: &[u8], s: usize) -> u8 {
-    u8::from_le_bytes([bytes[s]])
+/// Read little-endian u8 from the slice at the given index.
+fn read_u8(bytes: &[u8], i: usize) -> u8 {
+    bytes[i]
 }
 
-/// Read little-endian u32 from the slice at the given index.
-fn read_u16(bytes: &[u8], s: usize) -> u16 {
-    u16::from_le_bytes([bytes[s], bytes[s + 1]])
+/// Read little-endian u16 from the slice at the given index.
+fn read_u16(bytes: &[u8], i: usize) -> u16 {
+    u16::from_le_bytes([bytes[i], bytes[i + 1]])
 }
 
 fn parse_color(c: i32) -> Option<Gray4> {
