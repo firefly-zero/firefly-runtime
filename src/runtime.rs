@@ -167,7 +167,6 @@ where
 
     /// Call init functions in the module.
     pub fn start(&mut self) -> Result<(), Error> {
-        _ = self.display.clear(C::BLACK);
         self.set_memory();
 
         let ins = self.instance;
