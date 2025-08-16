@@ -4,7 +4,7 @@ use crate::config::FullID;
 use alloc::boxed::Box;
 use firefly_hal::*;
 
-const SYNC_EVERY: Duration = Duration::from_ms(5);
+const SYNC_EVERY: Duration = Duration::from_ms(100);
 const FRAME_TIMEOUT: Duration = Duration::from_s(5);
 const FIRST_TIMEOUT: Duration = Duration::from_s(10);
 const MAX_PEERS: usize = 8;
@@ -199,13 +199,6 @@ impl<'a> FrameSyncer<'a> {
             self.handle_message(addr, msg)?;
         }
         self.sync(device)
-    }
-
-    pub(crate) fn broadcast_my_state(&mut self, device: &mut DeviceImpl) {
-        let state = self.get_me().states.get(self.frame);
-        if let Some(state) = state {
-            self.broadcast_state(device, state);
-        }
     }
 
     /// Get every connected peer with unknown state for the current frame

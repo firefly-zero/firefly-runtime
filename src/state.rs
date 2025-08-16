@@ -457,21 +457,13 @@ impl<'a> State<'a> {
         };
 
         syncer.advance(&mut self.device, frame_state);
-        let mut i = 0;
         while !syncer.ready() {
-            i += 1;
             let res = syncer.update(&self.device);
             if let Err(err) = res {
                 self.device.log_error("netcode", err);
                 self.set_next(None);
                 return NetHandler::None;
             }
-            if i == 20 {
-                syncer.broadcast_my_state(&mut self.device);
-            }
-        }
-        if i >= 40 {
-            syncer.broadcast_my_state(&mut self.device);
         }
 
         let action = syncer.get_action();
