@@ -56,6 +56,16 @@ impl FullID {
         Self { author, app }
     }
 
+    pub fn from_str(author: &str, app: &str) -> Option<Self> {
+        let Ok(author) = String::try_from(author) else {
+            return None;
+        };
+        let Ok(app) = String::try_from(app) else {
+            return None;
+        };
+        Some(Self { author, app })
+    }
+
     pub fn author(&self) -> &str {
         &self.author
     }

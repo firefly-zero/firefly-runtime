@@ -62,7 +62,7 @@ pub(crate) struct State<'a> {
     /// The next app to run.
     pub next: Option<FullID>,
 
-    /// The last read touch pad and buttons input.
+    /// The last read touch pad and buttons input of the current device.
     pub input: Option<InputState>,
 
     /// The last called host function.
@@ -499,7 +499,7 @@ impl<'a> State<'a> {
     }
 
     /// Save the current frame buffer into a PNG file.
-    fn take_screenshot(&mut self) {
+    pub fn take_screenshot(&mut self) {
         let old_app = self.called;
         self.called = "take screenshot";
         let dir_path = &["data", self.id.author(), self.id.app(), "shots"];
@@ -534,7 +534,7 @@ impl<'a> State<'a> {
         let net = self.device.network();
         self.net_handler
             .set(NetHandler::Connector(Box::new(Connector::new(me, net))));
-        let id = FullID::new("sys".try_into().unwrap(), "connector".try_into().unwrap());
+        let id = FullID::from_str("sys", "connector").unwrap();
         self.set_next(Some(id));
     }
 

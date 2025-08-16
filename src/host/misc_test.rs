@@ -89,10 +89,7 @@ fn make_store<'a>() -> wasmi::Store<State<'a>> {
         ..Default::default()
     };
     let device = DeviceImpl::new(config);
-    let id = FullID::new(
-        "test-author".try_into().unwrap(),
-        "test-app".try_into().unwrap(),
-    );
+    let id = FullID::from_str("test-author", "test-app").unwrap();
     let state = State::new(id, device, NetHandler::None, false);
     wasmi::Store::new(&engine, state)
 }

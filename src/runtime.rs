@@ -397,14 +397,7 @@ where
                 match cheat.call(&mut self.store, (a, b)) {
                     Ok((result,)) => {
                         let resp = serial::Response::Cheat(result);
-                        let encoded = match resp.encode_vec() {
-                            Ok(encoded) => encoded,
-                            Err(err) => return Err(Error::SerialEncode(err)),
-                        };
-                        let res = self.serial.send(&encoded);
-                        if let Err(err) = res {
-                            return Err(Error::SerialSend(err));
-                        }
+                        self.serial_send(resp)?;
                     }
                     Err(err) => {
                         let stats = self.store.data().runtime_stats();
@@ -422,6 +415,50 @@ where
                     self.stats = None;
                 };
             }
+            serial::Request::AppId => {
+                let state = self.store.data();
+                let author = state.id.author().into();
+                let app = state.id.app().into();
+                let resp = serial::Response::AppID((author, app));
+                self.serial_send(resp)?;
+            }
+            serial::Request::Screenshot => {
+                let state = self.store.data_mut();
+                state.take_screenshot();
+                let resp = serial::Response::Ok;
+                self.serial_send(resp)?;
+            }
+            serial::Request::Launch((author, app)) => {
+                let state = self.store.data_mut();
+                let resp = if let Some(id) = FullID::from_str(&author, &app) {
+                    state.next = Some(id);
+                    state.exit = true;
+                    serial::Response::Ok
+                } else {
+                    serial::Response::Log("ERROR(runtime): app ID is too long".into())
+                };
+                self.serial_send(resp)?;
+            }
+            serial::Request::Exit => {
+                let state = self.store.data_mut();
+                state.exit = true;
+                let resp = serial::Response::Ok;
+                self.serial_send(resp)?;
+            }
+            serial::Request::Buttons(_) => todo!(),
+            serial::Request::Data(_) => todo!(),
+        }
+        Ok(())
+    }
+
+    fn serial_send(&mut self, resp: serial::Response) -> Result<(), Error> {
+        let encoded = match resp.encode_vec() {
+            Ok(encoded) => encoded,
+            Err(err) => return Err(Error::SerialEncode(err)),
+        };
+        let res = self.serial.send(&encoded);
+        if let Err(err) = res {
+            return Err(Error::SerialSend(err));
         }
         Ok(())
     }
