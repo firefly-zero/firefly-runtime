@@ -622,7 +622,7 @@ fn get_shape_style(fill_color: u32, stroke_color: u32, stroke_width: u32) -> Pri
 }
 
 /// Load mono font from the firefly format.
-fn parse_font(bytes: &[u8]) -> Result<MonoFont, &str> {
+fn parse_font(bytes: &'_ [u8]) -> Result<MonoFont<'_>, &'static str> {
     if bytes.len() < 10 {
         return Err("file too short");
     }

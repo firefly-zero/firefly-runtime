@@ -190,17 +190,15 @@ impl<'a> State<'a> {
         use crate::alloc::string::ToString;
         if self.settings.is_none() {
             let settings = self.load_settings();
-            match settings {
-                Some(settings) => self.settings = Some(settings),
-                None => {
-                    self.settings = Some(firefly_types::Settings {
-                        xp: 0,
-                        badges: 0,
-                        lang: [b'e', b'n'],
-                        name: "anonymous".to_string(),
-                        timezone: "Europe/Amsterdam".to_string(),
-                    })
-                }
+            self.settings = match settings {
+                Some(settings) => Some(settings),
+                None => Some(firefly_types::Settings {
+                    xp: 0,
+                    badges: 0,
+                    lang: [b'e', b'n'],
+                    name: "anonymous".to_string(),
+                    timezone: "Europe/Amsterdam".to_string(),
+                }),
             }
         }
         self.settings.as_mut().unwrap()

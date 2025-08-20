@@ -9,6 +9,7 @@ use crate::utils::read_all;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
+use embedded_io::Read;
 use firefly_hal::*;
 use firefly_types::*;
 
@@ -92,17 +93,19 @@ where
         }
         let now = config.device.now();
         let bin_path = &["roms", id.author(), id.app(), "_bin"];
+
+        let bin_size = match config.device.get_file_size(bin_path) {
+            Ok(0) => Err(Error::FileEmpty(bin_path.join("/"))),
+            Ok(bin_size) => Ok(bin_size),
+            Err(err) => Err(Error::OpenFile(bin_path.join("/"), err)),
+        }?;
+
         let engine = {
             let mut wasmi_config = wasmi::Config::default();
             wasmi_config.ignore_custom_sections(true);
             wasmi_config.consume_fuel(true);
-            if let Ok(bin_size) = config.device.get_file_size(bin_path) {
-                if bin_size == 0 {
-                    return Err(Error::FileEmpty(bin_path.join("/")));
-                }
-                if bin_size > 40 * KB {
-                    wasmi_config.compilation_mode(wasmi::CompilationMode::Lazy);
-                }
+            if bin_size > 40 * KB {
+                wasmi_config.compilation_mode(wasmi::CompilationMode::Lazy);
             }
             wasmi::Engine::new(&wasmi_config)
         };
@@ -111,20 +114,32 @@ where
         state.load_app_stats()?;
         state.load_stash()?;
 
-        let stream = match state.device.open_file(bin_path) {
-            Ok(file) => file,
-            Err(err) => return Err(Error::OpenFile(bin_path.join("/"), err)),
-        };
-        let mut store = wasmi::Store::<State<'a>>::new(&engine, state);
-        _ = store.set_fuel(FUEL_PER_CALL);
-        let instance = {
-            let wasm_bin = match read_all(stream) {
-                Ok(wasm_bin) => wasm_bin,
-                Err(err) => {
+        // Load the binary wasm file into PSRAM.
+        let wasm_bin = {
+            let mut stream = match state.device.open_file(bin_path) {
+                Ok(stream) => Ok(stream),
+                Err(err) => Err(Error::OpenFile(bin_path.join("/"), err)),
+            }?;
+            let bin_size = bin_size as usize;
+            let mut wasm_bin = state.device.alloc_psram(bin_size);
+            wasm_bin.resize(bin_size, 0);
+            match stream.read_exact(&mut wasm_bin) {
+                Ok(_) => {}
+                Err(embedded_io::ReadExactError::UnexpectedEof) => {
+                    let err = FSError::AllocationError;
+                    return Err(Error::OpenFile(bin_path.join("/"), err));
+                }
+                Err(embedded_io::ReadExactError::Other(err)) => {
                     let err = FSError::from(err);
                     return Err(Error::OpenFile(bin_path.join("/"), err));
                 }
-            };
+            }
+            wasm_bin
+        };
+
+        let mut store = wasmi::Store::<State<'a>>::new(&engine, state);
+        _ = store.set_fuel(FUEL_PER_CALL);
+        let instance = {
             let module = wasmi::Module::new(&engine, wasm_bin)?;
             let mut linker = wasmi::Linker::<State>::new(&engine);
             link(&mut linker, sudo)?;
