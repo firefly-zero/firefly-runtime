@@ -540,7 +540,7 @@ impl<'a> State<'a> {
         self.called = old_app;
     }
 
-    fn connect(&mut self) {
+    pub fn connect(&mut self) {
         if !matches!(self.net_handler.get_mut(), NetHandler::None) {
             return;
         }
@@ -555,7 +555,7 @@ impl<'a> State<'a> {
         self.set_next(Some(id));
     }
 
-    fn disconnect(&mut self) {
+    pub fn disconnect(&mut self) {
         let net_handler = self.net_handler.replace(NetHandler::None);
         if let NetHandler::Connection(conn) = net_handler {
             let res = conn.disconnect();

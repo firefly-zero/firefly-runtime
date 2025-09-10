@@ -125,6 +125,17 @@ pub(crate) fn run_app(mut caller: C, author_ptr: u32, author_len: u32, app_ptr: 
     let Some(app_id) = get_id(app_ptr, app_len, data, state) else {
         return;
     };
+    if author_id == "sys" {
+        if app_id == "connector" {
+            state.connect();
+            return;
+        }
+        if app_id == "disconnector" {
+            state.disconnect();
+            state.set_next(None);
+            return;
+        }
+    }
     // Should be safe to unwrap, assuming that we correctly
     // validated the ID length earlier.
     let id = FullID::from_str(author_id, app_id).unwrap();

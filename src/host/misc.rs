@@ -164,6 +164,7 @@ pub(crate) fn restart(mut caller: C) {
     state.set_next(Some(state.id.clone()));
 }
 
+/// Undocumented function used by the connector app.
 pub(crate) fn set_conn_status(mut caller: C, val: u32) {
     let state = caller.data_mut();
     state.called = "misc.restart";
