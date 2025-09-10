@@ -31,6 +31,8 @@ pub(crate) struct State<'a> {
     /// The app menu manager.
     pub menu: Menu,
 
+    launcher: bool,
+
     pub error: Option<ErrorScene>,
 
     /// Audio manager.
@@ -94,7 +96,6 @@ impl<'a> State<'a> {
         net_handler: NetHandler<'a>,
         launcher: bool,
     ) -> Box<Self> {
-        let offline = matches!(net_handler, NetHandler::None);
         let seed = match &net_handler {
             NetHandler::FrameSyncer(syncer) => syncer.shared_seed,
             _ => 0,
@@ -104,7 +105,8 @@ impl<'a> State<'a> {
             id,
             frame: FrameBuffer::new(),
             canvas: None,
-            menu: Menu::new(offline, launcher),
+            menu: Menu::new(),
+            launcher,
             error: None,
             audio: firefly_audio::Manager::new(),
             seed,
@@ -374,17 +376,17 @@ impl<'a> State<'a> {
             }
         };
 
-        let action = self.menu.handle_input(&input);
-        if let Some(action) = action {
-            match action {
-                MenuItem::Custom(index, _) => return Some(*index),
-                MenuItem::Connect => self.connect(),
-                MenuItem::Disconnect => self.disconnect(),
-                MenuItem::ScreenShot => self.take_screenshot(),
-                MenuItem::Restart => self.set_next(Some(self.id.clone())),
-                MenuItem::Quit => self.set_next(None),
+        if !self.launcher {
+            let action = self.menu.handle_input(&input);
+            if let Some(action) = action {
+                match action {
+                    MenuItem::Custom(index, _) => return Some(*index),
+                    MenuItem::ScreenShot => self.take_screenshot(),
+                    MenuItem::Restart => self.set_next(Some(self.id.clone())),
+                    MenuItem::Quit => self.set_next(None),
+                };
             };
-        };
+        }
         None
     }
 
@@ -432,8 +434,6 @@ impl<'a> State<'a> {
             }
             ConnectStatus::Finished => {
                 self.set_next(None);
-                // Re-render menu with "disconnect" button instead of "connect".
-                self.menu = Menu::new(false, true);
                 let connection = connector.finalize();
                 NetHandler::Connection(connection)
             }
@@ -563,8 +563,6 @@ impl<'a> State<'a> {
                 self.device.log_error("netcode", err);
             }
         }
-        // Re-render menu with "disconnect" replaced by "connect".
-        self.menu = Menu::new(true, true);
     }
 
     /// Log an error/warning occured in the currently executing host function.

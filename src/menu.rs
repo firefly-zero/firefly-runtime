@@ -15,8 +15,6 @@ const LINE_HEIGHT: i32 = 12;
 
 pub(crate) enum MenuItem {
     Custom(u8, alloc::string::String),
-    Connect,
-    Disconnect,
     ScreenShot,
     Restart,
     Quit,
@@ -26,8 +24,6 @@ impl MenuItem {
     fn as_str(&self) -> &str {
         match self {
             MenuItem::Custom(_, t) => t,
-            MenuItem::Connect => "start multiplayer",
-            MenuItem::Disconnect => "exit multiplayer",
             MenuItem::ScreenShot => "take screenshot",
             MenuItem::Restart => "restart app",
             MenuItem::Quit => "exit app",
@@ -41,7 +37,7 @@ pub(crate) struct Menu {
     app_items: alloc::vec::Vec<MenuItem>,
 
     /// System menu items.
-    sys_items: heapless::Vec<MenuItem, 4>,
+    sys_items: heapless::Vec<MenuItem, 3>,
 
     selected: i32,
 
@@ -65,19 +61,12 @@ pub(crate) struct Menu {
 }
 
 impl Menu {
-    pub fn new(offline: bool, launcher: bool) -> Self {
-        let mut items = heapless::Vec::new();
-        if launcher {
-            if offline {
-                _ = items.push(MenuItem::Connect);
-            } else {
-                _ = items.push(MenuItem::Disconnect);
-            }
-        }
-        _ = items.push(MenuItem::ScreenShot);
-        if !launcher {
-            _ = items.push(MenuItem::Restart);
-            _ = items.push(MenuItem::Quit);
+    pub fn new() -> Self {
+        let mut items = heapless::Vec::<_, 3>::new();
+        unsafe {
+            items.push_unchecked(MenuItem::ScreenShot);
+            items.push_unchecked(MenuItem::Restart);
+            items.push_unchecked(MenuItem::Quit);
         }
         Self {
             app_items: alloc::vec::Vec::new(),
