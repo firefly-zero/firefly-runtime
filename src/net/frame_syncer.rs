@@ -4,7 +4,7 @@ use crate::config::FullID;
 use alloc::boxed::Box;
 use firefly_hal::*;
 
-const SYNC_EVERY: Duration = Duration::from_ms(100);
+const SYNC_EVERY: Duration = Duration::from_s(2);
 const FRAME_TIMEOUT: Duration = Duration::from_s(5);
 const FIRST_TIMEOUT: Duration = Duration::from_s(10);
 const MAX_PEERS: usize = 8;
