@@ -214,21 +214,22 @@ impl<'a> State<'a> {
         let file = match self.device.open_file(path) {
             Ok(file) => file,
             Err(_) => {
-                self.log_error("failed to open settings");
+                self.device.log_error("settings", "failed to open settings");
                 return None;
             }
         };
         let raw = match read_all(file) {
             Ok(raw) => raw,
             Err(_) => {
-                self.log_error("failed to read settings");
+                self.device.log_error("settings", "failed to read settings");
                 return None;
             }
         };
         let settings = match firefly_types::Settings::decode(&raw[..]) {
             Ok(settings) => settings,
             Err(_) => {
-                self.log_error("failed to parse settings");
+                self.device
+                    .log_error("settings", "failed to parse settings");
                 return None;
             }
         };
@@ -246,7 +247,7 @@ impl<'a> State<'a> {
         if self.stash.is_empty() {
             let res = self.device.remove_file(stash_path);
             if let Err(err) = res {
-                self.log_error(err);
+                self.device.log_error("stash", err);
             }
             return;
         };
@@ -254,14 +255,14 @@ impl<'a> State<'a> {
         let mut stream = match self.device.create_file(stash_path) {
             Ok(stream) => stream,
             Err(err) => {
-                self.log_error(err);
+                self.device.log_error("stash", err);
                 return;
             }
         };
         let res = stream.write_all(&self.stash[..]);
         if let Err(err) = res {
             let err = FSError::from(err);
-            self.log_error(err);
+            self.device.log_error("stash", err);
         }
     }
 
@@ -299,7 +300,7 @@ impl<'a> State<'a> {
         let res = match stats.encode_vec() {
             Ok(res) => res,
             Err(err) => {
-                self.log_error(err);
+                self.device.log_error("stats", err);
                 return;
             }
         };
@@ -307,14 +308,14 @@ impl<'a> State<'a> {
         let mut stream = match self.device.create_file(stats_path) {
             Ok(stream) => stream,
             Err(err) => {
-                self.log_error(err);
+                self.device.log_error("stats", err);
                 return;
             }
         };
         let res = stream.write_all(&res);
         if let Err(err) = res {
             let err = FSError::from(err);
-            self.log_error(err);
+            self.device.log_error("stats", err);
         }
     }
 
@@ -527,7 +528,7 @@ impl<'a> State<'a> {
         let mut file = match self.device.create_file(path) {
             Ok(file) => file,
             Err(err) => {
-                self.log_error(err);
+                self.device.log_error("shot", err);
                 self.called = old_app;
                 return;
             }
@@ -535,7 +536,7 @@ impl<'a> State<'a> {
         let res = write_shot(&mut file, &self.frame.palette, &*self.frame.data);
         if let Err(err) = res {
             let err: firefly_hal::FSError = err.into();
-            self.log_error(err);
+            self.device.log_error("shot", err);
         }
         self.called = old_app;
     }
@@ -585,7 +586,7 @@ where
     Ok(())
 }
 
-/// Serialize the palette as continius RGB bytes.
+/// Serialize the palette as continious RGB bytes.
 fn encode_palette(palette: &[Rgb16; 16]) -> [u8; 16 * 3] {
     let mut encoded: [u8; 16 * 3] = [0; 16 * 3];
     for (i, color) in palette.iter().enumerate() {
