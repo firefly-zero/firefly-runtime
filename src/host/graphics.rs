@@ -392,23 +392,10 @@ pub(crate) fn draw_text(
     let font_ptr = font_ptr as usize;
     let font_len = font_len as usize;
 
-    // The slices must not intersect and must be within memory.
-    if text_ptr == font_ptr {
-        let msg = "text and font point to the same slice";
-        state.log_error(msg);
-        return;
-    }
-    if text_ptr < font_ptr && text_ptr + text_len >= font_ptr {
-        let msg = "text and font slices intersect";
-        state.log_error(msg);
-        return;
-    }
-    if font_ptr < text_ptr && font_ptr + font_len >= text_ptr {
-        let msg = "text and font slices intersect";
-        state.log_error(msg);
-        return;
-    }
-
+    // The slices must be within memory.
+    // There also used to be a check that the slices don't intersect
+    // but on practice if font is statically allocated, LLVM can optimize
+    // the data section and find the text bytes within the font.
     let Some(text_bytes) = &data.get(text_ptr..(text_ptr + text_len)) else {
         state.log_error(HostError::OomPointer);
         return;
