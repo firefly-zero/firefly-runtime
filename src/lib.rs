@@ -4,6 +4,7 @@
 
 extern crate alloc;
 
+mod battery;
 mod canvas;
 mod color;
 mod config;
