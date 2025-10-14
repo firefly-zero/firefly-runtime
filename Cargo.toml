@@ -14,6 +14,7 @@ firefly-hal = { path = "../../firefly-hal" }
 # firefly-types = { version = "0.6.1" }
 firefly-types = { path = "../../firefly-types" }
 heapless = { version = "0.8.0", features = ["serde"] }
+micromath = "2.1.0"
 postcard = "1.0.8"
 # Use crates.io version when >0.14.1 is released.
 # https://github.com/kennytm/qrcode-rust/pull/73

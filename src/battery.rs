@@ -4,8 +4,16 @@ use embedded_io::Write;
 use firefly_hal::{Device, DeviceImpl, FSError};
 use firefly_types::{BatteryInfo, Encode};
 
+use crate::utils::read_all;
+
 const K: f32 = 12.;
 
+/// Battery status manager.
+///
+/// The State-of-Charge (SOC) of a battery is calculated from the current voltage
+/// as a sigmoid function on the range from minimum to maximum voltage of the battery.
+/// The minimum and maximum are stored in the FS, initially set to the defaults,
+/// and updated if the actual voltage ever goes outside of the default range.
 pub struct Battery {
     pub ok: bool,
     pub connected: bool,
@@ -58,13 +66,20 @@ impl Battery {
     }
 
     fn sync_info(&mut self, device: &mut DeviceImpl) -> Result<(), FSError> {
-        todo!()
+        let info = BatteryInfo {
+            min_voltage: self.min_voltage,
+            max_voltage: self.max_voltage,
+        };
+        let buf = info.encode_vec().unwrap();
+        let mut file = device.create_file(&["sys", "battery"])?;
+        file.write_all(&buf)?;
+        Ok(())
     }
 }
 
+/// Calculate exponent: e^v.
 fn exp(v: f32) -> f32 {
-    // TODO(@orsinium): use micromath
-    E.powf(v)
+    micromath::F32::from(v).exp().into()
 }
 
 fn ensure_info(device: &mut DeviceImpl) -> Result<BatteryInfo, FSError> {
@@ -73,10 +88,15 @@ fn ensure_info(device: &mut DeviceImpl) -> Result<BatteryInfo, FSError> {
         Err(FSError::NotFound) => return create_info(device),
         Err(err) => return Err(err),
     };
-    todo!()
+    let raw = read_all(file)?;
+    let info = BatteryInfo::decode(&raw).unwrap();
+    Ok(info)
 }
 
 fn create_info(device: &mut DeviceImpl) -> Result<BatteryInfo, FSError> {
+    // Assuming that the battery voltage is in microvolts (mV),
+    // the voltage range for a li-ion battery at 25°C is
+    // in the range from 3000 mV (3V) to 4200 mV (4.2V).
     let info = BatteryInfo {
         min_voltage: 3_000,
         max_voltage: 4_200,
@@ -85,4 +105,29 @@ fn create_info(device: &mut DeviceImpl) -> Result<BatteryInfo, FSError> {
     let mut file = device.create_file(&["sys", "battery"])?;
     file.write_all(&buf)?;
     Ok(info)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use firefly_hal::*;
+
+    #[test]
+    fn test_battery() {
+        let mut device = new_device();
+        let mut battery = Battery::new(&mut device).ok().unwrap();
+        battery.update(&mut device).ok().unwrap();
+        assert!(battery.ok);
+        device.open_file(&["sys", "battery"]).ok().unwrap();
+        // TODO(@orsinium): figure out a good way to mock out device voltage.
+    }
+
+    fn new_device<'a>() -> DeviceImpl<'a> {
+        let root = std::env::temp_dir().join("test_battery");
+        let config = DeviceConfig {
+            root,
+            ..Default::default()
+        };
+        DeviceImpl::new(config)
+    }
 }
