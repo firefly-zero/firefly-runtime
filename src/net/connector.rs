@@ -24,8 +24,7 @@ pub(crate) struct MyInfo {
 pub(crate) struct PeerInfo {
     pub addr: Addr,
     pub name: heapless::String<16>,
-    // TODO: check that the version is compatible
-    // pub version: u16,
+    pub version: u16,
 }
 
 /// Connector establishes network connection between devices.
@@ -79,6 +78,15 @@ impl<'a> Connector<'a> {
         self.stopped = true;
         self.send_disconnect()?;
         self.net.stop()?;
+        Ok(())
+    }
+
+    pub fn validate(&self) -> Result<(), &'static str> {
+        for peer in &self.peer_infos {
+            if peer.version != self.me.version {
+                return Err("devices have incompatible OS versions; please, update.");
+            }
+        }
         Ok(())
     }
 
@@ -201,7 +209,7 @@ impl<'a> Connector<'a> {
         let info = PeerInfo {
             addr,
             name,
-            // version: intro.version,
+            version: intro.version,
         };
         let res = self.peer_infos.push(info);
         if res.is_err() {

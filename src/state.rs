@@ -8,6 +8,7 @@ use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
 use crate::utils::{read_all, read_all_into};
 use crate::{net::*, Error};
+use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
 use core::cell::Cell;
 use core::fmt::Display;
@@ -441,6 +442,9 @@ impl<'a> State<'a> {
                 NetHandler::None
             }
             ConnectStatus::Finished => {
+                if let Err(err) = connector.validate() {
+                    self.error = Some(ErrorScene::new(err.to_owned()))
+                }
                 self.set_next(None);
                 let connection = connector.finalize();
                 NetHandler::Connection(connection)
