@@ -251,7 +251,7 @@ impl<'a> State<'a> {
         let raw = match read_all(file) {
             Ok(raw) => raw,
             Err(err) => {
-                self.device.log_error("settings", err);
+                self.device.log_error("settings", FSError::from(err));
                 return None;
             }
         };
