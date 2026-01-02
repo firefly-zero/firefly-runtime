@@ -1,6 +1,7 @@
 use crate::canvas::Canvas;
 use crate::color::{BPPAdapter, Rgb16};
 use crate::error::HostError;
+use crate::frame_buffer::{HEIGHT, WIDTH};
 use crate::state::State;
 use alloc::boxed::Box;
 use core::convert::Infallible;
@@ -114,6 +115,9 @@ pub(crate) fn draw_rect(
 ) {
     let state = caller.data_mut();
     state.called = "graphics.draw_rect";
+    if x > WIDTH as i32 || y > HEIGHT as i32 {
+        return;
+    }
     let point = Point::new(x, y);
     let size = Size::new(width, height);
     let rect = Rectangle::new(point, size);
