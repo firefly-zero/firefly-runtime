@@ -5,7 +5,6 @@ rust-version = "1.82.0"
 edition = "2021"
 
 [dependencies]
-core2 = { version = "0.4.0", default-features = false }
 embedded-graphics = "0.8.1"
 embedded-io = "0.6.1"
 firefly-audio = "0.2.0"
