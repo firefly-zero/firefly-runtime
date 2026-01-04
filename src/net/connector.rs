@@ -25,7 +25,6 @@ pub(crate) struct PeerInfo {
     pub addr: Addr,
     pub name: heapless::String<16>,
     pub version: u16,
-    pub n_peers: Option<u8>,
 }
 
 /// Connector establishes network connection between devices.
@@ -211,7 +210,6 @@ impl<'a> Connector<'a> {
             addr,
             name,
             version: intro.version,
-            n_peers: None,
         };
         let res = self.peer_infos.push(info);
         if res.is_err() {
