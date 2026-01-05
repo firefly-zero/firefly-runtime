@@ -241,7 +241,7 @@ where
         // TODO: pause audio when opening menu
         let menu_is_active = state.menu.active();
         if menu_is_active {
-            if self.n_frames % 60 == 0 {
+            if self.n_frames.is_multiple_of(60) {
                 if let Some(battery) = &mut state.battery {
                     let res = battery.update(&mut state.device);
                     if let Err(err) = res {
@@ -305,7 +305,7 @@ where
         self.delay();
 
         let state = self.store.data();
-        let should_render = state.exit || self.n_frames % self.render_every == 0;
+        let should_render = state.exit || self.n_frames.is_multiple_of(self.render_every);
         // The frame number must be updated after calculating "should_render"
         // so that "render" is always called on the first "update" run
         // (when the app is just launched).

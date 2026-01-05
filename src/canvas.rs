@@ -83,7 +83,7 @@ impl CanvasBuffer<'_> {
         }
         let pixel_index = y * self.width + x;
         let byte_index = pixel_index / PPB;
-        let shift = if pixel_index % 2 == 0 { 0 } else { 4 };
+        let shift = if pixel_index.is_multiple_of(2) { 0 } else { 4 };
         let mask = !(0b1111 << shift);
         let byte = self.data[byte_index];
         let color = color.into_storage();
