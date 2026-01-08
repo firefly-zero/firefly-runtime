@@ -89,16 +89,13 @@ impl Menu {
 
     pub fn handle_input(&mut self, input: &Option<InputState>) -> Option<&MenuItem> {
         let def = InputState::default();
-        let input = match input {
-            Some(input) => input,
-            None => &def,
-        };
+        let input = input.as_ref().unwrap_or(&def);
         self.handle_menu_button(input.menu());
         if !self.active {
             return None;
         }
         self.handle_pad(input);
-        self.handle_select(input.a())
+        self.handle_select(input.s() || input.e())
     }
 
     fn handle_menu_button(&mut self, pressed: bool) {
