@@ -7,7 +7,7 @@ edition = "2021"
 [dependencies]
 embedded-graphics = "0.8.1"
 embedded-io = "0.6.1"
-firefly-audio = "0.2.0"
+firefly-audio = "0.2.1"
 firefly-hal = "0.3.0"
 firefly-types = { version = "0.7.1" }
 heapless = { version = "0.9.2", features = ["serde"] }
