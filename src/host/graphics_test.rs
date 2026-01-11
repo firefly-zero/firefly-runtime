@@ -11,7 +11,7 @@ use embedded_graphics::primitives::Rectangle;
 use firefly_hal::{Device, DeviceConfig, DeviceImpl};
 use std::path::PathBuf;
 
-// const N: i32 = 0;
+const N: i32 = 0;
 // const W: i32 = 1;
 const G: i32 = 2;
 const R: i32 = 3;
@@ -101,7 +101,7 @@ fn test_draw_line_out_of_bounds() {
 }
 
 #[test]
-fn test_draw_rect() {
+fn test_draw_rect_filled() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
 
@@ -125,6 +125,64 @@ fn test_draw_rect() {
             "WBBBBW", // y=4
             "WWWWWW", // y=5
             "WWWWWW", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_rect_solid_w4() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_rect);
+
+    // ensure that the frame buffer is empty
+    let state = store.data();
+    for byte in &*state.frame.data {
+        assert_eq!(byte, &0b_0000_0000);
+    }
+
+    let inputs = wrap_input(&[1, 2, 4, 3, G, N, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &mut state.frame,
+        &[
+            "WWWWWW", // y=0
+            "WWWWWW", // y=1
+            "WGGGGW", // y=2
+            "WGGGGW", // y=3
+            "WGGGGW", // y=4
+            "WWWWWW", // y=5
+            "WWWWWW", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_rect_solid_w5() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_rect);
+
+    // ensure that the frame buffer is empty
+    let state = store.data();
+    for byte in &*state.frame.data {
+        assert_eq!(byte, &0b_0000_0000);
+    }
+
+    let inputs = wrap_input(&[1, 2, 5, 3, G, N, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &mut state.frame,
+        &[
+            "WWWWWWW", // y=0
+            "WWWWWWW", // y=1
+            "WGGGGGW", // y=2
+            "WGGGGGW", // y=3
+            "WGGGGGW", // y=4
+            "WWWWWWW", // y=5
+            "WWWWWWW", // y=6
         ],
     );
 }
@@ -197,7 +255,8 @@ fn wrap_input(a: &[i32]) -> Vec<wasmi::Val> {
 
 fn check_display(frame: &mut FrameBuffer, pattern: &[&str]) {
     let mut display = MockDisplay::<Rgb888>::new();
-    let area = Rectangle::new(Point::zero(), Size::new(6, 7));
+    let w = pattern[0].len() as u32;
+    let area = Rectangle::new(Point::zero(), Size::new(w, 7));
     let mut sub_display = display.clipped(&area);
     frame.palette = [
         // 0-4

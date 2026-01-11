@@ -123,14 +123,13 @@ impl DrawTarget for FrameBuffer {
         self.dirty = true;
         let new_byte = color_to_byte(&color);
 
-        let left_x = area.top_left.x as usize;
-        let left_x = left_x.clamp(0, WIDTH);
-        let right_x = left_x + area.size.width as usize;
-        let right_x = right_x.clamp(0, WIDTH);
-        let top_y = area.top_left.y as usize;
-        let top_y = top_y.clamp(0, HEIGHT);
-        let bottom_y = top_y + area.size.height as usize;
-        let bottom_y = bottom_y.clamp(0, HEIGHT);
+        let left_x = area.top_left.x.clamp(0, WIDTH as _) as usize;
+        let right_x = area.top_left.x + area.size.width as i32;
+        let right_x = right_x.clamp(0, WIDTH as _) as usize;
+
+        let top_y = area.top_left.y.clamp(0, HEIGHT as _) as usize;
+        let bottom_y = area.top_left.y + area.size.height as i32;
+        let bottom_y = bottom_y.clamp(0, HEIGHT as _) as usize;
 
         if right_x - left_x <= 4 {
             for point in area.points() {
