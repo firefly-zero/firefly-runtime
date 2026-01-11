@@ -18,22 +18,22 @@ const BUFFER_SIZE: usize = WIDTH * HEIGHT / PPB;
 // https://lospec.com/palette-list/sweetie-16
 // https://github.com/nesbox/TIC-80/wiki/Palette
 const DEFAULT_PALETTE: [Rgb16; 16] = [
-    Rgb16::from_rgb(0x1a, 0x1c, 0x2c), // black
-    Rgb16::from_rgb(0x5d, 0x27, 0x5d), // purple
-    Rgb16::from_rgb(0xb1, 0x3e, 0x53), // red
-    Rgb16::from_rgb(0xef, 0x7d, 0x57), // orange
-    Rgb16::from_rgb(0xff, 0xcd, 0x75), // yellow
-    Rgb16::from_rgb(0xa7, 0xf0, 0x70), // light green
-    Rgb16::from_rgb(0x38, 0xb7, 0x64), // green
-    Rgb16::from_rgb(0x25, 0x71, 0x79), // dark green
-    Rgb16::from_rgb(0x29, 0x36, 0x6f), // dark blue
-    Rgb16::from_rgb(0x3b, 0x5d, 0xc9), // blue
-    Rgb16::from_rgb(0x41, 0xa6, 0xf6), // light blue
-    Rgb16::from_rgb(0x73, 0xef, 0xf7), // cyan
-    Rgb16::from_rgb(0xf4, 0xf4, 0xf4), // white
-    Rgb16::from_rgb(0x94, 0xb0, 0xc2), // light gray
-    Rgb16::from_rgb(0x56, 0x6c, 0x86), // gray
-    Rgb16::from_rgb(0x33, 0x3c, 0x57), // dark gray
+    Rgb16::from_rgb(0x1a, 0x1c, 0x2c), // #1a1c2c, black
+    Rgb16::from_rgb(0x5d, 0x27, 0x5d), // #5d275d, purple
+    Rgb16::from_rgb(0xb1, 0x3e, 0x53), // #b13e53, red
+    Rgb16::from_rgb(0xef, 0x7d, 0x57), // #ef7d57, orange
+    Rgb16::from_rgb(0xff, 0xcd, 0x75), // #ffcd75, yellow
+    Rgb16::from_rgb(0xa7, 0xf0, 0x70), // #a7f070, light green
+    Rgb16::from_rgb(0x38, 0xb7, 0x64), // #38b764, green
+    Rgb16::from_rgb(0x25, 0x71, 0x79), // #257179, dark green
+    Rgb16::from_rgb(0x29, 0x36, 0x6f), // #29366f, dark blue
+    Rgb16::from_rgb(0x3b, 0x5d, 0xc9), // #3b5dc9, blue
+    Rgb16::from_rgb(0x41, 0xa6, 0xf6), // #41a6f6, light blue
+    Rgb16::from_rgb(0x73, 0xef, 0xf7), // #73eff7, cyan
+    Rgb16::from_rgb(0xf4, 0xf4, 0xf4), // #f4f4f4, white
+    Rgb16::from_rgb(0x94, 0xb0, 0xc2), // #94b0c2, light gray
+    Rgb16::from_rgb(0x56, 0x6c, 0x86), // #566c86, gray
+    Rgb16::from_rgb(0x33, 0x3c, 0x57), // #333c57, dark gray
 ];
 
 pub trait RenderFB {
@@ -150,7 +150,15 @@ impl DrawTarget for FrameBuffer {
         Ok(())
     }
 
-    // There is also `fill_contiguous` but it seems to be unused so no need to optimize.
+    // fill_contiguous seems to be unused and hence was left unoptimized.
+    // But just to be sure, we overwrite it with an exception in debug builds.
+    #[cfg(debug_assertions)]
+    fn fill_contiguous<I>(&mut self, _area: &Rectangle, _colors: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = Self::Color>,
+    {
+        unimplemented!()
+    }
 }
 
 impl FrameBuffer {
