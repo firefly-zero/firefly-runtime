@@ -90,11 +90,16 @@ pub(crate) fn draw_line(
         state.log_error(HostError::NoneColor);
         return;
     };
-    if p1_y == p2_y && state.canvas.is_none() {
-        state
-            .frame
-            .draw_hline(p1_x, p2_x, p1_y, stroke_width, color);
-        return;
+    if state.canvas.is_none() {
+        let frame = &mut state.frame;
+        if p1_y == p2_y {
+            frame.draw_hline(p1_x, p2_x, p1_y, stroke_width, color);
+            return;
+        }
+        if p1_x == p2_x {
+            frame.draw_vline(p1_x, p1_y, p2_y, stroke_width, color);
+            return;
+        }
     }
 
     let start = Point::new(p1_x, p1_y);

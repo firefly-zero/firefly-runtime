@@ -86,6 +86,46 @@ impl FrameBuffer {
         };
         _ = self.fill_solid(&area, c);
     }
+
+    /// Optimized rendering of vertical line.
+    ///
+    /// Must behave exactly like embedded-graphics with the same parameters
+    /// but damn faster.
+    pub(crate) fn draw_vline(&mut self, x: i32, y1: i32, y2: i32, w: u32, c: Gray4) {
+        let mut top = y1;
+        let mut down = y2;
+        let mut x = x - (w / 2) as i32;
+        if top > down {
+            (down, top) = (top, down);
+            if w.is_multiple_of(2) {
+                x += 1;
+            }
+        }
+        let area = Rectangle {
+            top_left: Point::new(x, top),
+            size: Size::new(w, (down - top + 1) as u32),
+        };
+        _ = self.fill_solid(&area, c);
+    }
+
+    /// Render 1-pixel-wide vertical line.
+    ///
+    /// SAFETY: HEIGHT > bottom_y >= top_y.
+    fn draw_vline1(&mut self, x: usize, top_y: usize, bottom_y: usize, c: Gray4) {
+        let color = c.into_storage();
+        debug_assert!(color < 16);
+        let shift = if x.is_multiple_of(2) { 0 } else { 4 };
+        let mask = !(0b1111 << shift);
+        let start_i = (top_y * WIDTH + x) / PPB;
+        let end_i = (bottom_y * WIDTH + x) / PPB;
+        for pixel_index in (start_i..end_i).step_by(WIDTH / PPB) {
+            let byte_index = pixel_index;
+            // Safety: It's up to the caller to ensure that
+            // y within WIDTH and HEIGHT.
+            let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
+            *byte = (color << shift) | (*byte & mask);
+        }
+    }
 }
 
 /// Required by the [DrawTarget] trait.
@@ -132,8 +172,8 @@ impl DrawTarget for FrameBuffer {
         let bottom_y = bottom_y.clamp(0, HEIGHT as _) as usize;
 
         if right_x - left_x <= 4 {
-            for point in area.points() {
-                self.set_pixel(point, color);
+            for x in left_x..right_x {
+                self.draw_vline1(x, top_y, bottom_y, color);
             }
             return Ok(());
         }
@@ -152,21 +192,11 @@ impl DrawTarget for FrameBuffer {
         }
 
         if left_fract {
-            for y in top_y..bottom_y {
-                let x = left_x as i32;
-                let y = y as i32;
-                self.set_pixel(Point { x, y }, color);
-            }
+            self.draw_vline1(left_x, top_y, bottom_y, color);
         }
-
         if right_fract {
-            for y in top_y..bottom_y {
-                let x = right_x as i32 - 1;
-                let y = y as i32;
-                self.set_pixel(Point { x, y }, color);
-            }
+            self.draw_vline1(right_x - 1, top_y, bottom_y, color);
         }
-
         Ok(())
     }
 
