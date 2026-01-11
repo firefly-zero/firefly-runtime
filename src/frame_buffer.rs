@@ -65,6 +65,23 @@ impl FrameBuffer {
             (right, left)
         })
     }
+
+    pub(crate) fn draw_hline(&mut self, x1: i32, x2: i32, y: i32, w: u32, c: Gray4) {
+        let mut left = x1;
+        let mut right = x2;
+        let mut y = y - (w / 2) as i32;
+        if left > right {
+            (left, right) = (right, left);
+            if w.is_multiple_of(2) {
+                y += 1;
+            }
+        }
+        let area = Rectangle {
+            top_left: Point::new(left, y),
+            size: Size::new((right - left + 1) as u32, w),
+        };
+        _ = self.fill_solid(&area, c);
+    }
 }
 
 /// Required by the [DrawTarget] trait.

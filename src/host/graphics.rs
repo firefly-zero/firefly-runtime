@@ -85,13 +85,21 @@ pub(crate) fn draw_line(
 ) {
     let state = caller.data_mut();
     state.called = "graphics.draw_line";
-    let start = Point::new(p1_x, p1_y);
-    let end = Point::new(p2_x, p2_y);
-    let line = Line::new(start, end);
+
     let Some(color) = parse_color(color) else {
         state.log_error(HostError::NoneColor);
         return;
     };
+    if p1_y == p2_y && state.canvas.is_none() {
+        state
+            .frame
+            .draw_hline(p1_x, p2_x, p1_y, stroke_width, color);
+        return;
+    }
+
+    let start = Point::new(p1_x, p1_y);
+    let end = Point::new(p2_x, p2_y);
+    let line = Line::new(start, end);
     let style = PrimitiveStyle::with_stroke(color, stroke_width);
     let err = if let Some(canvas) = &state.canvas {
         let mut target = canvas.clone().as_target(&mut caller);
