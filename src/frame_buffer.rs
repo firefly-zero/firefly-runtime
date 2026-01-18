@@ -46,7 +46,7 @@ pub struct FrameBuffer {
     pub(crate) data: Box<[u8; BUFFER_SIZE]>,
     /// The color palette. Maps 16-color packed pixels to RGB colors.
     pub(crate) palette: [Rgb16; 16],
-    dirty: bool,
+    pub(crate) dirty: bool,
 }
 
 impl FrameBuffer {
