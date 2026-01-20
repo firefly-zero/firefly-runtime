@@ -1,8 +1,6 @@
 use super::stats::get_friend;
-use crate::{
-    error::HostError,
-    state::{NetHandler, State},
-};
+use crate::error::HostError;
+use crate::state::{NetHandler, State};
 use alloc::boxed::Box;
 
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;

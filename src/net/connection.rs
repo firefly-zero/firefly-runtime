@@ -1,8 +1,6 @@
 use super::*;
-use crate::{
-    utils::{read_all, read_into, write_all},
-    FullID,
-};
+use crate::utils::{read_all, read_into, write_all};
+use crate::FullID;
 use alloc::boxed::Box;
 use embedded_io::{Read, Write};
 use firefly_hal::*;

@@ -1,6 +1,5 @@
 #![cfg_attr(not(test), no_std)]
-#![allow(clippy::too_many_arguments)]
-#![allow(clippy::new_without_default)]
+#![allow(clippy::new_without_default, clippy::too_many_arguments)]
 
 extern crate alloc;
 

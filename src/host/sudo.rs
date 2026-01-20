@@ -1,6 +1,7 @@
+use crate::config::FullID;
 use crate::error::HostError;
 use crate::state::State;
-use crate::{config::FullID, utils::read_into};
+use crate::utils::read_into;
 use alloc::boxed::Box;
 use firefly_hal::{Device, Dir};
 use firefly_types::{validate_id, validate_path_part};

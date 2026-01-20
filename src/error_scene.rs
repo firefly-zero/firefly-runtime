@@ -1,10 +1,11 @@
 use crate::color::FromRGB;
-use embedded_graphics::{
-    mono_font::{ascii::FONT_6X9, MonoTextStyle},
-    prelude::*,
-    primitives::{CornerRadii, PrimitiveStyle, Rectangle, RoundedRectangle, StyledDrawable},
-    text::Text,
+use embedded_graphics::mono_font::ascii::FONT_6X9;
+use embedded_graphics::mono_font::MonoTextStyle;
+use embedded_graphics::prelude::*;
+use embedded_graphics::primitives::{
+    CornerRadii, PrimitiveStyle, Rectangle, RoundedRectangle, StyledDrawable,
 };
+use embedded_graphics::text::Text;
 use firefly_hal::{Device, DeviceImpl, Duration, Instant};
 
 const FONT_HEIGHT: i32 = 10;

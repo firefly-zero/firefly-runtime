@@ -1,8 +1,7 @@
+use crate::utils::read_all;
 use embedded_io::Write;
 use firefly_hal::{Device, DeviceImpl, Dir, FSError};
 use firefly_types::{BatteryInfo, Encode};
-
-use crate::utils::read_all;
 
 const K: f32 = 12.;
 
