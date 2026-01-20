@@ -947,8 +947,8 @@ dependencies = [
  "heapless 0.9.2",
  "micromath",
  "postcard",
- "qrcode",
  "serde",
+ "tinyqr",
  "wasmi",
 ]
 
@@ -1657,11 +1657,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "qrcode"
-version = "0.14.1"
-source = "git+https://github.com/kennytm/qrcode-rust.git#c7780e8549ac4fb3da81fdf7d7f010a27db78c0f"
-
-[[package]]
 name = "quote"
 version = "1.0.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2247,6 +2242,12 @@ dependencies = [
  "quote",
  "syn 2.0.114",
 ]
+
+[[package]]
+name = "tinyqr"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f395129159378b22c5339c64d679ef900a6c42a377873ac13583ab7234ffed8"
 
 [[package]]
 name = "toml_datetime"

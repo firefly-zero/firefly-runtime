@@ -200,14 +200,16 @@ impl DrawTarget for FrameBuffer {
         Ok(())
     }
 
-    // fill_contiguous seems to be unused and hence was left unoptimized.
-    // But just to be sure, we overwrite it with an exception in debug builds.
-    #[cfg(debug_assertions)]
-    fn fill_contiguous<I>(&mut self, _area: &Rectangle, _colors: I) -> Result<(), Self::Error>
+    // TODO(@orsinium): Optimize. Used by draw_qr.
+    fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I) -> Result<(), Self::Error>
     where
         I: IntoIterator<Item = Self::Color>,
     {
-        unimplemented!()
+        self.draw_iter(
+            area.points()
+                .zip(colors)
+                .map(|(pos, color)| Pixel(pos, color)),
+        )
     }
 }
 

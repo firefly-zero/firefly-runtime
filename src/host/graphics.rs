@@ -335,7 +335,7 @@ pub(crate) fn draw_qr(
     };
 
     // generate ASCII QR code
-    let Ok(code) = qrcode::QrCode::new(text_bytes) else {
+    let Ok(code) = tinyqr::QrCode::new(text_bytes) else {
         state.log_error("QR code cannot be constructed");
         return;
     };
