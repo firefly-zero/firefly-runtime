@@ -2,6 +2,17 @@
 version: "3"
 
 tasks:
+  release:
+    desc: build and publish release
+    cmds:
+      - test {{.CLI_ARGS}}
+      - grep -F '"{{.CLI_ARGS}}"' Cargo.toml
+      - cargo publish
+      - git tag {{.CLI_ARGS}}
+      - git push
+      - git push --tags
+      - gh release create --generate-notes {{.CLI_ARGS}}
+
   test:
     cmds:
       - cargo test
