@@ -209,7 +209,7 @@ const fn new_rgb565(r: u8, g: u8, b: u8) -> Rgb565 {
 }
 
 #[allow(clippy::get_first)]
-fn parse_swaps(transp: u8, swaps: &[u8]) -> [Option<Gray4>; 16] {
+pub(crate) fn parse_swaps(transp: u8, swaps: &[u8]) -> [Option<Gray4>; 16] {
     [
         // 0-4
         parse_color_l(transp, swaps.get(0)),

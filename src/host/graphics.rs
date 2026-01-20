@@ -1,7 +1,7 @@
 use crate::canvas::Canvas;
-use crate::color::{BPPAdapter, Rgb16};
+use crate::color::{parse_swaps, BPPAdapter, Rgb16};
 use crate::error::HostError;
-use crate::frame_buffer::{HEIGHT, WIDTH};
+use crate::frame_buffer::{FrameBuffer, HEIGHT, WIDTH};
 use crate::state::State;
 use alloc::boxed::Box;
 use core::convert::Infallible;
@@ -546,6 +546,10 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
     let bpp = u8::from_le_bytes([image_bytes[1]]);
     // The image width. The height is inferred from width, BPP, and byte size.
     let width = u16::from_le_bytes([image_bytes[2], image_bytes[3]]) as u32;
+    if width == 0 {
+        state.log_error("image has zero width");
+        return;
+    }
     // The color that should be omitted.
     // Used to encode transparency by sacrificing one color from the palette.
     let transp = u8::from_le_bytes([image_bytes[4]]);
@@ -573,6 +577,11 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
     }
 
     // TODO: support canvas
+    if state.canvas.is_some() {
+        state.log_error("images cannot be drawn on canvas yet");
+        return;
+    }
+
     let point = Point::new(x, y);
     match bpp {
         1 => {
@@ -584,6 +593,11 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
             draw_bpp(image_raw, transp, swaps, point, sub, &mut state.frame)
         }
         4 => {
+            if sub.is_none() {
+                state.frame.dirty = true;
+                draw_4bpp_fast(image_bytes, width, swaps, transp, point, &mut state.frame);
+                return;
+            }
             let image_raw = ImageRawLE::<Gray4>::new(image_bytes, width);
             draw_bpp(image_raw, transp, swaps, point, sub, &mut state.frame)
         }
@@ -619,6 +633,43 @@ fn draw_bpp<C, I, T>(
         None => {
             let image = Image::new(&image_raw, point);
             never_fails(image.draw(&mut adapter));
+        }
+    }
+}
+
+/// Faster implementation of drawing of a 4 BPP image.
+///
+/// Avoids going through embedded-graphics machinery and instead
+/// iterates over image bytes directly.
+fn draw_4bpp_fast(
+    image: &[u8],
+    width: u32,
+    swaps: &[u8],
+    transp: u8,
+    point: Point,
+    frame: &mut FrameBuffer,
+) {
+    let mut p = point;
+    let swaps = parse_swaps(transp, swaps);
+    for byte in image {
+        let c1 = usize::from((byte >> 4) & 0x0F);
+        if let Some(c1) = swaps[c1] {
+            frame.set_pixel(p, c1);
+        };
+        p.x += 1;
+        if p.x - point.x >= width as i32 {
+            p.x = point.x;
+            p.y += 1;
+        }
+
+        let c2 = usize::from((byte) & 0x0F);
+        if let Some(c2) = swaps[c2] {
+            frame.set_pixel(p, c2);
+        };
+        p.x += 1;
+        if p.x - point.x >= width as i32 {
+            p.x = point.x;
+            p.y += 1;
         }
     }
 }

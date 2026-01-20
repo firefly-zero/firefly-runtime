@@ -235,7 +235,9 @@ impl FrameBuffer {
     /// Set color of a single pixel at the given coordinates.
     ///
     /// Does NOT mark the buffer as dirty. This must be done by the caller.
-    fn set_pixel(&mut self, point: Point, color: Gray4) {
+    pub(crate) fn set_pixel(&mut self, point: Point, color: Gray4) {
+        // Negative values will be wrapped and filtered out
+        // because any wrapped value is bigger than WIDTH/HEIGHT.
         let x = point.x as usize;
         let y = point.y as usize;
         if y >= HEIGHT || x >= WIDTH {
@@ -248,7 +250,7 @@ impl FrameBuffer {
         // Safety: if y within WIDTH and HEIGHT (which we checked),
         // the byte_index is is within the buffer.
         let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
-        let color = color.into_storage();
+        let color = color.luma();
         debug_assert!(color < 16);
         *byte = (color << shift) | (*byte & mask);
     }
@@ -284,6 +286,6 @@ where
 
 /// Duplicate the color and pack into 1 byte.
 fn color_to_byte(c: &Gray4) -> u8 {
-    let luma = c.into_storage();
+    let luma = c.luma();
     luma | (luma << 4)
 }
