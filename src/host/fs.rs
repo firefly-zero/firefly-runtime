@@ -104,7 +104,7 @@ pub(crate) fn load_file(
                 return 0;
             };
             let handler = state.net_handler.get_mut();
-            if !matches!(handler, NetHandler::None) {
+            if matches!(handler, NetHandler::FrameSyncer(_)) {
                 state.log_error(HostError::DataFileInNet);
                 return 0;
             }
