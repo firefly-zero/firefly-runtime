@@ -63,14 +63,14 @@ pub(crate) fn draw_point(mut caller: C, x: i32, y: i32, color: i32) {
         state.log_error(HostError::NoneColor);
         return;
     };
-    let pixel = Pixel(point, color);
-    let err = if let Some(canvas) = &state.canvas {
+    if let Some(canvas) = &state.canvas {
+        let pixel = Pixel(point, color);
         let mut target = canvas.clone().as_target(&mut caller);
-        pixel.draw(&mut target)
+        never_fails(pixel.draw(&mut target));
     } else {
-        pixel.draw(&mut state.frame)
+        state.frame.dirty = true;
+        state.frame.set_pixel(point, color);
     };
-    never_fails(err);
 }
 
 /// Draw a line between two points.
