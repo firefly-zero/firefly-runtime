@@ -2,7 +2,7 @@ use crate::color::FromRGB;
 use crate::config::{FullID, RuntimeConfig};
 use crate::error::Error;
 use crate::frame_buffer::RenderFB;
-use crate::linking::{link, populate_externals};
+use crate::linking::populate_externals;
 use crate::state::{NetHandler, State};
 use crate::stats::StatsTracker;
 use crate::utils::read_all;
