@@ -55,6 +55,22 @@ macro_rules! bail_unknown_host_function {
     }};
 }
 
+const MODULE_GRAPHICS: &str = "graphics";
+const MODULE_GRAPHICS_ALIAS: &str = "g";
+const MODULE_AUDIO: &str = "audio";
+const MODULE_INPUT: &str = "input";
+const MODULE_INPUT_ALIAS: &str = "i";
+const MODULE_MENU: &str = "menu";
+const MODULE_FS: &str = "fs";
+const MODULE_NET: &str = "net";
+const MODULE_NET_ALIAS: &str = "n";
+const MODULE_STATS: &str = "stats";
+const MODULE_STATS_ALIAS: &str = "s";
+const MODULE_MISC: &str = "misc";
+const MODULE_MISC_ALIAS: &str = "m";
+const MODULE_SUDO: &str = "sudo";
+const MODULE_WASIP1: &str = "wasi_snapshot_preview1";
+
 /// Populate all host-defined functions used by `module` in the `extern` vector.
 ///
 /// If `sudo` is enabled, some more host-defined functions are allowed to be used.
@@ -68,21 +84,21 @@ pub(crate) fn populate_externals<'a>(
     for import in module.imports() {
         let ctx = ctx.as_context_mut();
         let func = match import.module() {
-            "graphics" => select_graphics_external(ctx, import),
-            "audio" => select_audio_external(ctx, import),
-            "input" => select_input_external(ctx, import),
-            "menu" => select_menu_external(ctx, import),
-            "fs" => select_fs_external(ctx, import),
-            "net" => select_net_external(ctx, import),
-            "stats" => select_stats_external(ctx, import),
-            "misc" => select_misc_external(ctx, import),
-            "sudo" => select_sudo_external(ctx, import, sudo),
-            "wasi_snapshot_preview1" => select_wasip1_external(ctx, import),
-            "g" => select_graphics_external_alias(ctx, import),
-            "i" => select_input_external_alias(ctx, import),
-            "n" => select_net_external_alias(ctx, import),
-            "s" => select_stats_external_alias(ctx, import),
-            "m" => select_misc_external_alias(ctx, import),
+            MODULE_GRAPHICS => select_graphics_external(ctx, import),
+            MODULE_AUDIO => select_audio_external(ctx, import),
+            MODULE_INPUT => select_input_external(ctx, import),
+            MODULE_MENU => select_menu_external(ctx, import),
+            MODULE_FS => select_fs_external(ctx, import),
+            MODULE_NET => select_net_external(ctx, import),
+            MODULE_STATS => select_stats_external(ctx, import),
+            MODULE_MISC => select_misc_external(ctx, import),
+            MODULE_SUDO => select_sudo_external(ctx, import, sudo),
+            MODULE_WASIP1 => select_wasip1_external(ctx, import),
+            MODULE_GRAPHICS_ALIAS => select_graphics_external_alias(ctx, import),
+            MODULE_INPUT_ALIAS => select_input_external_alias(ctx, import),
+            MODULE_NET_ALIAS => select_net_external_alias(ctx, import),
+            MODULE_STATS_ALIAS => select_stats_external_alias(ctx, import),
+            MODULE_MISC_ALIAS => select_misc_external_alias(ctx, import),
             module => {
                 bail_unknown_host_function!(module.to_owned(), import.name(),)
             }
@@ -114,7 +130,7 @@ fn select_graphics_external<'a>(
         "draw_sub_image" => host_func(ctx, graphics::draw_sub_image),
         "set_canvas" => host_func(ctx, graphics::set_canvas),
         "unset_canvas" => host_func(ctx, graphics::unset_canvas),
-        name => bail_unknown_host_function!("graphics", name),
+        name => bail_unknown_host_function!(MODULE_GRAPHICS, name),
     };
     Ok(func)
 }
@@ -153,7 +169,7 @@ fn select_audio_external<'a>(
         "mod_linear" => host_func(ctx, audio::mod_linear),
         "mod_hold" => host_func(ctx, audio::mod_hold),
         "mod_sine" => host_func(ctx, audio::mod_sine),
-        name => bail_unknown_host_function!("audio", name),
+        name => bail_unknown_host_function!(MODULE_AUDIO, name),
     };
     Ok(func)
 }
@@ -165,7 +181,7 @@ fn select_input_external<'a>(
     let func = match import.name() {
         "read_pad" => host_func(ctx, input::read_pad),
         "read_buttons" => host_func(ctx, input::read_buttons),
-        name => bail_unknown_host_function!("input", name),
+        name => bail_unknown_host_function!(MODULE_INPUT, name),
     };
     Ok(func)
 }
@@ -178,7 +194,7 @@ fn select_menu_external<'a>(
         "add_menu_item" => host_func(ctx, menu::add_menu_item),
         "remove_menu_item" => host_func(ctx, menu::remove_menu_item),
         "open_menu" => host_func(ctx, menu::open_menu),
-        name => bail_unknown_host_function!("menu", name),
+        name => bail_unknown_host_function!(MODULE_MENU, name),
     };
     Ok(func)
 }
@@ -194,7 +210,7 @@ fn select_fs_external<'a>(
         "load_file" => host_func(ctx, fs::load_file),
         "dump_file" => host_func(ctx, fs::dump_file),
         "remove_file" => host_func(ctx, fs::remove_file),
-        name => bail_unknown_host_function!("fs", name),
+        name => bail_unknown_host_function!(MODULE_FS, name),
     };
     Ok(func)
 }
@@ -208,7 +224,7 @@ fn select_net_external<'a>(
         "get_peers" => host_func(ctx, net::get_peers),
         "save_stash" => host_func(ctx, net::save_stash),
         "load_stash" => host_func(ctx, net::load_stash),
-        name => bail_unknown_host_function!("net", name),
+        name => bail_unknown_host_function!(MODULE_NET, name),
     };
     Ok(func)
 }
@@ -220,7 +236,7 @@ fn select_stats_external<'a>(
     let func = match import.name() {
         "add_progress" => host_func(ctx, stats::add_progress),
         "add_score" => host_func(ctx, stats::add_score),
-        name => bail_unknown_host_function!("stats", name),
+        name => bail_unknown_host_function!(MODULE_STATS, name),
     };
     Ok(func)
 }
@@ -238,7 +254,7 @@ fn select_misc_external<'a>(
         "restart" => host_func(ctx, misc::restart),
         "set_conn_status" => host_func(ctx, misc::set_conn_status),
         "quit" => host_func(ctx, misc::quit),
-        name => bail_unknown_host_function!("misc", name),
+        name => bail_unknown_host_function!(MODULE_MISC, name),
     };
     Ok(func)
 }
@@ -259,7 +275,7 @@ fn select_sudo_external<'a>(
         "get_file_size" => host_func(ctx, sudo::get_file_size),
         "load_file" => host_func(ctx, sudo::load_file),
         "run_app" => host_func(ctx, sudo::run_app),
-        name => bail_unknown_host_function!("sudo", name),
+        name => bail_unknown_host_function!(MODULE_SUDO, name),
     };
     Ok(func)
 }
@@ -277,7 +293,7 @@ fn select_wasip1_external<'a>(
         "fd_seek" => host_func(ctx, wasip1::fd_seek),
         "fd_write" => host_func(ctx, wasip1::fd_write),
         "proc_exit" => host_func(ctx, wasip1::proc_exit),
-        name => bail_unknown_host_function!("wasip1", name),
+        name => bail_unknown_host_function!(MODULE_WASIP1, name),
     };
     Ok(func)
 }
@@ -304,7 +320,7 @@ fn select_graphics_external_alias<'a>(
         "t" => host_func(ctx, graphics::draw_triangle),
         "x" => host_func(ctx, graphics::draw_text),
         "q" => host_func(ctx, graphics::draw_qr),
-        name => bail_unknown_host_function!("g", name),
+        name => bail_unknown_host_function!(MODULE_GRAPHICS_ALIAS, name),
     };
     Ok(func)
 }
@@ -316,7 +332,7 @@ fn select_input_external_alias<'a>(
     let func = match import.name() {
         "p" => host_func(ctx, input::read_pad),
         "b" => host_func(ctx, input::read_buttons),
-        name => bail_unknown_host_function!("i", name),
+        name => bail_unknown_host_function!(MODULE_INPUT_ALIAS, name),
     };
     Ok(func)
 }
@@ -330,7 +346,7 @@ fn select_net_external_alias<'a>(
         "m" => host_func(ctx, net::get_me),
         "p" => host_func(ctx, net::get_peers),
         "s" => host_func(ctx, net::save_stash),
-        name => bail_unknown_host_function!("n", name),
+        name => bail_unknown_host_function!(MODULE_NET_ALIAS, name),
     };
     Ok(func)
 }
@@ -342,7 +358,7 @@ fn select_stats_external_alias<'a>(
     let func = match import.name() {
         "p" => host_func(ctx, stats::add_progress),
         "s" => host_func(ctx, stats::add_score),
-        name => bail_unknown_host_function!("s", name),
+        name => bail_unknown_host_function!(MODULE_STATS_ALIAS, name),
     };
     Ok(func)
 }
@@ -358,7 +374,7 @@ fn select_misc_external_alias<'a>(
         "q" => host_func(ctx, misc::quit),
         "r" => host_func(ctx, misc::get_random),
         "s" => host_func(ctx, misc::set_seed),
-        name => bail_unknown_host_function!("m", name),
+        name => bail_unknown_host_function!(MODULE_MISC_ALIAS, name),
     };
     Ok(func)
 }
