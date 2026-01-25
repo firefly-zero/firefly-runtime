@@ -100,7 +100,7 @@ pub(crate) fn populate_externals<'a>(
             MODULE_STATS_ALIAS => select_stats_external_alias(ctx, import),
             MODULE_MISC_ALIAS => select_misc_external_alias(ctx, import),
             module => {
-                bail_unknown_host_function!(module.to_owned(), import.name(),)
+                bail_unknown_host_function!(module.to_owned(), import.name())
             }
         }?;
         externs.push(wasmi::Extern::Func(func));
