@@ -676,12 +676,24 @@ fn draw_4bpp_fast(
         image = sub_image;
     }
 
+    let mut skip: usize = 0;
     // Skip the right out-of-bounds part of the image.
     let mut right_x = point.x + width as i32;
-    let mut skip_right: usize = 0;
     if right_x > WIDTH as i32 {
-        skip_right = (right_x - WIDTH as i32) as usize / PPB;
-        right_x = WIDTH as i32;
+        let skip_px = (right_x - WIDTH as i32) as usize;
+        if skip_px.is_multiple_of(PPB) {
+            skip = skip_px / PPB;
+            right_x = WIDTH as i32;
+        }
+    }
+    // Skip the left out-of-bounds part of the image.
+    let mut left_x = point.x;
+    if left_x < 0 {
+        let skip_px = -left_x as usize;
+        if skip_px.is_multiple_of(PPB) {
+            skip += skip_px / PPB;
+            left_x = 0;
+        }
     }
 
     let mut i = 0;
@@ -693,9 +705,9 @@ fn draw_4bpp_fast(
         };
         p.x += 1;
         if p.x >= right_x {
-            p.x = point.x;
+            p.x = left_x;
             p.y += 1;
-            i += skip_right;
+            i += skip;
         }
 
         let c2 = usize::from(byte & 0x0F);
@@ -704,9 +716,9 @@ fn draw_4bpp_fast(
         };
         p.x += 1;
         if p.x >= right_x {
-            p.x = point.x;
+            p.x = left_x;
             p.y += 1;
-            i += skip_right;
+            i += skip;
         }
         i += 1;
     }
