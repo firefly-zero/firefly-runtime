@@ -649,18 +649,31 @@ fn draw_4bpp_fast(
     point: Point,
     frame: &mut FrameBuffer,
 ) {
+    const PPB: usize = 2;
     let swaps = parse_swaps(transp, swaps);
     let mut p = point;
-
     let mut image = image;
+
     // Cut the top out-of-bounds part of the image.
     if p.y < 0 {
-        let start_i = (-p.y * width as i32) as usize / 2;
+        let start_i = (-p.y * width as i32) as usize / PPB;
         let Some(sub_image) = image.get(start_i..) else {
             return;
         };
         image = sub_image;
         p.y = 0;
+    }
+
+    // Cut the bottom out-of-bounds part of the image.
+    let height = (image.len() * PPB) as i32 / width as i32;
+    let bottom_y = p.y + height;
+    if bottom_y > HEIGHT as i32 {
+        let new_height = height - (bottom_y - HEIGHT as i32);
+        let end_i = (new_height * width as i32) as usize / PPB;
+        let Some(sub_image) = image.get(..end_i) else {
+            return;
+        };
+        image = sub_image;
     }
 
     for byte in image {
