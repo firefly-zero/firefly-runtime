@@ -72,6 +72,7 @@ impl ParsedImage<'_> {
         let mut skip_px: u32 = 0;
         let mut left_x = point.x;
         let mut right_x = left_x + self.width as i32;
+        let mut pending_skips = 0;
 
         if let Some(sub) = self.sub {
             // Cut image lines above sub-region.
@@ -97,6 +98,7 @@ impl ParsedImage<'_> {
 
             // Cut image on the left and right from the sub-region.
             image = &image[sub.top_left.x as usize / PPB..];
+            // pending_skips = (sub.top_left.x as usize % PPB) * 10;
             // left_x = 2 * (sub.top_left.x % PPB as i32);
             let sub_width = u32::min(sub.size.width, self.width);
             skip_px = self.width - sub_width;
@@ -146,7 +148,6 @@ impl ParsedImage<'_> {
         p.x = left_x;
 
         let mut i = 0;
-        let mut pending_skips = skip_extra;
         while i < image.len() {
             let byte = image[i];
 
@@ -164,12 +165,17 @@ impl ParsedImage<'_> {
                 p.y += 1;
                 i += skip;
                 pending_skips = skip_extra;
+                continue;
             }
 
-            let c2 = usize::from(byte & 0x0F);
-            if let Some(c2) = swaps[c2] {
-                frame.set_pixel(p, c2);
-            };
+            if pending_skips != 0 {
+                pending_skips -= 1;
+            } else {
+                let c2 = usize::from(byte & 0x0F);
+                if let Some(c2) = swaps[c2] {
+                    frame.set_pixel(p, c2);
+                };
+            }
             p.x += 1;
             if p.x >= right_x {
                 p.x = left_x;

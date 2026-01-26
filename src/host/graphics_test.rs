@@ -17,6 +17,29 @@ const G: i32 = 2;
 const R: i32 = 3;
 const B: i32 = 4;
 
+/// A 4x4 16 BPP image with all 16 colors.
+static IMG16: &[u8] = &[
+    // header
+    0x21, // magic number (marker that signals that this is an image)
+    0x04, // bits per pixel (BPP, either 0x01, 0x02, or 0x04)
+    0x04, // ┬ image width, 16 bit little-endian
+    0x00, // ┘
+    0xff, // transparency color
+    0x01, // ┬ 8 bytes color palette (16 colors)
+    0x23, // ┤
+    0x45, // ┤
+    0x67, // ┤
+    0x89, // ┤
+    0xAB, // ┤
+    0xCD, // ┤
+    0xEF, // ┘
+    // pixels
+    0x01, 0x23, // row 1
+    0x45, 0x67, // row 2
+    0x89, 0xAB, // row 3
+    0xCD, 0xEF, // row 4
+];
+
 #[test]
 fn test_clear_screen() {
     let mut store = make_store();
@@ -240,6 +263,104 @@ fn test_draw_circle() {
             "WRGGRW", // y=3
             "WRGGRW", // y=4
             "WWRRWW", // y=5
+            "WWWWWW", // y=6
+        ],
+    );
+}
+
+/// Draw circle paritally out-of-bounds on the left.
+#[test]
+fn test_draw_circle_part_oob_left() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_circle);
+
+    // ensure that the frame buffer is empty
+    let state = store.data();
+    for byte in &*state.frame.data {
+        assert_eq!(byte, &0b_0000_0000);
+    }
+
+    let inputs = wrap_input(&[-2, 2, 4, G, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &mut state.frame,
+        &[
+            "WWWWW", // y=0
+            "WWWWW", // y=1
+            "RWWWW", // y=2
+            "GRWWW", // y=3
+            "GRWWW", // y=4
+            "RWWWW", // y=5
+            "WWWWW", // y=6
+        ],
+    );
+}
+
+/// Draw circle paritally out-of-bounds on the left.
+#[test]
+fn test_draw_circle_part_oob_top() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_circle);
+
+    // ensure that the frame buffer is empty
+    let state = store.data();
+    for byte in &*state.frame.data {
+        assert_eq!(byte, &0b_0000_0000);
+    }
+
+    let inputs = wrap_input(&[1, -1, 4, G, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &mut state.frame,
+        &[
+            "WRGGRW", // y=0
+            "WRGGRW", // y=1
+            "WWRRWW", // y=2
+            "WWWWWW", // y=3
+            "WWWWWW", // y=4
+            "WWWWWW", // y=5
+            "WWWWWW", // y=6
+        ],
+    );
+}
+
+/// Draw circle paritally out-of-bounds on the left.
+#[test]
+fn test_draw_image() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+
+    // ensure that the frame buffer is empty
+    let state = store.data();
+    for byte in &*state.frame.data {
+        assert_eq!(byte, &0b_0000_0000);
+    }
+
+    let mem_type = wasmi::MemoryType::new(1, Some(1));
+    let memory = wasmi::Memory::new(&mut store, mem_type).unwrap();
+    let state = store.data_mut();
+    state.memory = Some(memory);
+
+    let data = memory.data_mut(&mut store);
+    data[5..5 + IMG16.len()].copy_from_slice(IMG16);
+
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &mut state.frame,
+        &[
+            "WWWWWW", // y=0
+            "WWWWWW", // y=1
+            "WWGRBW", // y=2
+            "WKKKKW", // y=3
+            "WKKKKW", // y=4
+            "WKKKKW", // y=5
             "WWWWWW", // y=6
         ],
     );
