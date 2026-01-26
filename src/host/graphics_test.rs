@@ -7,6 +7,7 @@ use embedded_graphics::draw_target::DrawTargetExt;
 use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mock_display::MockDisplay;
 use embedded_graphics::pixelcolor::Rgb888;
+use embedded_graphics::prelude::RgbColor;
 use embedded_graphics::primitives::Rectangle;
 use firefly_hal::{Device, DeviceConfig, DeviceImpl};
 use std::path::PathBuf;
@@ -268,23 +269,13 @@ fn test_draw_circle_part_oob_top() {
     );
 }
 
-/// Draw circle paritally out-of-bounds on the left.
 #[test]
 fn test_draw_image() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_image);
-
-    let mem_type = wasmi::MemoryType::new(1, Some(1));
-    let memory = wasmi::Memory::new(&mut store, mem_type).unwrap();
-    let state = store.data_mut();
-    state.memory = Some(memory);
-
-    let data = memory.data_mut(&mut store);
-    data[5..5 + IMG16.len()].copy_from_slice(IMG16);
-
+    write_mem(&mut store, 5, IMG16);
     let inputs = wrap_input(&[5, IMG16.len() as _, 1, 2]);
     func.call(&mut store, &inputs, &mut []).unwrap();
-
     let state = store.data_mut();
     check_display(
         &mut state.frame,
@@ -292,12 +283,67 @@ fn test_draw_image() {
             "WWWWWW", // y=0
             "WWWWWW", // y=1
             "WWGRBW", // y=2
-            "WKKKKW", // y=3
+            "WYMCKW", // y=3
             "WKKKKW", // y=4
             "WKKKKW", // y=5
             "WWWWWW", // y=6
         ],
     );
+}
+
+#[test]
+fn test_draw_image_oob_left() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, -2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &mut state.frame,
+        &[
+            "WWWWWW", // y=0
+            "WWWWWW", // y=1
+            "RBWWWW", // y=2
+            "CKWWWW", // y=3
+            "KKWWWW", // y=4
+            "KKWWWW", // y=5
+            "WWWWWW", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_oob_top() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, -1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &mut state.frame,
+        &[
+            "WYMCKW", // y=0
+            "WKKKKW", // y=1
+            "WKKKKW", // y=2
+            "WWWWWW", // y=3
+            "WWWWWW", // y=4
+            "WWWWWW", // y=5
+            "WWWWWW", // y=6
+        ],
+    );
+}
+
+/// Place the given buffer into the linear wasm app memory.
+fn write_mem(store: &mut wasmi::Store<Box<State<'_>>>, addr: usize, buf: &[u8]) {
+    let mem_type = wasmi::MemoryType::new(1, Some(1));
+    let memory = wasmi::Memory::new(&mut *store, mem_type).unwrap();
+    let state = store.data_mut();
+    state.memory = Some(memory);
+
+    let data = memory.data_mut(store);
+    data[addr..addr + buf.len()].copy_from_slice(buf);
 }
 
 fn wrap_input(a: &[i32]) -> Vec<wasmi::Val> {
@@ -315,25 +361,25 @@ fn check_display(frame: &mut FrameBuffer, pattern: &[&str]) {
     let mut sub_display = display.clipped(&area);
     frame.palette = [
         // 0-4
-        Rgb16::from_rgb(255, 255, 255),
-        Rgb16::from_rgb(0, 255, 0),
-        Rgb16::from_rgb(255, 0, 0),
-        Rgb16::from_rgb(0, 0, 255),
+        Rgb16::WHITE,
+        Rgb16::GREEN,
+        Rgb16::RED,
+        Rgb16::BLUE,
         // 4-8
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
+        Rgb16::YELLOW,
+        Rgb16::MAGENTA,
+        Rgb16::CYAN,
+        Rgb16::BLACK,
         // 8-12
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
+        Rgb16::BLACK,
+        Rgb16::BLACK,
+        Rgb16::BLACK,
+        Rgb16::BLACK,
         // 12-16
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
+        Rgb16::BLACK,
+        Rgb16::BLACK,
+        Rgb16::BLACK,
+        Rgb16::BLACK,
     ];
     frame.draw(&mut sub_display).unwrap();
     display.assert_pattern(pattern);

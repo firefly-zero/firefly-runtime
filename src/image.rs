@@ -144,8 +144,8 @@ impl ParsedImage<'_> {
         let skip_px = skip_px as usize;
         let skip_extra = skip_px % PPB;
         let skip = skip_px / PPB;
-        left_x -= skip_extra as i32;
-        p.x = left_x;
+        // left_x -= skip_extra as i32;
+        // p.x = left_x;
 
         let mut i = 0;
         while i < image.len() {
