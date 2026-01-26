@@ -45,12 +45,6 @@ fn test_clear_screen() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, clear_screen);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
     let inputs = wrap_input(&[2]);
     let mut outputs = Vec::new();
     func.call(&mut store, &inputs, &mut outputs).unwrap();
@@ -67,12 +61,6 @@ fn test_clear_screen() {
 fn test_draw_line() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_line);
-
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
 
     let inputs = wrap_input(&[2, 1, 4, 3, R, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
@@ -99,12 +87,6 @@ fn test_draw_line_out_of_bounds() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_line);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
     let inputs = wrap_input(&[-1, -2, 4, 3, G, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
@@ -127,12 +109,6 @@ fn test_draw_line_out_of_bounds() {
 fn test_draw_rect_filled() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
-
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
 
     let inputs = wrap_input(&[1, 2, 4, 3, G, B, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
@@ -157,12 +133,6 @@ fn test_draw_rect_solid_w4() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
     let inputs = wrap_input(&[1, 2, 4, 3, G, N, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
@@ -185,12 +155,6 @@ fn test_draw_rect_solid_w4() {
 fn test_draw_rect_solid_w5() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
-
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
 
     let inputs = wrap_input(&[1, 2, 5, 3, G, N, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
@@ -215,12 +179,6 @@ fn test_draw_rounded_rect() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rounded_rect);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
     let inputs = wrap_input(&[1, 2, 4, 4, 2, 2, G, B, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
@@ -243,12 +201,6 @@ fn test_draw_rounded_rect() {
 fn test_draw_circle() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_circle);
-
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
 
     let inputs = wrap_input(&[1, 2, 4, G, R, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
@@ -274,12 +226,6 @@ fn test_draw_circle_part_oob_left() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_circle);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
     let inputs = wrap_input(&[-2, 2, 4, G, R, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
@@ -304,12 +250,6 @@ fn test_draw_circle_part_oob_top() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_circle);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
     let inputs = wrap_input(&[1, -1, 4, G, R, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
@@ -333,12 +273,6 @@ fn test_draw_circle_part_oob_top() {
 fn test_draw_image() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_image);
-
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
 
     let mem_type = wasmi::MemoryType::new(1, Some(1));
     let memory = wasmi::Memory::new(&mut store, mem_type).unwrap();
@@ -416,9 +350,18 @@ fn make_store<'a>() -> wasmi::Store<Box<State<'a>>> {
     let rom_dir = device.open_dir(&["sys"]).ok().unwrap();
     let id = FullID::from_str("test-author", "test-app").unwrap();
     let state = State::new(id, device, rom_dir, NetHandler::None, false);
-    wasmi::Store::new(&engine, state)
+    let store = wasmi::Store::new(&engine, state);
+    assert_fb_empty(&store);
+    store
 }
 
+/// Ensure that the frame buffer is empty.
+fn assert_fb_empty(store: &wasmi::Store<Box<State<'_>>>) {
+    let state = store.data();
+    for byte in &*state.frame.data {
+        assert_eq!(byte, &0b_0000_0000);
+    }
+}
 fn get_vfs() -> PathBuf {
     let root = std::env::temp_dir();
     _ = std::fs::create_dir(root.join("sys"));
