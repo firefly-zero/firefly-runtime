@@ -19,21 +19,28 @@ impl ParsedImage<'_> {
     pub fn render(&self, point: Point, frame: &mut FrameBuffer) {
         match self.bpp {
             1 => {
-                let image_raw = ImageRawLE::<BinaryColor>::new(self.bytes, self.width);
-                self.draw_bpp(image_raw, point, frame)
+                if let Some(sub) = self.sub {
+                    let image_raw = ImageRawLE::<BinaryColor>::new(self.bytes, self.width);
+                    self.draw_bpp(image_raw, point, sub, frame)
+                } else {
+                    self.draw_fast::<1, 8, 0b1>(point, frame);
+                }
             }
             2 => {
-                let image_raw = ImageRawLE::<Gray2>::new(self.bytes, self.width);
-                self.draw_bpp(image_raw, point, frame)
+                if let Some(sub) = self.sub {
+                    let image_raw = ImageRawLE::<Gray2>::new(self.bytes, self.width);
+                    self.draw_bpp(image_raw, point, sub, frame)
+                } else {
+                    self.draw_fast::<2, 4, 0b11>(point, frame);
+                }
             }
             4 => {
-                if self.sub.is_none() {
-                    frame.dirty = true;
-                    self.draw_4bpp_fast(point, frame);
-                    return;
+                if let Some(sub) = self.sub {
+                    let image_raw = ImageRawLE::<Gray4>::new(self.bytes, self.width);
+                    self.draw_bpp(image_raw, point, sub, frame)
+                } else {
+                    self.draw_fast::<4, 2, 0b1111>(point, frame);
                 }
-                let image_raw = ImageRawLE::<Gray4>::new(self.bytes, self.width);
-                self.draw_bpp(image_raw, point, frame)
             }
             _ => {}
         };
@@ -43,32 +50,27 @@ impl ParsedImage<'_> {
     ///
     /// The function takes care of the BPP differences between the given image
     /// and the target.
-    fn draw_bpp<C, I, T>(&self, image_raw: I, point: Point, target: &mut T)
+    fn draw_bpp<C, I, T>(&self, image_raw: I, point: Point, sub: Rectangle, target: &mut T)
     where
         C: PixelColor + IntoStorage<Storage = u8>,
         I: ImageDrawable<Color = C>,
         T: DrawTarget<Color = Gray4, Error = Infallible> + OriginDimensions,
     {
         let mut adapter = BPPAdapter::<_, C>::new(target, self.transp, self.swaps);
-        match self.sub {
-            Some(sub) => {
-                let image_raw = image_raw.sub_image(&sub);
-                let image = Image::new(&image_raw, point);
-                never_fails(image.draw(&mut adapter));
-            }
-            None => {
-                let image = Image::new(&image_raw, point);
-                never_fails(image.draw(&mut adapter));
-            }
-        }
+        let image_raw = image_raw.sub_image(&sub);
+        let image = Image::new(&image_raw, point);
+        never_fails(image.draw(&mut adapter));
     }
 
     /// Faster implementation of drawing of a 4 BPP image.
     ///
     /// Avoids going through embedded-graphics machinery and instead
     /// iterates over image bytes directly.
-    fn draw_4bpp_fast(&self, point: Point, frame: &mut FrameBuffer) {
-        const PPB: usize = 2;
+    fn draw_fast<const BPP: usize, const PPB: usize, const MASK: u8>(
+        &self,
+        point: Point,
+        frame: &mut FrameBuffer,
+    ) {
         let swaps = parse_swaps(self.transp, self.swaps);
         let mut p = point;
         let mut image = self.bytes;
@@ -96,6 +98,7 @@ impl ParsedImage<'_> {
         }
 
         let mut skip: usize = 0;
+
         // Skip the right out-of-bounds part of the image.
         let mut right_x = point.x + self.width as i32;
         if right_x > WIDTH as i32 {
@@ -103,6 +106,7 @@ impl ParsedImage<'_> {
             skip = skip_px / PPB;
             right_x = WIDTH as i32 + (skip_px % PPB) as i32;
         }
+
         // Skip the left out-of-bounds part of the image.
         let mut left_x = point.x;
         if left_x < 0 {
@@ -113,30 +117,23 @@ impl ParsedImage<'_> {
 
         let mut i = 0;
         while i < image.len() {
-            let byte = image[i];
-            let c1 = usize::from((byte >> 4) & 0x0f);
-            if let Some(c1) = swaps[c1] {
-                frame.set_pixel(p, c1);
-            };
-            p.x += 1;
-            if p.x >= right_x {
-                p.x = left_x;
-                p.y += 1;
-                i += skip;
-            }
-
-            let c2 = usize::from(byte & 0x0f);
-            if let Some(c2) = swaps[c2] {
-                frame.set_pixel(p, c2);
-            };
-            p.x += 1;
-            if p.x >= right_x {
-                p.x = left_x;
-                p.y += 1;
-                i += skip;
+            let mut byte = image[i];
+            for _ in 0..PPB {
+                byte = byte.rotate_left(BPP as _);
+                let c1 = usize::from(byte & MASK);
+                if let Some(c1) = swaps[c1] {
+                    frame.set_pixel(p, c1);
+                };
+                p.x += 1;
+                if p.x >= right_x {
+                    p.x = left_x;
+                    p.y += 1;
+                    i += skip;
+                }
             }
             i += 1;
         }
+        frame.dirty = true;
     }
 }
 

@@ -733,7 +733,7 @@ fn check_display_at(point: Point, frame: &FrameBuffer, pattern: &[&str]) {
             let ch = get_fb_char(frame, Point::new(x, y));
             pat.push(ch);
         }
-        println!("{pat}")
+        println!("{pat} | {line}")
     }
 
     for (line, y) in pattern.iter().zip(point.y..) {
