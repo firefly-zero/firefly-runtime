@@ -292,7 +292,29 @@ fn test_draw_image() {
 }
 
 #[test]
-fn test_draw_image_oob_left() {
+fn test_draw_image_oob_left1() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, -1, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &mut state.frame,
+        &[
+            "WWWWWW", // y=0
+            "WWWWWW", // y=1
+            "GRBWWW", // y=2
+            "MCKWWW", // y=3
+            "KKKWWW", // y=4
+            "KKKWWW", // y=5
+            "WWWWWW", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_oob_left2() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_image);
     write_mem(&mut store, 5, IMG16);
