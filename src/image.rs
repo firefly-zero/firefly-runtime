@@ -27,13 +27,8 @@ impl ParsedImage<'_> {
                 self.draw_bpp(image_raw, point, frame)
             }
             4 => {
-                if self.sub.is_none() {
-                    frame.dirty = true;
-                    self.draw_4bpp_fast(point, frame);
-                    return;
-                }
-                let image_raw = ImageRawLE::<Gray4>::new(self.bytes, self.width);
-                self.draw_bpp(image_raw, point, frame)
+                frame.dirty = true;
+                self.draw_4bpp_fast(point, frame);
             }
             _ => {}
         };
@@ -73,7 +68,44 @@ impl ParsedImage<'_> {
         let mut p = point;
         let mut image = self.bytes;
 
-        // Cut the top out-of-bounds part of the image.
+        // Variables for cutting the left and right sides of the image.
+        let mut skip_px: u32 = 0;
+        let mut left_x = point.x;
+        let mut right_x = left_x + self.width as i32;
+        let mut pending_skips = 0;
+
+        if let Some(sub) = self.sub {
+            // Cut image lines above sub-region.
+            {
+                let skip_px = sub.top_left.y * self.width as i32;
+                let start_i = skip_px as usize / PPB;
+                let Some(sub_image) = image.get(start_i..) else {
+                    return;
+                };
+                image = sub_image;
+            }
+
+            // Cut image lines below sub-region.
+            {
+                let height = sub.size.height as i32;
+                let skip_px = height * self.width as i32;
+                let end_i = skip_px as usize / PPB;
+                let Some(sub_image) = image.get(..end_i) else {
+                    return;
+                };
+                image = sub_image;
+            }
+
+            // Cut image on the left and right from the sub-region.
+            image = &image[sub.top_left.x as usize / PPB..];
+            // pending_skips = (sub.top_left.x as usize % PPB) * 10;
+            // left_x = 2 * (sub.top_left.x % PPB as i32);
+            let sub_width = u32::min(sub.size.width, self.width);
+            skip_px = self.width - sub_width;
+            right_x = left_x + sub_width as i32;
+        }
+
+        // Cut image lines above the screen.
         if p.y < 0 {
             let start_i = (-p.y * self.width as i32) as usize / PPB;
             let Some(sub_image) = image.get(start_i..) else {
@@ -83,7 +115,7 @@ impl ParsedImage<'_> {
             p.y = 0;
         }
 
-        // Cut the bottom out-of-bounds part of the image.
+        // Cut image lines below the screen.
         let height = (image.len() * PPB) as i32 / self.width as i32;
         let bottom_y = p.y + height;
         if bottom_y > HEIGHT as i32 {
@@ -95,45 +127,61 @@ impl ParsedImage<'_> {
             image = sub_image;
         }
 
-        let mut skip: usize = 0;
         // Skip the right out-of-bounds part of the image.
-        let mut right_x = point.x + self.width as i32;
         if right_x > WIDTH as i32 {
-            let skip_px = (right_x - WIDTH as i32) as usize;
-            skip = skip_px / PPB;
-            right_x = WIDTH as i32 + (skip_px % PPB) as i32;
+            let skip_diff = right_x as u32 - WIDTH as u32;
+            skip_px += skip_diff;
+            right_x = WIDTH as i32 + (skip_diff % PPB as u32) as i32;
         }
+
         // Skip the left out-of-bounds part of the image.
-        let mut left_x = point.x;
         if left_x < 0 {
-            let skip_px = -left_x as usize;
-            skip += skip_px / PPB;
-            left_x = -((skip_px % PPB) as i32);
+            let skip_diff = -left_x as u32;
+            skip_px += skip_diff;
+            left_x = -((skip_diff % PPB as u32) as i32);
         }
+
+        let skip_px = skip_px as usize;
+        let skip_extra = skip_px % PPB;
+        let skip = skip_px / PPB;
+        // left_x -= skip_extra as i32;
+        // p.x = left_x;
 
         let mut i = 0;
         while i < image.len() {
             let byte = image[i];
-            let c1 = usize::from((byte >> 4) & 0x0F);
-            if let Some(c1) = swaps[c1] {
-                frame.set_pixel(p, c1);
-            };
+
+            if pending_skips != 0 {
+                pending_skips -= 1;
+            } else {
+                let c1 = usize::from((byte >> 4) & 0x0F);
+                if let Some(c1) = swaps[c1] {
+                    frame.set_pixel(p, c1);
+                };
+            }
             p.x += 1;
             if p.x >= right_x {
                 p.x = left_x;
                 p.y += 1;
                 i += skip;
+                pending_skips = skip_extra;
+                continue;
             }
 
-            let c2 = usize::from(byte & 0x0F);
-            if let Some(c2) = swaps[c2] {
-                frame.set_pixel(p, c2);
-            };
+            if pending_skips != 0 {
+                pending_skips -= 1;
+            } else {
+                let c2 = usize::from(byte & 0x0F);
+                if let Some(c2) = swaps[c2] {
+                    frame.set_pixel(p, c2);
+                };
+            }
             p.x += 1;
             if p.x >= right_x {
                 p.x = left_x;
                 p.y += 1;
                 i += skip;
+                pending_skips = skip_extra;
             }
             i += 1;
         }
