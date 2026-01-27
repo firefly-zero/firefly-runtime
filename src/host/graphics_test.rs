@@ -1,14 +1,8 @@
-use crate::color::Rgb16;
 use crate::config::FullID;
 use crate::frame_buffer::FrameBuffer;
 use crate::host::graphics::*;
 use crate::state::{NetHandler, State};
-use embedded_graphics::draw_target::DrawTargetExt;
-use embedded_graphics::geometry::{Point, Size};
-use embedded_graphics::mock_display::MockDisplay;
-use embedded_graphics::pixelcolor::Rgb888;
-use embedded_graphics::prelude::RgbColor;
-use embedded_graphics::primitives::Rectangle;
+use embedded_graphics::geometry::Point;
 use firefly_hal::{Device, DeviceConfig, DeviceImpl};
 use std::path::PathBuf;
 
@@ -68,15 +62,15 @@ fn test_draw_line() {
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWRWWW", // y=1
-            "WWWRWW", // y=2
-            "WWWWRW", // y=3
-            "WWWWWW", // y=4
-            "WWWWWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "..R...", // y=1
+            "...R..", // y=2
+            "....R.", // y=3
+            "......", // y=4
+            "......", // y=5
+            "......", // y=6
         ],
     );
 }
@@ -93,15 +87,15 @@ fn test_draw_line_out_of_bounds() {
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WGWWWW", // y=0
-            "WWGWWW", // y=1
-            "WWWGWW", // y=2
-            "WWWWGW", // y=3
-            "WWWWWW", // y=4
-            "WWWWWW", // y=5
-            "WWWWWW", // y=6
+            ".P....", // y=0
+            "..P...", // y=1
+            "...P..", // y=2
+            "....P.", // y=3
+            "......", // y=4
+            "......", // y=5
+            "......", // y=6
         ],
     );
 }
@@ -116,15 +110,15 @@ fn test_draw_rect_filled() {
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "WBBBBW", // y=2
-            "WBGGBW", // y=3
-            "WBBBBW", // y=4
-            "WWWWWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            ".OOOO.", // y=2
+            ".OPPO.", // y=3
+            ".OOOO.", // y=4
+            "......", // y=5
+            "......", // y=6
         ],
     );
 }
@@ -139,15 +133,15 @@ fn test_draw_rect_solid_w4() {
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "WGGGGW", // y=2
-            "WGGGGW", // y=3
-            "WGGGGW", // y=4
-            "WWWWWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            ".PPPP.", // y=2
+            ".PPPP.", // y=3
+            ".PPPP.", // y=4
+            "......", // y=5
+            "......", // y=6
         ],
     );
 }
@@ -162,15 +156,15 @@ fn test_draw_rect_solid_w5() {
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWWW", // y=0
-            "WWWWWWW", // y=1
-            "WGGGGGW", // y=2
-            "WGGGGGW", // y=3
-            "WGGGGGW", // y=4
-            "WWWWWWW", // y=5
-            "WWWWWWW", // y=6
+            ".......", // y=0
+            ".......", // y=1
+            ".PPPPP.", // y=2
+            ".PPPPP.", // y=3
+            ".PPPPP.", // y=4
+            ".......", // y=5
+            ".......", // y=6
         ],
     );
 }
@@ -185,15 +179,15 @@ fn test_draw_rounded_rect() {
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "WWBBWW", // y=2
-            "WBGGBW", // y=3
-            "WBGGBW", // y=4
-            "WWBBWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            "..OO..", // y=2
+            ".OPPO.", // y=3
+            ".OPPO.", // y=4
+            "..OO..", // y=5
+            "......", // y=6
         ],
     );
 }
@@ -208,15 +202,15 @@ fn test_draw_circle() {
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "WWRRWW", // y=2
-            "WRGGRW", // y=3
-            "WRGGRW", // y=4
-            "WWRRWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            "..RR..", // y=2
+            ".RPPR.", // y=3
+            ".RPPR.", // y=4
+            "..RR..", // y=5
+            "......", // y=6
         ],
     );
 }
@@ -232,15 +226,15 @@ fn test_draw_circle_part_oob_left() {
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWW", // y=0
-            "WWWWW", // y=1
-            "RWWWW", // y=2
-            "GRWWW", // y=3
-            "GRWWW", // y=4
-            "RWWWW", // y=5
-            "WWWWW", // y=6
+            ".....", // y=0
+            ".....", // y=1
+            "R....", // y=2
+            "PR...", // y=3
+            "PR...", // y=4
+            "R....", // y=5
+            ".....", // y=6
         ],
     );
 }
@@ -256,15 +250,12 @@ fn test_draw_circle_part_oob_top() {
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WRGGRW", // y=0
-            "WRGGRW", // y=1
-            "WWRRWW", // y=2
-            "WWWWWW", // y=3
-            "WWWWWW", // y=4
-            "WWWWWW", // y=5
-            "WWWWWW", // y=6
+            ".RPPR.", // y=0
+            ".RPPR.", // y=1
+            "..RR..", // y=2
+            "......", // y=3
         ],
     );
 }
@@ -278,15 +269,15 @@ fn test_draw_image() {
     func.call(&mut store, &inputs, &mut []).unwrap();
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "WWGRBW", // y=2
-            "WYMCKW", // y=3
-            "WKKKKW", // y=4
-            "WKKKKW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            "..PRO.", // y=2
+            ".YgGD.", // y=3
+            ".dBbC.", // y=4
+            ".W◔◑◕.", // y=5
+            "......", // y=6
         ],
     );
 }
@@ -300,15 +291,15 @@ fn test_draw_image_oob_left1() {
     func.call(&mut store, &inputs, &mut []).unwrap();
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "GRBWWW", // y=2
-            "MCKWWW", // y=3
-            "KKKWWW", // y=4
-            "KKKWWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            "PRO...", // y=2
+            "gGD...", // y=3
+            "BbC...", // y=4
+            "◔◑◕...", // y=5
+            "......", // y=6
         ],
     );
 }
@@ -322,15 +313,15 @@ fn test_draw_image_oob_left2() {
     func.call(&mut store, &inputs, &mut []).unwrap();
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "RBWWWW", // y=2
-            "CKWWWW", // y=3
-            "KKWWWW", // y=4
-            "KKWWWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            "RO....", // y=2
+            "GD....", // y=3
+            "bC....", // y=4
+            "◑◕....", // y=5
+            "......", // y=6
         ],
     );
 }
@@ -344,15 +335,12 @@ fn test_draw_image_oob_top() {
     func.call(&mut store, &inputs, &mut []).unwrap();
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WYMCKW", // y=0
-            "WKKKKW", // y=1
-            "WKKKKW", // y=2
-            "WWWWWW", // y=3
-            "WWWWWW", // y=4
-            "WWWWWW", // y=5
-            "WWWWWW", // y=6
+            ".YgGD.", // y=0
+            ".dBbC.", // y=1
+            ".W◔◑◕.", // y=2
+            "......", // y=3
         ],
     );
 }
@@ -376,35 +364,14 @@ fn wrap_input(a: &[i32]) -> Vec<wasmi::Val> {
     res
 }
 
-fn check_display(frame: &mut FrameBuffer, pattern: &[&str]) {
-    let mut display = MockDisplay::<Rgb888>::new();
-    let w = pattern[0].len() as u32;
-    let area = Rectangle::new(Point::zero(), Size::new(w, 7));
-    let mut sub_display = display.clipped(&area);
-    frame.palette = [
-        // 0-4
-        Rgb16::WHITE,
-        Rgb16::GREEN,
-        Rgb16::RED,
-        Rgb16::BLUE,
-        // 4-8
-        Rgb16::YELLOW,
-        Rgb16::MAGENTA,
-        Rgb16::CYAN,
-        Rgb16::BLACK,
-        // 8-12
-        Rgb16::BLACK,
-        Rgb16::BLACK,
-        Rgb16::BLACK,
-        Rgb16::BLACK,
-        // 12-16
-        Rgb16::BLACK,
-        Rgb16::BLACK,
-        Rgb16::BLACK,
-        Rgb16::BLACK,
-    ];
-    frame.draw(&mut sub_display).unwrap();
-    display.assert_pattern(pattern);
+fn check_display(frame: &FrameBuffer, pattern: &[&str]) {
+    for (line, y) in pattern.iter().zip(0..) {
+        for (expected, x) in line.chars().zip(0..) {
+            let point = Point::new(x, y);
+            let actual = get_fb_char(frame, point);
+            assert_eq!(actual, expected, "invalid color at x={x}, y={y}")
+        }
+    }
 }
 
 fn make_store<'a>() -> wasmi::Store<Box<State<'a>>> {
@@ -430,6 +397,21 @@ fn assert_fb_empty(store: &wasmi::Store<Box<State<'_>>>) {
         assert_eq!(byte, &0b_0000_0000);
     }
 }
+
+fn get_fb_char(frame: &FrameBuffer, point: Point) -> char {
+    const WIDTH: usize = 240;
+    const PPB: usize = 2;
+    const CHARS: &str = ".PROYgGDdBbCW◔◑◕";
+    let x = point.x as usize;
+    let y = point.y as usize;
+    let pixel_index = y * WIDTH + x;
+    let byte_index = pixel_index / PPB;
+    let byte = frame.data[byte_index];
+    let luma = if x.is_multiple_of(2) { byte } else { byte >> 4 };
+    let luma = (luma & 0xf) as usize;
+    CHARS.chars().nth(luma).unwrap()
+}
+
 fn get_vfs() -> PathBuf {
     let root = std::env::temp_dir();
     _ = std::fs::create_dir(root.join("sys"));
