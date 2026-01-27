@@ -6,11 +6,14 @@ use embedded_graphics::geometry::Point;
 use firefly_hal::{Device, DeviceConfig, DeviceImpl};
 use std::path::PathBuf;
 
+/// No color.
 const N: i32 = 0;
-// const W: i32 = 1;
-const G: i32 = 2;
+/// Purple.
+const P: i32 = 2;
+/// Red.
 const R: i32 = 3;
-const B: i32 = 4;
+/// Orange.
+const O: i32 = 4;
 
 /// A 4x4 16 BPP image with all 16 colors.
 static IMG16: &[u8] = &[
@@ -69,8 +72,46 @@ fn test_draw_line() {
             "...R..", // y=2
             "....R.", // y=3
             "......", // y=4
-            "......", // y=5
-            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_hline() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_line);
+
+    let inputs = wrap_input(&[2, 1, 4, 1, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "..RRR.", // y=1
+            "......", // y=2
+        ],
+    );
+}
+
+#[test]
+fn test_draw_vline() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_line);
+
+    let inputs = wrap_input(&[2, 1, 2, 3, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "..R...", // y=1
+            "..R...", // y=2
+            "..R...", // y=3
+            "......", // y=4
         ],
     );
 }
@@ -82,7 +123,7 @@ fn test_draw_line_out_of_bounds() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_line);
 
-    let inputs = wrap_input(&[-1, -2, 4, 3, G, 1]);
+    let inputs = wrap_input(&[-1, -2, 4, 3, P, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
@@ -94,8 +135,6 @@ fn test_draw_line_out_of_bounds() {
             "...P..", // y=2
             "....P.", // y=3
             "......", // y=4
-            "......", // y=5
-            "......", // y=6
         ],
     );
 }
@@ -105,7 +144,7 @@ fn test_draw_rect_filled() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
 
-    let inputs = wrap_input(&[1, 2, 4, 3, G, B, 1]);
+    let inputs = wrap_input(&[1, 2, 4, 3, P, O, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
@@ -118,7 +157,6 @@ fn test_draw_rect_filled() {
             ".OPPO.", // y=3
             ".OOOO.", // y=4
             "......", // y=5
-            "......", // y=6
         ],
     );
 }
@@ -128,7 +166,7 @@ fn test_draw_rect_solid_w4() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
 
-    let inputs = wrap_input(&[1, 2, 4, 3, G, N, 1]);
+    let inputs = wrap_input(&[1, 2, 4, 3, P, N, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
@@ -141,7 +179,6 @@ fn test_draw_rect_solid_w4() {
             ".PPPP.", // y=3
             ".PPPP.", // y=4
             "......", // y=5
-            "......", // y=6
         ],
     );
 }
@@ -151,7 +188,7 @@ fn test_draw_rect_solid_w5() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
 
-    let inputs = wrap_input(&[1, 2, 5, 3, G, N, 1]);
+    let inputs = wrap_input(&[1, 2, 5, 3, P, N, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
@@ -164,7 +201,6 @@ fn test_draw_rect_solid_w5() {
             ".PPPPP.", // y=3
             ".PPPPP.", // y=4
             ".......", // y=5
-            ".......", // y=6
         ],
     );
 }
@@ -174,7 +210,7 @@ fn test_draw_rounded_rect() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rounded_rect);
 
-    let inputs = wrap_input(&[1, 2, 4, 4, 2, 2, G, B, 1]);
+    let inputs = wrap_input(&[1, 2, 4, 4, 2, 2, P, O, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
@@ -197,7 +233,7 @@ fn test_draw_circle() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_circle);
 
-    let inputs = wrap_input(&[1, 2, 4, G, R, 1]);
+    let inputs = wrap_input(&[1, 2, 4, P, R, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
@@ -221,7 +257,7 @@ fn test_draw_circle_part_oob_left() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_circle);
 
-    let inputs = wrap_input(&[-2, 2, 4, G, R, 1]);
+    let inputs = wrap_input(&[-2, 2, 4, P, R, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
@@ -245,7 +281,7 @@ fn test_draw_circle_part_oob_top() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_circle);
 
-    let inputs = wrap_input(&[1, -1, 4, G, R, 1]);
+    let inputs = wrap_input(&[1, -1, 4, P, R, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
