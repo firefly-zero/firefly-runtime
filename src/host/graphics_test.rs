@@ -15,11 +15,11 @@ const R: i32 = 3;
 /// Orange.
 const O: i32 = 4;
 
-/// A 4x4 16 BPP image with all 16 colors.
+/// A 4x4 4 BPP image with all 16 colors.
 static IMG16: &[u8] = &[
     // header
-    0x21, // magic number (marker that signals that this is an image)
-    0x04, // bits per pixel (BPP, either 0x01, 0x02, or 0x04)
+    0x21, // magic number
+    0x04, // BPP
     0x04, // ┬ image width, 16 bit little-endian
     0x00, // ┘
     0xff, // transparency color
@@ -36,6 +36,39 @@ static IMG16: &[u8] = &[
     0x45, 0x67, // row 2
     0x89, 0xab, // row 3
     0xcd, 0xef, // row 4
+];
+
+/// A 4x4 2 BPP image with 4 colors.
+static IMG4: &[u8] = &[
+    // header
+    0x21, // magic number (marker that signals that this is an image)
+    0x02, // BPP
+    0x04, // ┬ image width, 16 bit little-endian
+    0x00, // ┘
+    0xff, // transparency color
+    0x2b, // ┬ 2 bytes color palette (4 colors)
+    0x5a, // ┘
+    // image body
+    0xec, // row 1
+    0xaf, // row 2
+    0x50, // row 3
+    0x91, // row 4
+];
+
+/// A 8x4 1 BPP image with 2 colors.
+static IMG2: &[u8] = &[
+    // header
+    0x21, // magic number
+    0x01, // BPP
+    0x08, // ┬ image width, 16 bit little-endian
+    0x00, // ┘
+    0xff, // transparency color
+    0x42, // 1 byte color palette (2 colors)
+    // image body
+    0b_1100_0011, // row 1
+    0b_0011_1100, // row 2
+    0b_1001_1011, // row 3
+    0b_1011_1001, // row 4
 ];
 
 #[test]
@@ -448,6 +481,50 @@ fn test_draw_image_oob_bottom() {
 }
 
 #[test]
+fn test_draw_image_2bpp() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG4);
+    let inputs = wrap_input(&[5, IMG4.len() as _, 1, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".bgbR.", // y=2
+            ".ggbb.", // y=3
+            ".CCRR.", // y=4
+            ".gCRC.", // y=5
+            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_1bpp() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG2);
+    let inputs = wrap_input(&[5, IMG2.len() as _, 1, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "..........", // y=0
+            "..........", // y=1
+            ".RRYYYYRR.", // y=2
+            ".YYRRRRYY.", // y=3
+            ".RYYRRYRR.", // y=4
+            ".RYRRRYYR.", // y=5
+            "..........", // y=6
+        ],
+    );
+}
+
+#[test]
 fn test_draw_sub_image() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_sub_image);
@@ -649,6 +726,16 @@ fn check_display(frame: &FrameBuffer, pattern: &[&str]) {
 }
 
 fn check_display_at(point: Point, frame: &FrameBuffer, pattern: &[&str]) {
+    // Print the parts of the frame buffer within the pattern boundaries.
+    for (line, y) in pattern.iter().zip(point.y..) {
+        let mut pat = String::new();
+        for (_, x) in line.chars().zip(point.x..) {
+            let ch = get_fb_char(frame, Point::new(x, y));
+            pat.push(ch);
+        }
+        println!("{pat}")
+    }
+
     for (line, y) in pattern.iter().zip(point.y..) {
         for (expected, x) in line.chars().zip(point.x..) {
             let actual = get_fb_char(frame, Point::new(x, y));
