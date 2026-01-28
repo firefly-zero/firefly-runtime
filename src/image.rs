@@ -1,7 +1,4 @@
 use crate::{FrameBuffer, HEIGHT, WIDTH};
-use core::convert::Infallible;
-use core::marker::PhantomData;
-use embedded_graphics::image::{Image, ImageRawLE};
 use embedded_graphics::pixelcolor::*;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
@@ -18,39 +15,10 @@ pub struct ParsedImage<'a> {
 impl ParsedImage<'_> {
     pub fn render(&self, point: Point, frame: &mut FrameBuffer) {
         if let Some(sub) = self.sub {
-            match self.bpp {
-                1 => {
-                    let image_raw = ImageRawLE::<BinaryColor>::new(self.bytes, self.width);
-                    self.draw_bpp(image_raw, point, sub, frame)
-                }
-                2 => {
-                    let image_raw = ImageRawLE::<Gray2>::new(self.bytes, self.width);
-                    self.draw_bpp(image_raw, point, sub, frame)
-                }
-                4 => {
-                    self.draw_sub_fast(point, sub, frame);
-                }
-                _ => {}
-            };
+            self.draw_sub_fast(point, sub, frame);
         } else {
             self.draw_fast(point, frame);
         }
-    }
-
-    /// Draw the raw image at the given point into the target.
-    ///
-    /// The function takes care of the BPP differences between the given image
-    /// and the target.
-    fn draw_bpp<C, I, T>(&self, image_raw: I, point: Point, sub: Rectangle, target: &mut T)
-    where
-        C: PixelColor + IntoStorage<Storage = u8>,
-        I: ImageDrawable<Color = C>,
-        T: DrawTarget<Color = Gray4, Error = Infallible> + OriginDimensions,
-    {
-        let mut adapter = BPPAdapter::<_, C>::new(target, self.transp, self.swaps);
-        let image_raw = image_raw.sub_image(&sub);
-        let image = Image::new(&image_raw, point);
-        never_fails(image.draw(&mut adapter));
     }
 
     /// Faster implementation of drawing of a 4 BPP image.
@@ -200,7 +168,7 @@ impl ParsedImage<'_> {
                 let offset = (iy * self.width as i32 + ix) as usize;
                 let bytes_offset = offset / ppb;
                 let byte = self.bytes[bytes_offset];
-                let pixel_offset = 4 - bpp * (offset % ppb);
+                let pixel_offset = 8 - bpp * (1 + offset % ppb);
                 let color_idx = (byte >> pixel_offset) & mask;
                 if let Some(color) = swaps[color_idx as usize] {
                     let fx = p.x + (ix - left);
@@ -210,65 +178,6 @@ impl ParsedImage<'_> {
             }
         }
         frame.dirty = true;
-    }
-}
-
-/// Convert 1/2/4 BPP image into 4 BPP ([`Gray4`]) color.
-pub(crate) struct BPPAdapter<'a, D, C>
-where
-    D: DrawTarget<Color = Gray4> + OriginDimensions,
-    C: PixelColor + IntoStorage<Storage = u8>,
-{
-    target: &'a mut D,
-    swaps: [Option<Gray4>; 16],
-    color: PhantomData<C>,
-}
-
-impl<'a, D, C> BPPAdapter<'a, D, C>
-where
-    D: DrawTarget<Color = Gray4> + OriginDimensions,
-    C: PixelColor + IntoStorage<Storage = u8>,
-{
-    pub fn new(target: &'a mut D, transp: u8, swaps: &'_ [u8]) -> Self {
-        Self {
-            target,
-            swaps: parse_swaps(transp, swaps),
-            color: PhantomData,
-        }
-    }
-}
-
-/// Required by the DrawTarget trait.
-impl<D, C> OriginDimensions for BPPAdapter<'_, D, C>
-where
-    D: DrawTarget<Color = Gray4> + OriginDimensions,
-    C: PixelColor + IntoStorage<Storage = u8>,
-{
-    fn size(&self) -> embedded_graphics::prelude::Size {
-        self.target.size()
-    }
-}
-
-impl<D, C> DrawTarget for BPPAdapter<'_, D, C>
-where
-    D: DrawTarget<Color = Gray4> + OriginDimensions,
-    C: PixelColor + IntoStorage<Storage = u8>,
-{
-    type Color = C;
-    type Error = D::Error;
-
-    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
-    where
-        I: IntoIterator<Item = Pixel<Self::Color>>,
-    {
-        let iter = pixels.into_iter().filter_map(|Pixel(p, c)| {
-            let c = c.into_storage();
-            match self.swaps.get(c as usize) {
-                Some(Some(c)) => Some(Pixel(p, *c)),
-                _ => None,
-            }
-        });
-        self.target.draw_iter(iter)
     }
 }
 
@@ -317,6 +226,3 @@ fn parse_color_l(transp: u8, c: Option<&u8>) -> Option<Gray4> {
     }
     Some(Gray4::new(c))
 }
-
-/// Statically ensure that the given Result cannot have an error.
-fn never_fails<T>(_: Result<T, Infallible>) {}

@@ -545,6 +545,46 @@ fn test_draw_sub_image() {
 }
 
 #[test]
+fn test_draw_sub_image_2bpp() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG4);
+    let inputs = wrap_input(&[5, IMG4.len() as _, 1, 2, 2, 0, 2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".bR...", // y=2
+            ".bb...", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_1bpp() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG2);
+    let inputs = wrap_input(&[5, IMG2.len() as _, 1, 2, 1, 0, 2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".RY...", // y=2
+            ".YR...", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
 fn test_draw_sub_image_x1() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_sub_image);
