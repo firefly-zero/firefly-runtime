@@ -28,8 +28,7 @@ impl ParsedImage<'_> {
                     self.draw_bpp(image_raw, point, sub, frame)
                 }
                 4 => {
-                    let image_raw = ImageRawLE::<Gray4>::new(self.bytes, self.width);
-                    self.draw_bpp(image_raw, point, sub, frame)
+                    self.draw_sub_fast(point, sub, frame);
                 }
                 _ => {}
             };
@@ -129,6 +128,66 @@ impl ParsedImage<'_> {
             i += 1;
         }
         frame.dirty = true;
+    }
+
+    fn draw_sub_fast(&self, point: Point, sub: Rectangle, frame: &mut FrameBuffer) {
+        let bpp = self.bpp as usize;
+        let ppb = 8 / bpp;
+
+        let mut top = sub.top_left.y;
+        if point.y < 0 {
+            top -= point.y;
+        }
+
+        let mut height = sub.size.height as i32;
+        let oob_bottom = (point.y + height) - HEIGHT as i32;
+        if oob_bottom > 0 {
+            height -= oob_bottom;
+            if height <= 0 {
+                return;
+            }
+        }
+        let bottom = top + height;
+        if bottom < 0 {
+            return;
+        }
+
+        let mut left = sub.top_left.x;
+        if point.x < 0 {
+            left -= point.x;
+        }
+
+        let mut width = sub.size.width as i32;
+        let oob_right = (point.y + width) - WIDTH as i32;
+        if oob_right > 0 {
+            width -= oob_right;
+            if width <= 0 {
+                return;
+            }
+        }
+        let right = left + width;
+        if right < 0 {
+            return;
+        }
+
+        let mask = match bpp {
+            1 => 0b1,
+            2 => 0b11,
+            _ => 0b1111,
+        };
+        for iy in top..bottom {
+            for ix in left..right {
+                let offset = (iy * self.width as i32 + ix) as usize;
+                let bytes_offset = offset / ppb;
+                let byte = self.bytes[bytes_offset];
+                let pixel_offset = 4 - bpp * (offset % ppb);
+                let luma = (byte >> pixel_offset) & mask;
+                let color = Gray4::new(luma);
+                let fx = point.x + (ix - left);
+                let fy = point.y + (iy - top);
+                frame.set_pixel(Point::new(fx, fy), color);
+            }
+        }
     }
 }
 
