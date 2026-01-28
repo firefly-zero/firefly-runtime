@@ -193,6 +193,7 @@ impl ParsedImage<'_> {
                 };
             }
         }
+        frame.dirty = true;
     }
 }
 
