@@ -205,12 +205,12 @@ where
         let ins = self.instance;
         // The `_initialize` and `_start` functions are defined by wasip1.
         let f = ins.get_typed_func::<(), ()>(&self.store, "_initialize");
-        self.call_callback("_initialize", f.ok())?;
+        self.call_callback("_initialize", f.ok(), ())?;
         let f = ins.get_typed_func::<(), ()>(&self.store, "_start");
-        self.call_callback("_start", f.ok())?;
+        self.call_callback("_start", f.ok(), ())?;
         // The `boot` function is defined by our spec.
         let f = ins.get_typed_func::<(), ()>(&self.store, "boot");
-        self.call_callback("boot", f.ok())?;
+        self.call_callback("boot", f.ok(), ())?;
 
         // Other functions defined by our spec.
         self.update = ins.get_typed_func(&self.store, "update").ok();
@@ -276,16 +276,11 @@ where
 
         // If a custom menu item is selected, trigger the handle_menu callback.
         if let Some(custom_menu) = menu_index {
-            if let Some(handle_menu) = self.handle_menu {
-                if let Err(err) = handle_menu.call(&mut self.store, (custom_menu as u32,)) {
-                    let stats = self.store.data().runtime_stats();
-                    return Err(Error::FuncCall("handle_menu", err, stats));
-                };
-            }
+            self.call_callback("handle_menu", self.handle_menu, (custom_menu as u32,))?;
         }
 
         // TODO: continue execution even if an update fails.
-        let fuel_update = self.call_callback("update", self.update)?;
+        let fuel_update = self.call_callback("update", self.update, ())?;
         if let Some(stats) = &mut self.stats {
             stats.update_fuel.add(fuel_update);
         }
@@ -316,7 +311,7 @@ where
         // (when the app is just launched).
         self.n_frames = (self.n_frames + 1) % (FPS * 4);
         if should_render {
-            let fuel_render = self.call_callback("render", self.render)?;
+            let fuel_render = self.call_callback("render", self.render, ())?;
             if let Some(stats) = &mut self.stats {
                 stats.render_fuel.add(fuel_render);
             }
@@ -366,7 +361,7 @@ where
     /// 3. Releases [`Device`] ownership.
     /// 3. Tells which app to run next.
     pub fn finalize(mut self) -> Result<RuntimeConfig<'a, D, C>, Error> {
-        self.call_callback("before_exit", self.before_exit)?;
+        self.call_callback("before_exit", self.before_exit, ())?;
         let mut state = self.store.into_data();
         state.save_stash();
         state.update_app_stats();
@@ -524,14 +519,15 @@ where
     }
 
     /// Call a guest function. Returns the amount of fuel consumed.
-    fn call_callback(
+    fn call_callback<ARGS: wasmi::WasmParams>(
         &mut self,
         name: &'static str,
-        f: Option<wasmi::TypedFunc<(), ()>>,
+        f: Option<wasmi::TypedFunc<ARGS, ()>>,
+        args: ARGS,
     ) -> Result<u32, Error> {
         _ = self.store.set_fuel(FUEL_PER_CALL);
         if let Some(f) = f {
-            if let Err(err) = f.call(&mut self.store, ()) {
+            if let Err(err) = f.call(&mut self.store, args) {
                 let stats = self.store.data().runtime_stats();
                 return Err(Error::FuncCall(name, err, stats));
             }
