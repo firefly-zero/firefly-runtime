@@ -31,6 +31,7 @@ where
 
     update: Option<wasmi::TypedFunc<(), ()>>,
     render: Option<wasmi::TypedFunc<(), ()>>,
+    render_peer: Option<wasmi::TypedFunc<(u32,), ()>>,
     before_exit: Option<wasmi::TypedFunc<(), ()>>,
     cheat: Option<wasmi::TypedFunc<(i32, i32), (i32,)>>,
     handle_menu: Option<wasmi::TypedFunc<(u32,), ()>>,
@@ -163,6 +164,7 @@ where
             store,
             update: None,
             render: None,
+            render_peer: None,
             before_exit: None,
             cheat: None,
             handle_menu: None,
@@ -215,6 +217,7 @@ where
         // Other functions defined by our spec.
         self.update = ins.get_typed_func(&self.store, "update").ok();
         self.render = ins.get_typed_func(&self.store, "render").ok();
+        self.render_peer = ins.get_typed_func(&self.store, "render").ok();
         self.before_exit = ins.get_typed_func(&self.store, "before_exit").ok();
         self.cheat = ins.get_typed_func(&self.store, "cheat").ok();
         self.handle_menu = ins.get_typed_func(&self.store, "handle_menu").ok();
@@ -262,7 +265,7 @@ where
             return Ok(false);
         } else if menu_was_active {
             state.frame.dirty = true;
-            if self.render.is_none() {
+            if self.render.is_none() && self.render_peer.is_none() {
                 // When menu was open but now closed, if the app doesn't have the `render`
                 // callback defined, the screen flushing will never be called.
                 // As a result, the menu image will stuck on the display.
@@ -311,7 +314,9 @@ where
         // (when the app is just launched).
         self.n_frames = (self.n_frames + 1) % (FPS * 4);
         if should_render {
-            let fuel_render = self.call_callback("render", self.render, ())?;
+            let me = self.store.data_mut().get_me();
+            let fuel_render = self.call_callback("render", self.render, ())?
+                + self.call_callback("render", self.render_peer, (me,))?;
             if let Some(stats) = &mut self.stats {
                 stats.render_fuel.add(fuel_render);
             }

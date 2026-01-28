@@ -280,6 +280,19 @@ impl<'a> State<'a> {
         }
     }
 
+    pub(crate) fn get_me(&mut self) -> u32 {
+        let handler = self.net_handler.get_mut();
+        let NetHandler::FrameSyncer(syncer) = handler else {
+            return 0;
+        };
+        for (peer, i) in syncer.peers.iter().zip(0u32..) {
+            if peer.addr.is_none() {
+                return i;
+            }
+        }
+        unreachable!("list of peers has no local device")
+    }
+
     /// Dump app stats on disk.
     pub(crate) fn save_app_stats(&mut self) {
         let Some(stats) = &self.app_stats else {
