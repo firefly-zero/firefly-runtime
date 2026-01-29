@@ -85,7 +85,6 @@ pub(crate) struct State<'a> {
     pub battery: Option<Battery>,
 
     pub app_stats: Option<firefly_types::Stats>,
-    pub app_stats_dirty: bool,
     /// The number of update frames.
     n_frames: u32,
     pub stash: alloc::vec::Vec<u8>,
@@ -134,7 +133,6 @@ impl<'a> State<'a> {
             net_handler: Cell::new(net_handler),
             settings: None,
             app_stats: None,
-            app_stats_dirty: false,
             n_frames: 0,
             stash: alloc::vec::Vec::new(),
             stash_dirty: false,
@@ -315,7 +313,6 @@ impl<'a> State<'a> {
         let Some(stats) = self.app_stats.as_mut() else {
             return;
         };
-        self.app_stats_dirty = true;
         stats.launches[idx] += 1;
         let minutes = self.n_frames / 3600;
         stats.minutes[idx] += minutes;
@@ -334,14 +331,11 @@ impl<'a> State<'a> {
         }
     }
 
-    /// Dump app stats (if changed) on disk.
+    /// Dump app stats on disk.
     pub(crate) fn save_app_stats(&mut self) {
         let Some(stats) = &self.app_stats else {
             return;
         };
-        if !self.app_stats_dirty {
-            return;
-        }
         let res = match stats.encode_vec() {
             Ok(res) => res,
             Err(err) => {

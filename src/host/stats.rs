@@ -72,7 +72,6 @@ fn add_progress_me(state: &mut State, badge_id: u32, val: i32) -> u32 {
             let new = (progress.done as i16).saturating_add(val);
             let new = new.max(0) as u16;
             progress.done = u16::min(new, progress.goal);
-            state.app_stats_dirty = true;
             if progress.done >= progress.goal {
                 progress.new = true;
             }
@@ -115,7 +114,6 @@ fn add_progress_friend(state: &mut State, peer: &mut FSPeer, badge_id: u32, val:
             let new = (*done as i16).saturating_add(val);
             let new = new.max(0) as u16;
             *done = u16::min(new, progress.goal);
-            state.app_stats_dirty = true;
             if *done >= progress.goal {
                 progress.new = true;
             }
@@ -148,7 +146,6 @@ pub(crate) fn add_score(mut caller: C, peer_id: u32, board_id: u32, new_score: i
         state.log_error(HostError::ValueTooBig);
         return 0;
     };
-    state.app_stats_dirty = true;
     if let Some(peer) = peer {
         let friend_id = peer.friend_id.unwrap();
         insert_friend_score(&mut scores.friends, friend_id, new_score);
