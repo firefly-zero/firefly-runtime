@@ -607,7 +607,7 @@ impl<'a> State<'a> {
         self.set_next(Some(id));
     }
 
-    pub fn disconnect(&mut self) {
+    pub fn disconnect(&self) {
         let net_handler = self.net_handler.replace(NetHandler::None);
         if let NetHandler::Connection(conn) = net_handler {
             let res = conn.disconnect();

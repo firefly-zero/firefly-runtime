@@ -60,8 +60,8 @@ impl FrameBuffer {
 
     pub fn iter_pairs(&self) -> impl Iterator<Item = (Rgb16, Rgb16)> + use<'_> {
         self.data.iter().map(|b| {
-            let right = self.palette[usize::from(b & 0xF)];
-            let left = self.palette[usize::from(b >> 4) & 0xF];
+            let right = self.palette[usize::from(b & 0xf)];
+            let left = self.palette[usize::from(b >> 4) & 0xf];
             (right, left)
         })
     }

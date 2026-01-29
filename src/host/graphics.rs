@@ -1,13 +1,14 @@
 use crate::canvas::Canvas;
-use crate::color::{parse_swaps, BPPAdapter, Rgb16};
+use crate::color::Rgb16;
 use crate::error::HostError;
-use crate::frame_buffer::{FrameBuffer, HEIGHT, WIDTH};
+use crate::frame_buffer::{HEIGHT, WIDTH};
+use crate::image::ParsedImage;
 use crate::state::State;
 use alloc::boxed::Box;
 use core::convert::Infallible;
-use embedded_graphics::image::{Image, ImageRaw, ImageRawLE};
+use embedded_graphics::image::ImageRaw;
 use embedded_graphics::mono_font::{mapping, DecorationDimensions, MonoFont, MonoTextStyle};
-use embedded_graphics::pixelcolor::{BinaryColor, Gray2, Gray4};
+use embedded_graphics::pixelcolor::Gray4;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
 use embedded_graphics::text::Text;
@@ -557,7 +558,11 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
     let swaps_len = match bpp {
         1 => 1,
         2 => 2,
-        _ => 8,
+        4 => 8,
+        _ => {
+            state.log_error("invalid BPP value");
+            return;
+        }
     };
     // The palette swaps. Used to map colors from image to the actual palette.
     let Some(swaps) = &image_bytes.get(..swaps_len) else {
@@ -583,95 +588,15 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
     }
 
     let point = Point::new(x, y);
-    match bpp {
-        1 => {
-            let image_raw = ImageRawLE::<BinaryColor>::new(image_bytes, width);
-            draw_bpp(image_raw, transp, swaps, point, sub, &mut state.frame)
-        }
-        2 => {
-            let image_raw = ImageRawLE::<Gray2>::new(image_bytes, width);
-            draw_bpp(image_raw, transp, swaps, point, sub, &mut state.frame)
-        }
-        4 => {
-            if sub.is_none() {
-                state.frame.dirty = true;
-                draw_4bpp_fast(image_bytes, width, swaps, transp, point, &mut state.frame);
-                return;
-            }
-            let image_raw = ImageRawLE::<Gray4>::new(image_bytes, width);
-            draw_bpp(image_raw, transp, swaps, point, sub, &mut state.frame)
-        }
-        _ => {
-            state.log_error("invalid BPP");
-        }
+    let image = ParsedImage {
+        bpp,
+        bytes: image_bytes,
+        width,
+        swaps,
+        transp,
+        sub,
     };
-}
-
-/// Draw the raw image at the given point into the target.
-///
-/// The function takes care of the BPP differences between the given image
-/// and the target.
-fn draw_bpp<C, I, T>(
-    image_raw: I,
-    transp: u8,
-    swaps: &[u8],
-    point: Point,
-    sub: Option<Rectangle>,
-    target: &mut T,
-) where
-    C: PixelColor + IntoStorage<Storage = u8>,
-    I: ImageDrawable<Color = C>,
-    T: DrawTarget<Color = Gray4, Error = Infallible> + OriginDimensions,
-{
-    let mut adapter = BPPAdapter::<_, C>::new(target, transp, swaps);
-    match sub {
-        Some(sub) => {
-            let image_raw = image_raw.sub_image(&sub);
-            let image = Image::new(&image_raw, point);
-            never_fails(image.draw(&mut adapter));
-        }
-        None => {
-            let image = Image::new(&image_raw, point);
-            never_fails(image.draw(&mut adapter));
-        }
-    }
-}
-
-/// Faster implementation of drawing of a 4 BPP image.
-///
-/// Avoids going through embedded-graphics machinery and instead
-/// iterates over image bytes directly.
-fn draw_4bpp_fast(
-    image: &[u8],
-    width: u32,
-    swaps: &[u8],
-    transp: u8,
-    point: Point,
-    frame: &mut FrameBuffer,
-) {
-    let mut p = point;
-    let swaps = parse_swaps(transp, swaps);
-    for byte in image {
-        let c1 = usize::from((byte >> 4) & 0x0F);
-        if let Some(c1) = swaps[c1] {
-            frame.set_pixel(p, c1);
-        };
-        p.x += 1;
-        if p.x - point.x >= width as i32 {
-            p.x = point.x;
-            p.y += 1;
-        }
-
-        let c2 = usize::from((byte) & 0x0F);
-        if let Some(c2) = swaps[c2] {
-            frame.set_pixel(p, c2);
-        };
-        p.x += 1;
-        if p.x - point.x >= width as i32 {
-            p.x = point.x;
-            p.y += 1;
-        }
-    }
+    image.render(point, &mut state.frame);
 }
 
 fn get_shape_style(fill_color: u32, stroke_color: u32, stroke_width: u32) -> PrimitiveStyle<Gray4> {

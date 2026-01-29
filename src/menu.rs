@@ -24,10 +24,10 @@ pub(crate) enum MenuItem {
 impl MenuItem {
     fn as_str(&self) -> &str {
         match self {
-            MenuItem::Custom(_, t) => t,
-            MenuItem::ScreenShot => "take screenshot",
-            MenuItem::Restart => "restart app",
-            MenuItem::Quit => "exit app",
+            Self::Custom(_, t) => t,
+            Self::ScreenShot => "take screenshot",
+            Self::Restart => "restart app",
+            Self::Quit => "exit app",
         }
     }
 }
@@ -211,7 +211,7 @@ impl Menu {
     }
 
     /// Indicate which item is currently selected.
-    pub fn draw_cursor<D, C, E>(&mut self, display: &mut D) -> Result<(), E>
+    pub fn draw_cursor<D, C, E>(&self, display: &mut D) -> Result<(), E>
     where
         D: DrawTarget<Color = C, Error = E> + OriginDimensions,
         C: RgbColor + FromRGB,
@@ -238,11 +238,7 @@ impl Menu {
     }
 
     /// Indicate which item is currently selected.
-    pub fn draw_battery<D, C, E>(
-        &mut self,
-        display: &mut D,
-        battery: &Option<Battery>,
-    ) -> Result<(), E>
+    pub fn draw_battery<D, C, E>(&self, display: &mut D, battery: &Option<Battery>) -> Result<(), E>
     where
         D: DrawTarget<Color = C, Error = E> + OriginDimensions,
         C: RgbColor + FromRGB,

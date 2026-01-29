@@ -1,32 +1,80 @@
-use crate::color::Rgb16;
 use crate::config::FullID;
 use crate::frame_buffer::FrameBuffer;
 use crate::host::graphics::*;
 use crate::state::{NetHandler, State};
-use embedded_graphics::draw_target::DrawTargetExt;
-use embedded_graphics::geometry::{Point, Size};
-use embedded_graphics::mock_display::MockDisplay;
-use embedded_graphics::pixelcolor::Rgb888;
-use embedded_graphics::primitives::Rectangle;
+use embedded_graphics::geometry::Point;
 use firefly_hal::{Device, DeviceConfig, DeviceImpl};
 use std::path::PathBuf;
 
+/// No color.
 const N: i32 = 0;
-// const W: i32 = 1;
-const G: i32 = 2;
+/// Purple.
+const P: i32 = 2;
+/// Red.
 const R: i32 = 3;
-const B: i32 = 4;
+/// Orange.
+const O: i32 = 4;
+
+/// A 4x4 4 BPP image with all 16 colors.
+static IMG16: &[u8] = &[
+    // header
+    0x21, // magic number
+    0x04, // BPP
+    0x04, // ┬ image width, 16 bit little-endian
+    0x00, // ┘
+    0xff, // transparency color
+    0x01, // ┬ 8 bytes color palette (16 colors)
+    0x23, // ┤
+    0x45, // ┤
+    0x67, // ┤
+    0x89, // ┤
+    0xab, // ┤
+    0xcd, // ┤
+    0xef, // ┘
+    // pixels
+    0x01, 0x23, // row 1
+    0x45, 0x67, // row 2
+    0x89, 0xab, // row 3
+    0xcd, 0xef, // row 4
+];
+
+/// A 4x4 2 BPP image with 4 colors.
+static IMG4: &[u8] = &[
+    // header
+    0x21, // magic number (marker that signals that this is an image)
+    0x02, // BPP
+    0x04, // ┬ image width, 16 bit little-endian
+    0x00, // ┘
+    0xff, // transparency color
+    0x2b, // ┬ 2 bytes color palette (4 colors)
+    0x5a, // ┘
+    // image body
+    0xec, // row 1
+    0xaf, // row 2
+    0x50, // row 3
+    0x91, // row 4
+];
+
+/// A 8x4 1 BPP image with 2 colors.
+static IMG2: &[u8] = &[
+    // header
+    0x21, // magic number
+    0x01, // BPP
+    0x08, // ┬ image width, 16 bit little-endian
+    0x00, // ┘
+    0xff, // transparency color
+    0x42, // 1 byte color palette (2 colors)
+    // image body
+    0b_1100_0011, // row 1
+    0b_0011_1100, // row 2
+    0b_1001_1011, // row 3
+    0b_1011_1001, // row 4
+];
 
 #[test]
 fn test_clear_screen() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, clear_screen);
-
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
 
     let inputs = wrap_input(&[2]);
     let mut outputs = Vec::new();
@@ -45,26 +93,58 @@ fn test_draw_line() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_line);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
     let inputs = wrap_input(&[2, 1, 4, 3, R, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWRWWW", // y=1
-            "WWWRWW", // y=2
-            "WWWWRW", // y=3
-            "WWWWWW", // y=4
-            "WWWWWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "..R...", // y=1
+            "...R..", // y=2
+            "....R.", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_hline() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_line);
+
+    let inputs = wrap_input(&[2, 1, 4, 1, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "..RRR.", // y=1
+            "......", // y=2
+        ],
+    );
+}
+
+#[test]
+fn test_draw_vline() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_line);
+
+    let inputs = wrap_input(&[2, 1, 2, 3, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "..R...", // y=1
+            "..R...", // y=2
+            "..R...", // y=3
+            "......", // y=4
         ],
     );
 }
@@ -72,30 +152,22 @@ fn test_draw_line() {
 /// Drawing a line out of screen bounds
 /// should simply cut the line at the boundary.
 #[test]
-fn test_draw_line_out_of_bounds() {
+fn test_draw_line_oob() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_line);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
-    let inputs = wrap_input(&[-1, -2, 4, 3, G, 1]);
+    let inputs = wrap_input(&[-1, -2, 4, 3, P, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WGWWWW", // y=0
-            "WWGWWW", // y=1
-            "WWWGWW", // y=2
-            "WWWWGW", // y=3
-            "WWWWWW", // y=4
-            "WWWWWW", // y=5
-            "WWWWWW", // y=6
+            ".P....", // y=0
+            "..P...", // y=1
+            "...P..", // y=2
+            "....P.", // y=3
+            "......", // y=4
         ],
     );
 }
@@ -105,26 +177,19 @@ fn test_draw_rect_filled() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
-    let inputs = wrap_input(&[1, 2, 4, 3, G, B, 1]);
+    let inputs = wrap_input(&[1, 2, 4, 3, P, O, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "WBBBBW", // y=2
-            "WBGGBW", // y=3
-            "WBBBBW", // y=4
-            "WWWWWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            ".OOOO.", // y=2
+            ".OPPO.", // y=3
+            ".OOOO.", // y=4
+            "......", // y=5
         ],
     );
 }
@@ -134,26 +199,19 @@ fn test_draw_rect_solid_w4() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
-    let inputs = wrap_input(&[1, 2, 4, 3, G, N, 1]);
+    let inputs = wrap_input(&[1, 2, 4, 3, P, N, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "WGGGGW", // y=2
-            "WGGGGW", // y=3
-            "WGGGGW", // y=4
-            "WWWWWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            ".PPPP.", // y=2
+            ".PPPP.", // y=3
+            ".PPPP.", // y=4
+            "......", // y=5
         ],
     );
 }
@@ -163,26 +221,19 @@ fn test_draw_rect_solid_w5() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
-    let inputs = wrap_input(&[1, 2, 5, 3, G, N, 1]);
+    let inputs = wrap_input(&[1, 2, 5, 3, P, N, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWWW", // y=0
-            "WWWWWWW", // y=1
-            "WGGGGGW", // y=2
-            "WGGGGGW", // y=3
-            "WGGGGGW", // y=4
-            "WWWWWWW", // y=5
-            "WWWWWWW", // y=6
+            ".......", // y=0
+            ".......", // y=1
+            ".PPPPP.", // y=2
+            ".PPPPP.", // y=3
+            ".PPPPP.", // y=4
+            ".......", // y=5
         ],
     );
 }
@@ -192,26 +243,20 @@ fn test_draw_rounded_rect() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rounded_rect);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
-    let inputs = wrap_input(&[1, 2, 4, 4, 2, 2, G, B, 1]);
+    let inputs = wrap_input(&[1, 2, 4, 4, 2, 2, P, O, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "WWBBWW", // y=2
-            "WBGGBW", // y=3
-            "WBGGBW", // y=4
-            "WWBBWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            "..OO..", // y=2
+            ".OPPO.", // y=3
+            ".OPPO.", // y=4
+            "..OO..", // y=5
+            "......", // y=6
         ],
     );
 }
@@ -221,28 +266,491 @@ fn test_draw_circle() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_circle);
 
-    // ensure that the frame buffer is empty
-    let state = store.data();
-    for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0000_0000);
-    }
-
-    let inputs = wrap_input(&[1, 2, 4, G, R, 1]);
+    let inputs = wrap_input(&[1, 2, 4, P, R, 1]);
     func.call(&mut store, &inputs, &mut []).unwrap();
 
     let state = store.data_mut();
     check_display(
-        &mut state.frame,
+        &state.frame,
         &[
-            "WWWWWW", // y=0
-            "WWWWWW", // y=1
-            "WWRRWW", // y=2
-            "WRGGRW", // y=3
-            "WRGGRW", // y=4
-            "WWRRWW", // y=5
-            "WWWWWW", // y=6
+            "......", // y=0
+            "......", // y=1
+            "..RR..", // y=2
+            ".RPPR.", // y=3
+            ".RPPR.", // y=4
+            "..RR..", // y=5
+            "......", // y=6
         ],
     );
+}
+
+/// Draw circle paritally out-of-bounds on the left.
+#[test]
+fn test_draw_circle_oob_left() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_circle);
+
+    let inputs = wrap_input(&[-2, 2, 4, P, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            ".....", // y=0
+            ".....", // y=1
+            "R....", // y=2
+            "PR...", // y=3
+            "PR...", // y=4
+            "R....", // y=5
+            ".....", // y=6
+        ],
+    );
+}
+
+/// Draw circle paritally out-of-bounds on the left.
+#[test]
+fn test_draw_circle_oob_top() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_circle);
+
+    let inputs = wrap_input(&[1, -1, 4, P, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            ".RPPR.", // y=0
+            ".RPPR.", // y=1
+            "..RR..", // y=2
+            "......", // y=3
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            "..PRO.", // y=2
+            ".YgGD.", // y=3
+            ".dBbC.", // y=4
+            ".W◔◑◕.", // y=5
+            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_oob_left1() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, -1, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            "PRO...", // y=2
+            "gGD...", // y=3
+            "BbC...", // y=4
+            "◔◑◕...", // y=5
+            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_oob_left2() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, -2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            "RO....", // y=2
+            "GD....", // y=3
+            "bC....", // y=4
+            "◑◕....", // y=5
+            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_oob_right1() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 240 - 3, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display_at(
+        Point::new(240 - 6, 0),
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            "....PR", // y=2
+            "...YgG", // y=3
+            "...dBb", // y=4
+            "...W◔◑", // y=5
+            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_oob_right2() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 240 - 2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display_at(
+        Point::new(240 - 6, 0),
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".....P", // y=2
+            "....Yg", // y=3
+            "....dB", // y=4
+            "....W◔", // y=5
+            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_oob_top() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, -1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            ".YgGD.", // y=0
+            ".dBbC.", // y=1
+            ".W◔◑◕.", // y=2
+            "......", // y=3
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_oob_bottom() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, 160 - 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display_at(
+        Point::new(0, 160 - 4),
+        &state.frame,
+        &[
+            "......", // y=156
+            "......", // y=157
+            "..PRO.", // y=158
+            ".YgGD.", // y=159
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_2bpp() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG4);
+    let inputs = wrap_input(&[5, IMG4.len() as _, 1, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".bgbR.", // y=2
+            ".ggbb.", // y=3
+            ".CCRR.", // y=4
+            ".gCRC.", // y=5
+            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_image_1bpp() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_image);
+    write_mem(&mut store, 5, IMG2);
+    let inputs = wrap_input(&[5, IMG2.len() as _, 1, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "..........", // y=0
+            "..........", // y=1
+            ".RRYYYYRR.", // y=2
+            ".YYRRRRYY.", // y=3
+            ".RYYRRYRR.", // y=4
+            ".RYRRRYYR.", // y=5
+            "..........", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, 2, 0, 0, 2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            "..P...", // y=2
+            ".Yg...", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_2bpp() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG4);
+    let inputs = wrap_input(&[5, IMG4.len() as _, 1, 2, 2, 0, 2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".bR...", // y=2
+            ".bb...", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_1bpp() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG2);
+    let inputs = wrap_input(&[5, IMG2.len() as _, 1, 2, 1, 0, 2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".RY...", // y=2
+            ".YR...", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_x1() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, 2, 1, 0, 2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".PR...", // y=2
+            ".gG...", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_x2() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, 2, 2, 0, 2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".RO...", // y=2
+            ".GD...", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_y1() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, 2, 0, 1, 2, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".Yg...", // y=2
+            ".dB...", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_too_wide() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, 2, 2, 0, 10, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".RO...", // y=2
+            ".GD...", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_too_tall() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 1, 2, 0, 2, 2, 10]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".dB...", // y=2
+            ".W◔...", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_oob_left1() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, -1, 2, 0, 0, 3, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            "PR....", // y=2
+            "gG....", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_oob_left2() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, -2, 2, 0, 0, 3, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            "R.....", // y=2
+            "G.....", // y=3
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_sub_image_oob_top() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_sub_image);
+    write_mem(&mut store, 5, IMG16);
+    let inputs = wrap_input(&[5, IMG16.len() as _, 2, -1, 0, 0, 2, 3]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "..Yg..", // y=0
+            "..dB..", // y=1
+            "......", // y=2
+        ],
+    );
+}
+
+/// Place the given buffer into the linear wasm app memory.
+fn write_mem(store: &mut wasmi::Store<Box<State<'_>>>, addr: usize, buf: &[u8]) {
+    let mem_type = wasmi::MemoryType::new(1, Some(1));
+    let memory = wasmi::Memory::new(&mut *store, mem_type).unwrap();
+    let state = store.data_mut();
+    state.memory = Some(memory);
+
+    let data = memory.data_mut(store);
+    data[addr..addr + buf.len()].copy_from_slice(buf);
 }
 
 fn wrap_input(a: &[i32]) -> Vec<wasmi::Val> {
@@ -253,35 +761,27 @@ fn wrap_input(a: &[i32]) -> Vec<wasmi::Val> {
     res
 }
 
-fn check_display(frame: &mut FrameBuffer, pattern: &[&str]) {
-    let mut display = MockDisplay::<Rgb888>::new();
-    let w = pattern[0].len() as u32;
-    let area = Rectangle::new(Point::zero(), Size::new(w, 7));
-    let mut sub_display = display.clipped(&area);
-    frame.palette = [
-        // 0-4
-        Rgb16::from_rgb(255, 255, 255),
-        Rgb16::from_rgb(0, 255, 0),
-        Rgb16::from_rgb(255, 0, 0),
-        Rgb16::from_rgb(0, 0, 255),
-        // 4-8
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        // 8-12
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        // 12-16
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-        Rgb16::from_rgb(0, 0, 0),
-    ];
-    frame.draw(&mut sub_display).unwrap();
-    display.assert_pattern(pattern);
+fn check_display(frame: &FrameBuffer, pattern: &[&str]) {
+    check_display_at(Point::zero(), frame, pattern);
+}
+
+fn check_display_at(point: Point, frame: &FrameBuffer, pattern: &[&str]) {
+    // Print the parts of the frame buffer within the pattern boundaries.
+    for (line, y) in pattern.iter().zip(point.y..) {
+        let mut pat = String::new();
+        for (_, x) in line.chars().zip(point.x..) {
+            let ch = get_fb_char(frame, Point::new(x, y));
+            pat.push(ch);
+        }
+        println!("{pat} | {line}")
+    }
+
+    for (line, y) in pattern.iter().zip(point.y..) {
+        for (expected, x) in line.chars().zip(point.x..) {
+            let actual = get_fb_char(frame, Point::new(x, y));
+            assert_eq!(actual, expected, "invalid color at x={x}, y={y}")
+        }
+    }
 }
 
 fn make_store<'a>() -> wasmi::Store<Box<State<'a>>> {
@@ -295,7 +795,31 @@ fn make_store<'a>() -> wasmi::Store<Box<State<'a>>> {
     let rom_dir = device.open_dir(&["sys"]).ok().unwrap();
     let id = FullID::from_str("test-author", "test-app").unwrap();
     let state = State::new(id, device, rom_dir, NetHandler::None, false);
-    wasmi::Store::new(&engine, state)
+    let store = wasmi::Store::new(&engine, state);
+    assert_fb_empty(&store);
+    store
+}
+
+/// Ensure that the frame buffer is empty.
+fn assert_fb_empty(store: &wasmi::Store<Box<State<'_>>>) {
+    let state = store.data();
+    for byte in &*state.frame.data {
+        assert_eq!(byte, &0b_0000_0000);
+    }
+}
+
+fn get_fb_char(frame: &FrameBuffer, point: Point) -> char {
+    const WIDTH: usize = 240;
+    const PPB: usize = 2;
+    const CHARS: &str = ".PROYgGDdBbCW◔◑◕";
+    let x = point.x as usize;
+    let y = point.y as usize;
+    let pixel_index = y * WIDTH + x;
+    let byte_index = pixel_index / PPB;
+    let byte = frame.data[byte_index];
+    let luma = if x.is_multiple_of(2) { byte } else { byte >> 4 };
+    let luma = (luma & 0xf) as usize;
+    CHARS.chars().nth(luma).unwrap()
 }
 
 fn get_vfs() -> PathBuf {

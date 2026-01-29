@@ -45,7 +45,7 @@ impl fmt::Display for FullIDError {
 }
 
 /// The author and app ID combo. Must be unique. Cannot be changed.
-#[derive(PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct FullID {
     author: String<16>,
     app: String<16>,
@@ -99,6 +99,6 @@ impl TryFrom<&str> for FullID {
         let Ok(app_id) = heapless::String::try_from(&app_id[1..]) else {
             return Err(FullIDError::LongApp);
         };
-        Ok(FullID::new(author_id, app_id))
+        Ok(Self::new(author_id, app_id))
     }
 }

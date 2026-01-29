@@ -131,7 +131,7 @@ pub(crate) struct Input {
 
 impl From<Input> for InputState {
     fn from(value: Input) -> Self {
-        InputState {
+        Self {
             pad: value.pad.map(Into::into),
             buttons: value.buttons,
         }

@@ -122,7 +122,7 @@ impl<'a> FrameSyncer<'a> {
         Ok(())
     }
 
-    pub fn get_action(&mut self) -> Action {
+    pub fn get_action(&self) -> Action {
         let mut action = Action::None;
         for peer in &self.peers {
             let Some(state) = peer.states.get_current() else {

@@ -1,5 +1,12 @@
 #![cfg_attr(not(test), no_std)]
-#![allow(clippy::new_without_default, clippy::too_many_arguments)]
+#![deny(clippy::nursery)]
+#![allow(
+    clippy::new_without_default,
+    clippy::too_many_arguments,
+    clippy::missing_const_for_fn,
+    clippy::redundant_pub_crate,
+    clippy::option_if_let_else
+)]
 
 extern crate alloc;
 
@@ -11,6 +18,7 @@ mod error;
 mod error_scene;
 mod frame_buffer;
 mod host;
+mod image;
 mod linking;
 mod menu;
 mod net;

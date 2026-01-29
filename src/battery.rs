@@ -21,9 +21,9 @@ pub struct Battery {
 }
 
 impl Battery {
-    pub fn new(device: &mut DeviceImpl) -> Result<Battery, FSError> {
+    pub fn new(device: &mut DeviceImpl) -> Result<Self, FSError> {
         let info = ensure_info(device)?;
-        let battery = Battery {
+        let battery = Self {
             ok: false,
             connected: false,
             full: false,
@@ -62,7 +62,7 @@ impl Battery {
         Ok(())
     }
 
-    fn sync_info(&mut self, device: &mut DeviceImpl) -> Result<(), FSError> {
+    fn sync_info(&self, device: &mut DeviceImpl) -> Result<(), FSError> {
         let info = BatteryInfo {
             min_voltage: self.min_voltage,
             max_voltage: self.max_voltage,
