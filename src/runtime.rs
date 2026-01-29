@@ -2,11 +2,12 @@ use crate::color::FromRGB;
 use crate::config::{FullID, RuntimeConfig};
 use crate::error::Error;
 use crate::frame_buffer::RenderFB;
-use crate::linking::link;
+use crate::linking::populate_externals;
 use crate::state::{NetHandler, State};
 use crate::stats::StatsTracker;
 use crate::utils::read_all;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
@@ -151,9 +152,9 @@ where
         _ = store.set_fuel(FUEL_PER_CALL);
         let instance = {
             let module = wasmi::Module::new(&engine, wasm_bin)?;
-            let mut linker = wasmi::Linker::new(&engine);
-            link(&mut linker, sudo)?;
-            linker.instantiate_and_start(&mut store, &module)?
+            let mut externals = Vec::new();
+            populate_externals(&mut store, &module, sudo, &mut externals)?;
+            wasmi::Instance::new(&mut store, &module, &externals)?
         };
 
         let runtime = Self {

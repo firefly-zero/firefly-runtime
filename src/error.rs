@@ -1,3 +1,4 @@
+use crate::linking::LinkingError;
 use core::fmt;
 
 pub enum Error {
@@ -13,6 +14,8 @@ pub enum Error {
     CannotDisplay,
     AuthorIDMismatch,
     AppIDMismatch,
+
+    Linking(LinkingError),
 
     DecodeMeta(postcard::Error),
     DecodeStats(postcard::Error),
@@ -64,6 +67,7 @@ impl fmt::Display for Error {
             Self::ReadFile(name, err) => write!(f, "cannot read {name}: {err}"),
             Self::AuthorIDMismatch => write!(f, "author ID in meta and in path don't match"),
             Self::AppIDMismatch => write!(f, "app ID in meta and in path don't match"),
+            Self::Linking(err) => write!(f, "linking: {err}"),
             Self::DecodeMeta(err) => write!(f, "cannot decode _meta: {err}"),
             Self::DecodeStats(err) => write!(f, "cannot decode stats: {err}"),
             Self::SerialEncode(err) => write!(f, "cannot encode response for serial: {err}"),
@@ -80,6 +84,12 @@ impl fmt::Display for Error {
 impl From<wasmi::Error> for Error {
     fn from(value: wasmi::Error) -> Self {
         Self::Wasmi(value)
+    }
+}
+
+impl From<LinkingError> for Error {
+    fn from(value: LinkingError) -> Self {
+        Self::Linking(value)
     }
 }
 
