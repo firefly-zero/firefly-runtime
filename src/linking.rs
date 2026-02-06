@@ -86,6 +86,8 @@ pub(crate) fn link(linker: &mut wasmi::Linker<Box<State>>, sudo: bool) -> Result
     if sudo {
         linker.func_wrap("sudo", "list_dirs", sudo::list_dirs)?;
         linker.func_wrap("sudo", "list_dirs_buf_size", sudo::list_dirs_buf_size)?;
+        linker.func_wrap("sudo", "list_files", sudo::list_files)?;
+        linker.func_wrap("sudo", "list_files_buf_size", sudo::list_files_buf_size)?;
         linker.func_wrap("sudo", "get_file_size", sudo::get_file_size)?;
         linker.func_wrap("sudo", "load_file", sudo::load_file)?;
         linker.func_wrap("sudo", "run_app", sudo::run_app)?;

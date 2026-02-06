@@ -3,7 +3,7 @@ use crate::error::HostError;
 use crate::state::State;
 use crate::utils::read_into;
 use alloc::boxed::Box;
-use firefly_hal::{Device, Dir};
+use firefly_hal::{Device, Dir, EntryKind};
 use firefly_types::{validate_id, validate_path_part};
 use heapless::Vec;
 
@@ -17,7 +17,15 @@ type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
 /// `data/AUTHOR_ID/APP_ID/DIR_NAME/FILE_NAME`
 const MAX_DEPTH: usize = 5;
 
-pub(crate) fn list_dirs_buf_size(mut caller: C, path_ptr: u32, path_len: u32) -> u32 {
+pub(crate) fn list_dirs_buf_size(caller: C, path_ptr: u32, path_len: u32) -> u32 {
+    list_entries_buf_size(caller, path_ptr, path_len, EntryKind::Dir)
+}
+
+pub(crate) fn list_files_buf_size(caller: C, path_ptr: u32, path_len: u32) -> u32 {
+    list_entries_buf_size(caller, path_ptr, path_len, EntryKind::File)
+}
+
+pub fn list_entries_buf_size(mut caller: C, path_ptr: u32, path_len: u32, kind: EntryKind) -> u32 {
     let state = caller.data_mut();
     state.called = "sudo.list_dirs_buf_size";
     let state = caller.data_mut();
@@ -53,8 +61,10 @@ pub(crate) fn list_dirs_buf_size(mut caller: C, path_ptr: u32, path_len: u32) ->
     };
 
     let mut size = 0;
-    let res = dir.iter_dir(|_kind, entry_name| {
-        size += entry_name.len() + 1;
+    let res = dir.iter_dir(|ekind, entry_name| {
+        if ekind == kind {
+            size += entry_name.len() + 1;
+        }
     });
     if let Err(err) = res {
         state.log_error(err);
@@ -63,11 +73,39 @@ pub(crate) fn list_dirs_buf_size(mut caller: C, path_ptr: u32, path_len: u32) ->
 }
 
 pub(crate) fn list_dirs(
+    caller: C,
+    path_ptr: u32,
+    path_len: u32,
+    buf_ptr: u32,
+    buf_len: u32,
+) -> u32 {
+    list_entries(caller, path_ptr, path_len, buf_ptr, buf_len, EntryKind::Dir)
+}
+
+pub(crate) fn list_files(
+    caller: C,
+    path_ptr: u32,
+    path_len: u32,
+    buf_ptr: u32,
+    buf_len: u32,
+) -> u32 {
+    list_entries(
+        caller,
+        path_ptr,
+        path_len,
+        buf_ptr,
+        buf_len,
+        EntryKind::File,
+    )
+}
+
+fn list_entries(
     mut caller: C,
     path_ptr: u32,
     path_len: u32,
     buf_ptr: u32,
     buf_len: u32,
+    kind: EntryKind,
 ) -> u32 {
     let state = caller.data_mut();
     state.called = "sudo.list_dirs";
@@ -105,7 +143,10 @@ pub(crate) fn list_dirs(
 
     let mut pos = 0;
     let mut size_error = false;
-    let res = dir.iter_dir(|_kind, entry_name| {
+    let res = dir.iter_dir(|entry_kind, entry_name| {
+        if entry_kind != kind {
+            return;
+        }
         buf[pos] = entry_name.len() as u8;
         match buf.get_mut((pos + 1)..(pos + 1 + entry_name.len())) {
             Some(buf) => {
