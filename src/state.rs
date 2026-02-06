@@ -85,7 +85,8 @@ pub(crate) struct State<'a> {
     pub battery: Option<Battery>,
 
     pub app_stats: Option<firefly_types::Stats>,
-    pub app_stats_dirty: bool,
+    /// The number of update frames.
+    n_frames: u32,
     pub stash: alloc::vec::Vec<u8>,
     pub stash_dirty: bool,
 
@@ -132,7 +133,7 @@ impl<'a> State<'a> {
             net_handler: Cell::new(net_handler),
             settings: None,
             app_stats: None,
-            app_stats_dirty: false,
+            n_frames: 0,
             stash: alloc::vec::Vec::new(),
             stash_dirty: false,
             action: Action::None,
@@ -217,19 +218,8 @@ impl<'a> State<'a> {
     }
 
     pub(crate) fn get_settings(&mut self) -> &mut firefly_types::Settings {
-        use crate::alloc::string::ToString;
         if self.settings.is_none() {
-            let settings = self.load_settings();
-            self.settings = match settings {
-                Some(settings) => Some(settings),
-                None => Some(firefly_types::Settings {
-                    xp: 0,
-                    badges: 0,
-                    lang: [b'e', b'n'],
-                    name: "anonymous".to_string(),
-                    timezone: "Europe/Amsterdam".to_string(),
-                }),
-            }
+            self.settings = Some(self.load_settings().unwrap_or_default());
         }
         self.settings.as_mut().unwrap()
     }
@@ -303,17 +293,21 @@ impl<'a> State<'a> {
         }
     }
 
-    /// Save into stats the stats from the current play.
+    /// Save into stats struct the stats from the current play.
     ///
-    /// Called jut before saving the stats to the disk.
+    /// Called just before saving the stats to the disk.
     pub(crate) fn update_app_stats(&mut self) {
-        let players = self.player_count();
+        let players = self.player_count().min(4);
         let idx = players - 1;
         let Some(stats) = self.app_stats.as_mut() else {
             return;
         };
-        self.app_stats_dirty = true;
         stats.launches[idx] += 1;
+        let minutes = self.n_frames / 3600;
+        stats.minutes[idx] += minutes;
+        if minutes > stats.longest_play[idx] {
+            stats.longest_play[idx] = minutes;
+        }
     }
 
     /// Get the number of players currently online.
@@ -326,14 +320,11 @@ impl<'a> State<'a> {
         }
     }
 
-    /// Dump app stats (if changed) on disk.
+    /// Dump app stats on disk.
     pub(crate) fn save_app_stats(&mut self) {
         let Some(stats) = &self.app_stats else {
             return;
         };
-        if !self.app_stats_dirty {
-            return;
-        }
         let res = match stats.encode_vec() {
             Ok(res) => res,
             Err(err) => {
@@ -365,6 +356,7 @@ impl<'a> State<'a> {
 
     /// Update the state: read inputs, handle system commands.
     pub(crate) fn update(&mut self) -> Option<u8> {
+        self.n_frames += 1;
         if let Some(scene) = self.error.as_mut() {
             let close = scene.update(&mut self.device);
             if close {
@@ -607,12 +599,14 @@ impl<'a> State<'a> {
         self.set_next(Some(id));
     }
 
-    pub fn disconnect(&self) {
+    pub fn disconnect(&mut self) {
         let net_handler = self.net_handler.replace(NetHandler::None);
         if let NetHandler::Connection(conn) = net_handler {
             let res = conn.disconnect();
             if let Err(err) = res {
-                self.device.log_error("netcode", err);
+                self.device.log_error("netcode", &err);
+                let msg = alloc::format!("{err}");
+                self.error = Some(ErrorScene::new(msg));
             }
         }
     }

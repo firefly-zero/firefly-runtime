@@ -272,6 +272,8 @@ fn select_sudo_external<'a>(
     let func = match import.name() {
         "list_dirs" => host_func(ctx, sudo::list_dirs),
         "list_dirs_buf_size" => host_func(ctx, sudo::list_dirs_buf_size),
+        "list_files" => host_func(ctx, sudo::list_files),
+        "list_files_buf_size" => host_func(ctx, sudo::list_files_buf_size),
         "get_file_size" => host_func(ctx, sudo::get_file_size),
         "load_file" => host_func(ctx, sudo::load_file),
         "run_app" => host_func(ctx, sudo::run_app),

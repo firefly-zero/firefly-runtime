@@ -86,7 +86,7 @@ impl<'a> Connection<'a> {
         }
         let res = self.update_inner(device);
         if let Err(err) = res {
-            device.log_error("netcode", err);
+            device.log_error("netcode", &err);
         }
         let all_ready = self.peers.iter().all(|p| p.ready());
         if all_ready {
@@ -101,8 +101,10 @@ impl<'a> Connection<'a> {
     /// Disconnect from multiplayer.
     ///
     /// Can be called from menu in launcher if connected to multiplayer.
-    pub fn disconnect(mut self) -> Result<(), NetworkError> {
-        self.net.stop()
+    pub fn disconnect(mut self) -> Result<(), NetcodeError> {
+        self.broadcast(Req::Disconnect.into())?;
+        self.net.stop()?;
+        Ok(())
     }
 
     pub fn set_app(&mut self, device: &mut DeviceImpl, app: FullID) -> Result<(), NetcodeError> {
@@ -269,8 +271,10 @@ impl<'a> Connection<'a> {
     }
 
     fn handle_req(&mut self, addr: Addr, req: Req) -> Result<(), NetcodeError> {
-        if matches!(req, Req::Start) {
-            self.handle_start_req(addr)?;
+        match req {
+            Req::Start => self.handle_start_req(addr)?,
+            Req::Disconnect => self.handle_disconnect(addr)?,
+            _ => {}
         }
         Ok(())
     }
@@ -299,6 +303,22 @@ impl<'a> Connection<'a> {
         let raw = resp.encode(&mut buf)?;
         self.net.send(addr, raw)?;
         Ok(())
+    }
+
+    fn handle_disconnect(&mut self, addr: Addr) -> Result<(), NetcodeError> {
+        let mut name = heapless::String::try_from("???").unwrap();
+
+        let maybe_index = self
+            .peers
+            .iter()
+            .enumerate()
+            .find(|(_, peer)| peer.addr == Some(addr));
+        if let Some((index, _)) = maybe_index {
+            let peer = self.peers.remove(index);
+            name = peer.name;
+        }
+
+        Err(NetcodeError::Disconnected(name))
     }
 
     fn handle_resp(
@@ -336,6 +356,7 @@ impl<'a> Connection<'a> {
         Ok(())
     }
 
+    /// Send the message to all connected peers.
     fn broadcast(&mut self, msg: Message) -> Result<(), NetcodeError> {
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;

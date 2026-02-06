@@ -12,10 +12,13 @@ embedded-graphics = "0.8.1"
 embedded-io = "0.6.1"
 firefly-audio = "0.2.1"
 firefly-hal = "0.3.1"
-firefly-types = "0.7.1"
+firefly-types = "0.8.0"
 heapless = { version = "0.9.2", features = ["serde"] }
 micromath = "2.1.0"
 postcard = "1.0.8"
 serde = { version = "1.0.203", default-features = false, features = ["derive"] }
 tinyqr = "0.14.1"
 wasmi = { version = "1.0.6", default-features = false }
+
+[patch.crates-io]
+firefly-hal = { path = "../firefly-hal" }
