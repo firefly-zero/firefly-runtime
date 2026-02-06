@@ -24,22 +24,6 @@ impl fmt::Display for LinkingError {
     }
 }
 
-const MODULE_GRAPHICS: &str = "graphics";
-const MODULE_GRAPHICS_ALIAS: &str = "g";
-const MODULE_AUDIO: &str = "audio";
-const MODULE_INPUT: &str = "input";
-const MODULE_INPUT_ALIAS: &str = "i";
-const MODULE_MENU: &str = "menu";
-const MODULE_FS: &str = "fs";
-const MODULE_NET: &str = "net";
-const MODULE_NET_ALIAS: &str = "n";
-const MODULE_STATS: &str = "stats";
-const MODULE_STATS_ALIAS: &str = "s";
-const MODULE_MISC: &str = "misc";
-const MODULE_MISC_ALIAS: &str = "m";
-const MODULE_SUDO: &str = "sudo";
-const MODULE_WASIP1: &str = "wasi_snapshot_preview1";
-
 /// Populate all host-defined functions used by `module` in the `extern` vector.
 ///
 /// If `sudo` is enabled, some more host-defined functions are allowed to be used.
@@ -57,26 +41,26 @@ pub(crate) fn populate_externals<'a>(
         let module_name = import.module();
         let fn_name = import.name();
         let maybe_func = match module_name {
-            MODULE_GRAPHICS => select_graphics_external(ctx, fn_name),
-            MODULE_AUDIO => select_audio_external(ctx, fn_name),
-            MODULE_INPUT => select_input_external(ctx, fn_name),
-            MODULE_MENU => select_menu_external(ctx, fn_name),
-            MODULE_FS => select_fs_external(ctx, fn_name),
-            MODULE_NET => select_net_external(ctx, fn_name),
-            MODULE_STATS => select_stats_external(ctx, fn_name),
-            MODULE_MISC => select_misc_external(ctx, fn_name),
-            MODULE_SUDO => {
+            "graphics" => select_graphics_external(ctx, fn_name),
+            "audio" => select_audio_external(ctx, fn_name),
+            "input" => select_input_external(ctx, fn_name),
+            "menu" => select_menu_external(ctx, fn_name),
+            "fs" => select_fs_external(ctx, fn_name),
+            "net" => select_net_external(ctx, fn_name),
+            "stats" => select_stats_external(ctx, fn_name),
+            "misc" => select_misc_external(ctx, fn_name),
+            "sudo" => {
                 if !sudo {
                     return Err(LinkingError::SudoDisabled);
                 }
                 select_sudo_external(ctx, fn_name)
             }
-            MODULE_WASIP1 => select_wasip1_external(ctx, fn_name),
-            MODULE_GRAPHICS_ALIAS => select_graphics_external_alias(ctx, fn_name),
-            MODULE_INPUT_ALIAS => select_input_external_alias(ctx, fn_name),
-            MODULE_NET_ALIAS => select_net_external_alias(ctx, fn_name),
-            MODULE_STATS_ALIAS => select_stats_external_alias(ctx, fn_name),
-            MODULE_MISC_ALIAS => select_misc_external_alias(ctx, fn_name),
+            "wasi_snapshot_preview1" => select_wasip1_external(ctx, fn_name),
+            "g" => select_graphics_external_alias(ctx, fn_name),
+            "i" => select_input_external_alias(ctx, fn_name),
+            "n" => select_net_external_alias(ctx, fn_name),
+            "s" => select_stats_external_alias(ctx, fn_name),
+            "m" => select_misc_external_alias(ctx, fn_name),
             _ => {
                 return Err(LinkingError::UnknownHostFunction(
                     module_name.to_string(),
