@@ -62,12 +62,7 @@ pub(crate) fn populate_externals<'a>(
             "n" => select_net_external_alias(ctx, fn_name),
             "s" => select_stats_external_alias(ctx, fn_name),
             "m" => select_misc_external_alias(ctx, fn_name),
-            _ => {
-                return Err(LinkingError::UnknownHostFunction(
-                    module_name.to_string(),
-                    fn_name.to_string(),
-                ));
-            }
+            _ => None,
         };
         let Some(func) = maybe_func else {
             return Err(LinkingError::UnknownHostFunction(
