@@ -76,10 +76,8 @@ pub(crate) struct State<'a> {
     /// The last called host function.
     pub called: &'static str,
 
-    /// The device settings. Lazy loaded on demand.
-    ///
-    /// None if not cached.
-    settings: Option<firefly_types::Settings>,
+    /// The device settings.
+    pub settings: firefly_types::Settings,
 
     /// The battery status (State of Charge, aka SoC).
     pub battery: Option<Battery>,
@@ -112,6 +110,7 @@ impl<'a> State<'a> {
         };
         let mut device = device;
         let maybe_battery = Battery::new(&mut device);
+        let settings = load_settings(&mut device).unwrap_or_default();
         Box::new(Self {
             device,
             rom_dir,
@@ -131,7 +130,7 @@ impl<'a> State<'a> {
             input: None,
             called: "",
             net_handler: Cell::new(net_handler),
-            settings: None,
+            settings,
             app_stats: None,
             n_frames: 0,
             stash: alloc::vec::Vec::new(),
@@ -215,45 +214,6 @@ impl<'a> State<'a> {
                 }
             }
         };
-    }
-
-    pub(crate) fn get_settings(&mut self) -> &mut firefly_types::Settings {
-        if self.settings.is_none() {
-            self.settings = Some(self.load_settings().unwrap_or_default());
-        }
-        self.settings.as_mut().unwrap()
-    }
-
-    fn load_settings(&mut self) -> Option<firefly_types::Settings> {
-        let mut dir = match self.device.open_dir(&["sys"]) {
-            Ok(dir) => dir,
-            Err(err) => {
-                self.device.log_error("settings", err);
-                return None;
-            }
-        };
-        let file = match dir.open_file("config") {
-            Ok(file) => file,
-            Err(err) => {
-                self.device.log_error("settings", err);
-                return None;
-            }
-        };
-        let raw = match read_all(file) {
-            Ok(raw) => raw,
-            Err(err) => {
-                self.device.log_error("settings", FSError::from(err));
-                return None;
-            }
-        };
-        let settings = match firefly_types::Settings::decode(&raw[..]) {
-            Ok(settings) => settings,
-            Err(err) => {
-                self.device.log_error("settings", err);
-                return None;
-            }
-        };
-        Some(settings)
     }
 
     /// Dump stash (if any) on disk.
@@ -588,7 +548,7 @@ impl<'a> State<'a> {
         if !matches!(self.net_handler.get_mut(), NetHandler::None) {
             return;
         }
-        let name = &self.get_settings().name;
+        let name = &self.settings.name;
         let name = heapless::String::from_str(name).unwrap_or_default();
         // TODO: validate the name
         let me = MyInfo { name, version: 1 };
@@ -615,6 +575,38 @@ impl<'a> State<'a> {
     pub(crate) fn log_error<D: Display>(&self, msg: D) {
         self.device.log_error(self.called, msg);
     }
+}
+
+fn load_settings(device: &mut DeviceImpl) -> Option<firefly_types::Settings> {
+    let mut dir = match device.open_dir(&["sys"]) {
+        Ok(dir) => dir,
+        Err(err) => {
+            device.log_error("settings", err);
+            return None;
+        }
+    };
+    let file = match dir.open_file("config") {
+        Ok(file) => file,
+        Err(err) => {
+            device.log_error("settings", err);
+            return None;
+        }
+    };
+    let raw = match read_all(file) {
+        Ok(raw) => raw,
+        Err(err) => {
+            device.log_error("settings", FSError::from(err));
+            return None;
+        }
+    };
+    let settings = match firefly_types::Settings::decode(&raw[..]) {
+        Ok(settings) => settings,
+        Err(err) => {
+            device.log_error("settings", err);
+            return None;
+        }
+    };
+    Some(settings)
 }
 
 /// Write the frame buffer as a screenshot file.

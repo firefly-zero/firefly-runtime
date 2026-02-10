@@ -60,7 +60,7 @@ fn test_get_random() {
 fn test_get_name() {
     let mut store = make_store();
     let state = store.data_mut();
-    state.get_settings().name = "hello".to_string();
+    state.settings.name = "hello".to_string();
     let memory = make_memory(&mut store);
 
     let func = wasmi::Func::wrap(&mut store, get_name);

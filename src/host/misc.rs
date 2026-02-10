@@ -109,7 +109,7 @@ pub(crate) fn get_name(mut caller: C, index: u32, ptr: u32) -> u32 {
             };
             &peer.name
         }
-        NetHandler::None => &state.get_settings().name,
+        NetHandler::None => &state.settings.name,
         NetHandler::Connector(connector) => {
             if index == 0 {
                 &connector.me.name
