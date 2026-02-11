@@ -4,7 +4,7 @@ use crate::utils::read_into;
 use crate::{config::FullID, utils::write_all};
 use alloc::boxed::Box;
 use embedded_io::Write;
-use firefly_hal::{Device, Dir, EntryKind};
+use firefly_hal::{Device, Dir, EntryKind, FSError};
 use firefly_types::{validate_id, validate_path_part};
 use heapless::Vec;
 
@@ -245,7 +245,15 @@ pub fn get_file_size(mut caller: C, path_ptr: u32, path_len: u32) -> u32 {
         }
     };
 
-    dir.get_file_size(file_name).unwrap_or_default()
+    match dir.get_file_size(file_name) {
+        Ok(file_size) => file_size,
+        Err(err) => {
+            if !matches!(err, FSError::NotFound) {
+                state.log_error(HostError::FileRead(err));
+            }
+            0
+        }
+    }
 }
 
 pub(crate) fn load_file(

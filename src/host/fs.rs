@@ -4,7 +4,7 @@ use crate::utils::{read_into, write_all};
 use crate::NetHandler;
 use alloc::boxed::Box;
 use embedded_io::Write;
-use firefly_hal::{Device, Dir};
+use firefly_hal::{Device, Dir, FSError};
 use firefly_types::validate_path_part;
 
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
@@ -48,7 +48,9 @@ pub(crate) fn get_file_size(mut caller: C, path_ptr: u32, path_len: u32) -> u32 
     match dir.get_file_size(name) {
         Ok(size) => size,
         Err(err) => {
-            state.log_error(err);
+            if !matches!(err, FSError::NotFound) {
+                state.log_error(err);
+            }
             0
         }
     }
