@@ -90,14 +90,14 @@ impl<'a> Connector<'a> {
             let peer = Peer {
                 addr: Some(peer.addr),
                 name: peer.intro.name,
-                intro: None,
+                app: None,
             };
             peers.push(peer).ok().unwrap();
         }
         let me = Peer {
             addr: None,
             name: self.me.name,
-            intro: None,
+            app: None,
         };
         peers.push(me).ok().unwrap();
         let local_addr = self.net.local_addr();

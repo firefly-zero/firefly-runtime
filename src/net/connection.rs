@@ -19,12 +19,12 @@ pub(crate) struct Peer {
     /// The human-readable name of the device.
     pub name: heapless::String<16>,
     /// Not None when the peer is ready to start the selected app.
-    pub intro: Option<AppIntro>,
+    pub app: Option<AppIntro>,
 }
 
 impl Peer {
     fn ready(&self) -> bool {
-        self.intro.is_some()
+        self.app.is_some()
     }
 }
 
@@ -128,7 +128,7 @@ impl<'a> Connection<'a> {
         self.app = Some(app);
         self.started_at = Some(device.now());
         let me = self.get_me_mut();
-        me.intro = Some(intro);
+        me.app = Some(intro);
         Ok(())
     }
 
@@ -152,7 +152,7 @@ impl<'a> Connection<'a> {
         let mut peers = heapless::Vec::<FSPeer, 8>::new();
         let mut seed = 0;
         for peer in self.peers {
-            let intro = peer.intro.unwrap();
+            let intro = peer.app.unwrap();
             let friend_id = if peer.addr.is_none() {
                 None
             } else {
@@ -224,7 +224,7 @@ impl<'a> Connection<'a> {
         }
         self.last_ready = Some(now);
         let me = self.get_me();
-        let intro = me.intro.as_ref().unwrap();
+        let intro = me.app.as_ref().unwrap();
         let resp = Resp::Start(Start {
             id: app.clone(),
             badges: intro.badges.clone(),
@@ -288,7 +288,7 @@ impl<'a> Connection<'a> {
             return Ok(());
         };
         let me = self.get_me();
-        let Some(intro) = &me.intro else {
+        let Some(intro) = &me.app else {
             return Ok(());
         };
         let resp = Start {
@@ -346,7 +346,7 @@ impl<'a> Connection<'a> {
     ) -> Result<(), NetcodeError> {
         self.set_app(device, intro.id)?;
         if let Some(peer) = self.get_peer(addr) {
-            peer.intro = Some(AppIntro {
+            peer.app = Some(AppIntro {
                 badges: intro.badges,
                 scores: intro.scores,
                 stash: intro.stash.to_vec(),

@@ -61,7 +61,7 @@ impl<'a> FrameSyncer<'a> {
             let peer = Peer {
                 addr: peer.addr,
                 name: peer.name,
-                intro: None,
+                app: None,
             };
             peers.push(peer).ok().unwrap();
         }
