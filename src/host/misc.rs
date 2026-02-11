@@ -169,9 +169,8 @@ pub(crate) fn get_settings(mut caller: C, index: u32) -> u64 {
             let s = &state.settings;
             let flags = u8::from(s.rotate_screen)
                 | u8::from(s.reduce_flashing) << 1
-                | u8::from(s.gamepad_mode) << 2
-                | u8::from(s.contrast) << 3
-                | u8::from(s.easter_eggs) << 4;
+                | u8::from(s.contrast) << 2
+                | u8::from(s.easter_eggs) << 3;
             pack_settings(s.theme, flags, s.lang)
         }
         NetHandler::Connector(connector) => {

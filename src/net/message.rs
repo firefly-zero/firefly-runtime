@@ -102,9 +102,8 @@ pub(crate) struct Intro {
     ///
     /// * 0: `rotate_screen`
     /// * 1: `reduce_flashing`
-    /// * 2: `gamepad_mode`
-    /// * 3: `contrast`
-    /// * 4: `easter_eggs`
+    /// * 2: `contrast`
+    /// * 3: `easter_eggs`
     pub flags: u8,
 }
 
