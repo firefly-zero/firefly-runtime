@@ -221,6 +221,49 @@ pub(crate) fn get_theme(mut caller: C, index: u32) -> u32 {
     theme
 }
 
+pub(crate) fn get_settings(mut caller: C, index: u32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "misc.get_settings";
+
+    let handler = state.net_handler.get_mut();
+    let flags: u8 = match handler {
+        NetHandler::FrameSyncer(syncer) => {
+            let Some(peer) = syncer.peers.get(index as usize) else {
+                state.log_error("invalid peer ID");
+                return 0;
+            };
+            peer.intro.flags
+        }
+        NetHandler::None => {
+            let s = &state.settings;
+            u8::from(s.rotate_screen)
+                | u8::from(s.reduce_flashing) << 1
+                | u8::from(s.gamepad_mode) << 2
+                | u8::from(s.contrast) << 3
+                | u8::from(s.easter_eggs) << 4
+        }
+        NetHandler::Connector(connector) => {
+            if index == 0 {
+                connector.me.flags
+            } else {
+                let index = index as usize - 1;
+                match connector.peer_infos().get(index) {
+                    Some(peer) => peer.intro.flags,
+                    None => return 0,
+                }
+            }
+        }
+        NetHandler::Connection(connection) => {
+            let Some(peer) = connection.peers.get(index as usize) else {
+                return 0;
+            };
+            peer.intro.flags
+        }
+    };
+
+    u32::from(flags)
+}
+
 /// Stop the currently running app and run the default launcher instead.
 pub(crate) fn quit(mut caller: C) {
     let state = caller.data_mut();

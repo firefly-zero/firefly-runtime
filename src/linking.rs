@@ -220,6 +220,7 @@ fn select_misc_external<'a>(
         "get_name" => Func::wrap(ctx, misc::get_name),
         "get_lang" => Func::wrap(ctx, misc::get_lang),
         "get_theme" => Func::wrap(ctx, misc::get_theme),
+        "get_settings" => Func::wrap(ctx, misc::get_settings),
         "restart" => Func::wrap(ctx, misc::restart),
         "set_conn_status" => Func::wrap(ctx, misc::set_conn_status),
         "quit" => Func::wrap(ctx, misc::quit),
