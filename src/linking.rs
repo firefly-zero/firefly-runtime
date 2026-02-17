@@ -240,6 +240,7 @@ fn select_sudo_external<'a>(
         "load_file" => Func::wrap(ctx, sudo::load_file),
         "dump_file" => Func::wrap(ctx, sudo::dump_file),
         "remove_file" => Func::wrap(ctx, sudo::remove_file),
+        "remove_dir" => Func::wrap(ctx, sudo::remove_dir),
         "run_app" => Func::wrap(ctx, sudo::run_app),
         _ => return None,
     };

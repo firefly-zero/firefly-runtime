@@ -193,11 +193,13 @@ pub(crate) fn get_settings(mut caller: C, index: u32) -> u64 {
     }
 }
 
+/// Pack settings from peer intro into 64 bits.
 #[inline]
 fn pack_intro(intro: &Intro) -> u64 {
     pack_settings(intro.theme, intro.flags, intro.lang)
 }
 
+/// Pack settings into 64 bits.
 fn pack_settings(theme: u32, flags: u8, lang: [u8; 2]) -> u64 {
     let lang = u64::from(lang[0]) << 8 | u64::from(lang[1]);
     let flags = u64::from(flags);
