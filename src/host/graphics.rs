@@ -499,13 +499,14 @@ fn set_canvas_v1(state: &mut Box<State<'_>>, ptr: u32, len: u32, image_bytes: &[
 }
 
 fn set_canvas_v2(state: &mut Box<State<'_>>, ptr: u32, len: u32, image_bytes: &[u8]) {
+    const HEADER: u32 = 4;
     let width = u16::from_le_bytes([image_bytes[1], image_bytes[2]]) as u32;
-    let image_bytes = &image_bytes[3..];
+    let image_bytes = &image_bytes[HEADER as usize..];
     if !(image_bytes.len() * 2).is_multiple_of(width as usize) {
         state.log_error(HostError::InvalidWidth);
         return;
     }
-    let canvas = Canvas::new(ptr + 3, len - 3, width);
+    let canvas = Canvas::new(ptr + HEADER, len - HEADER, width);
     state.canvas = Some(canvas)
 }
 
@@ -555,7 +556,7 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         state.log_error(HostError::OomPointer);
         return;
     };
-    if image_bytes.len() < 7 {
+    if image_bytes.len() < 4 {
         let msg = if ptr == 0 {
             "image is a nil pointer: make sure you've loaded it"
         } else if image_bytes.is_empty() {
@@ -566,7 +567,24 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         state.log_error(msg);
         return;
     }
+    match image_bytes[0] {
+        0x21 => draw_image_v1(state, image_bytes, x, y, sub),
+        0x22 => draw_image_v2(state, image_bytes, x, y, sub),
+        _ => state.log_error("invalid magic number"),
+    }
+}
 
+fn draw_image_v1(
+    state: &mut Box<State<'_>>,
+    image_bytes: &[u8],
+    x: i32,
+    y: i32,
+    sub: Option<Rectangle>,
+) {
+    if image_bytes.len() < 7 {
+        state.log_error("image file is too small");
+        return;
+    }
     // Read image header.
     // Bits per color pixel. Can be 1, 2, or 4.
     let bpp = u8::from_le_bytes([image_bytes[1]]);
@@ -601,7 +619,7 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         2 => 4,
         _ => 2,
     };
-    if image_bytes.len() * ppb % width as usize != 0 {
+    if !(image_bytes.len() * ppb).is_multiple_of(width as usize) {
         state.log_error(HostError::InvalidWidth);
         return;
     }
@@ -618,6 +636,43 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         bytes: image_bytes,
         width,
         swaps,
+        transp,
+        sub,
+    };
+    image.render(point, &mut state.frame);
+}
+
+fn draw_image_v2(
+    state: &mut Box<State<'_>>,
+    image_bytes: &[u8],
+    x: i32,
+    y: i32,
+    sub: Option<Rectangle>,
+) {
+    let width = u16::from_le_bytes([image_bytes[1], image_bytes[2]]) as u32;
+    if width == 0 {
+        state.log_error("image has zero width");
+        return;
+    }
+    let transp = u8::from_le_bytes([image_bytes[3]]);
+    let image_bytes = &image_bytes[4..];
+    if !(image_bytes.len() * 2).is_multiple_of(width as usize) {
+        state.log_error(HostError::InvalidWidth);
+        return;
+    }
+
+    // TODO: support canvas
+    if state.canvas.is_some() {
+        state.log_error("images cannot be drawn on canvas yet");
+        return;
+    }
+
+    let point = Point::new(x, y);
+    let image = ParsedImage {
+        bpp: 4,
+        bytes: image_bytes,
+        width,
+        swaps: &[0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef],
         transp,
         sub,
     };
