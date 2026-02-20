@@ -129,7 +129,6 @@ pub(crate) fn load_file(
     };
     if file_size != buf_len {
         state.log_error(HostError::BufferSize);
-        return 0;
     }
     file_size as u32
 }
@@ -192,7 +191,6 @@ pub(crate) fn dump_file(
     }
     if file_size != buf_len {
         state.log_error(HostError::BufferSize);
-        return 0;
     }
     file_size as u32
 }
