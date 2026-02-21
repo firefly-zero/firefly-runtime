@@ -451,6 +451,8 @@ pub(crate) fn draw_text(
 
 /// Set an image localted in the guest memory as the draw target for all graphic operations.
 pub(crate) fn set_canvas(mut caller: C, ptr: u32, len: u32) {
+    const HEADER: u32 = 4;
+
     let state = caller.data_mut();
     state.called = "graphics.set_canvas";
 
@@ -466,40 +468,15 @@ pub(crate) fn set_canvas(mut caller: C, ptr: u32, len: u32) {
         state.log_error(HostError::OomPointer);
         return;
     };
-    if image_bytes.len() < 3 {
+    if image_bytes.len() < HEADER as usize {
         state.log_error("canvas is too small");
         return;
     }
-    match image_bytes[0] {
-        0x21 => set_canvas_v1(state, ptr, len, image_bytes),
-        0x22 => set_canvas_v2(state, ptr, len, image_bytes),
-        _ => state.log_error("invalid magic number"),
+    if image_bytes[0] != 0x22 {
+        state.log_error("invalid magic number");
+        return;
     }
-}
 
-fn set_canvas_v1(state: &mut Box<State<'_>>, ptr: u32, len: u32, image_bytes: &[u8]) {
-    const HEADER: usize = 5 + 8;
-    if image_bytes.len() <= HEADER {
-        state.log_error("canvas is too small");
-        return;
-    }
-    let bpp = u8::from_le_bytes([image_bytes[1]]);
-    if bpp != 4 {
-        state.log_error("canvas must have 4 BPP");
-        return;
-    }
-    let width = u16::from_le_bytes([image_bytes[2], image_bytes[3]]) as u32;
-    let image_bytes = &image_bytes[HEADER..];
-    if !(image_bytes.len() * 2).is_multiple_of(width as usize) {
-        state.log_error(HostError::InvalidWidth);
-        return;
-    }
-    let canvas = Canvas::new(ptr + HEADER as u32, len - HEADER as u32, width);
-    state.canvas = Some(canvas)
-}
-
-fn set_canvas_v2(state: &mut Box<State<'_>>, ptr: u32, len: u32, image_bytes: &[u8]) {
-    const HEADER: u32 = 4;
     let width = u16::from_le_bytes([image_bytes[1], image_bytes[2]]) as u32;
     let image_bytes = &image_bytes[HEADER as usize..];
     if !(image_bytes.len() * 2).is_multiple_of(width as usize) {
@@ -542,6 +519,8 @@ pub(crate) fn draw_image(mut caller: C, ptr: u32, len: u32, x: i32, y: i32) {
 }
 
 fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Option<Rectangle>) {
+    const HEADER: usize = 4;
+
     // retrieve the raw data from memory
     let state = caller.data();
     let Some(memory) = state.memory else {
@@ -556,7 +535,7 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         state.log_error(HostError::OomPointer);
         return;
     };
-    if image_bytes.len() < 4 {
+    if image_bytes.len() < HEADER {
         let msg = if ptr == 0 {
             "image is a nil pointer: make sure you've loaded it"
         } else if image_bytes.is_empty() {
@@ -567,95 +546,18 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         state.log_error(msg);
         return;
     }
-    match image_bytes[0] {
-        0x21 => draw_image_v1(state, image_bytes, x, y, sub),
-        0x22 => draw_image_v2(state, image_bytes, x, y, sub),
-        _ => state.log_error("invalid magic number"),
-    }
-}
-
-fn draw_image_v1(
-    state: &mut Box<State<'_>>,
-    image_bytes: &[u8],
-    x: i32,
-    y: i32,
-    sub: Option<Rectangle>,
-) {
-    if image_bytes.len() < 7 {
-        state.log_error("image file is too small");
-        return;
-    }
-    // Read image header.
-    // Bits per color pixel. Can be 1, 2, or 4.
-    let bpp = u8::from_le_bytes([image_bytes[1]]);
-    // The image width. The height is inferred from width, BPP, and byte size.
-    let width = u16::from_le_bytes([image_bytes[2], image_bytes[3]]) as u32;
-    if width == 0 {
-        state.log_error("image has zero width");
-        return;
-    }
-    // The color that should be omitted.
-    // Used to encode transparency by sacrificing one color from the palette.
-    let transp = u8::from_le_bytes([image_bytes[4]]);
-    let image_bytes = &image_bytes[5..];
-    let swaps_len = match bpp {
-        1 => 1,
-        2 => 2,
-        4 => 8,
-        _ => {
-            state.log_error("invalid BPP value");
-            return;
-        }
-    };
-    // The palette swaps. Used to map colors from image to the actual palette.
-    let Some(swaps) = &image_bytes.get(..swaps_len) else {
-        state.log_error("the image file header is too small");
-        return;
-    };
-    // The raw packed image content.
-    let image_bytes = &image_bytes[swaps_len..];
-    let ppb = match bpp {
-        1 => 8,
-        2 => 4,
-        _ => 2,
-    };
-    if !(image_bytes.len() * ppb).is_multiple_of(width as usize) {
-        state.log_error(HostError::InvalidWidth);
+    if image_bytes[0] != 0x22 {
+        state.log_error("invalid magic number");
         return;
     }
 
-    // TODO: support canvas
-    if state.canvas.is_some() {
-        state.log_error("images cannot be drawn on canvas yet");
-        return;
-    }
-
-    let point = Point::new(x, y);
-    let image = ParsedImage {
-        bpp,
-        bytes: image_bytes,
-        width,
-        swaps,
-        transp,
-        sub,
-    };
-    image.render(point, &mut state.frame);
-}
-
-fn draw_image_v2(
-    state: &mut Box<State<'_>>,
-    image_bytes: &[u8],
-    x: i32,
-    y: i32,
-    sub: Option<Rectangle>,
-) {
     let width = u16::from_le_bytes([image_bytes[1], image_bytes[2]]) as u32;
     if width == 0 {
         state.log_error("image has zero width");
         return;
     }
     let transp = u8::from_le_bytes([image_bytes[3]]);
-    let image_bytes = &image_bytes[4..];
+    let image_bytes = &image_bytes[HEADER..];
     if !(image_bytes.len() * 2).is_multiple_of(width as usize) {
         state.log_error(HostError::InvalidWidth);
         return;
