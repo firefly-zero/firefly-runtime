@@ -571,10 +571,8 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
 
     let point = Point::new(x, y);
     let image = ParsedImage {
-        bpp: 4,
         bytes: image_bytes,
         width,
-        swaps: &[0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef],
         transp,
         sub,
     };
