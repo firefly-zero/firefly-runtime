@@ -70,14 +70,36 @@ impl ParsedImage<'_> {
             left_x = -((skip_px % PPB) as i32);
         }
 
+        // Check if the image bytes are aligned with frame buffer bytes
+        // and no image bytes are cut in half.
+        let is_aligned = point.x % 2 == 0 && left_x % 2 == 0 && right_x % 2 == 0;
+
+        // A faster implementation for when
+        // no transparency is used and the image is aligned.
+        if self.transp > 15 && is_aligned && p.x >= 0 {
+            let line_bytes = (right_x - left_x) as usize / PPB;
+            let mut target = &mut frame.data[..];
+            let target_offset = (p.y as usize * WIDTH + p.x as usize) / PPB;
+            target = &mut target[target_offset..];
+            while !image.is_empty() {
+                for (i, byte) in image[..line_bytes].iter().enumerate() {
+                    target[i] = byte.rotate_right(4);
+                }
+                if target.len() < WIDTH / PPB {
+                    break;
+                }
+                target = &mut target[WIDTH / PPB..];
+                image = &image[self.width as usize / PPB..]
+            }
+            frame.dirty = true;
+        }
+
         let mut i = 0;
-        let bpp = BPP as u32;
-        let mask = 0b1111;
         while i < image.len() {
             let mut byte = image[i];
             for _ in 0..PPB {
-                byte = byte.rotate_left(bpp);
-                let luma = byte & mask;
+                byte = byte.rotate_left(BPP as u32);
+                let luma = byte & 0b1111;
                 if luma != self.transp {
                     let color = Gray4::new(luma);
                     frame.set_pixel(p, color);
@@ -150,14 +172,13 @@ impl ParsedImage<'_> {
             return;
         }
 
-        const MASK: u8 = 0b1111;
         for iy in top..bottom {
             for ix in left..right {
                 let offset = (iy * self.width as i32 + ix) as usize;
                 let bytes_offset = offset / PPB;
                 let byte = self.bytes[bytes_offset];
                 let pixel_offset = 8 - BPP * (1 + offset % PPB);
-                let luma = (byte >> pixel_offset) & MASK;
+                let luma = (byte >> pixel_offset) & 0b1111;
                 if luma != self.transp {
                     let color = Gray4::new(luma);
                     let fx = p.x + (ix - left);
