@@ -18,4 +18,11 @@ micromath = "2.1.0"
 postcard = "1.0.8"
 serde = { version = "1.0.203", default-features = false, features = ["derive"] }
 tinyqr = "0.14.1"
-wasmi = { version = "1.0.9", default-features = false }
+wasmi = { version = "2.0.0-beta.1", default-features = false }
+
+[profile.dev.package.wasmi]
+opt-level = 2
+codegen-units = 1
+
+[profile.release]
+codegen-units = 1
