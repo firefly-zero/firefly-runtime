@@ -19,3 +19,6 @@ postcard = "1.0.8"
 serde = { version = "1.0.203", default-features = false, features = ["derive"] }
 tinyqr = "0.14.1"
 wasmi = { version = "1.0.9", default-features = false }
+
+[patch.crates-io]
+firefly-hal = { path = "../firefly-hal" }

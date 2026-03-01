@@ -13,6 +13,7 @@ pub(crate) mod net;
 pub(crate) mod stats;
 pub(crate) mod sudo;
 pub(crate) mod wasip1;
+pub(crate) mod wifi;
 
 #[cfg(test)]
 pub(crate) mod graphics_test;

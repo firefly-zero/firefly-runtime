@@ -56,6 +56,12 @@ pub(crate) fn populate_externals<'a>(
                 }
                 select_sudo_external(ctx, fn_name)
             }
+            "wifi" => {
+                if !sudo {
+                    return Err(LinkingError::SudoDisabled);
+                }
+                select_wifi_external(ctx, fn_name)
+            }
             "wasi_snapshot_preview1" => select_wasip1_external(ctx, fn_name),
             "g" => select_graphics_external_alias(ctx, fn_name),
             "i" => select_input_external_alias(ctx, fn_name),
@@ -242,6 +248,19 @@ fn select_sudo_external<'a>(
         "remove_file" => Func::wrap(ctx, sudo::remove_file),
         "remove_dir" => Func::wrap(ctx, sudo::remove_dir),
         "run_app" => Func::wrap(ctx, sudo::run_app),
+        _ => return None,
+    };
+    Some(func)
+}
+
+fn select_wifi_external<'a>(
+    ctx: impl wasmi::AsContextMut<Data = Box<State<'a>>>,
+    fn_name: &str,
+) -> Option<wasmi::Func> {
+    let func = match fn_name {
+        "scan" => Func::wrap(ctx, wifi::scan),
+        "connect" => Func::wrap(ctx, wifi::connect),
+        "disconnect" => Func::wrap(ctx, wifi::disconnect),
         _ => return None,
     };
     Some(func)

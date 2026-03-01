@@ -947,8 +947,6 @@ dependencies = [
 [[package]]
 name = "firefly-hal"
 version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18898e4415dc801470b41b7c6e60a13b2e16f7e955cc4dc409d16877c013c3f8"
 dependencies = [
  "battery",
  "cobs 0.5.0",
