@@ -260,6 +260,7 @@ fn select_wifi_external<'a>(
     let func = match fn_name {
         "scan" => Func::wrap(ctx, wifi::scan),
         "connect" => Func::wrap(ctx, wifi::connect),
+        "status" => Func::wrap(ctx, wifi::status),
         "disconnect" => Func::wrap(ctx, wifi::disconnect),
         _ => return None,
     };

@@ -46,34 +46,41 @@ pub(crate) fn scan(mut caller: C, ptr: u32, len: u32) -> u32 {
     pos as u32
 }
 
-pub(crate) fn connect(
-    mut caller: C,
-    ssid_ptr: u32,
-    ssid_len: u32,
-    pass_ptr: u32,
-    pass_len: u32,
-) -> u32 {
+pub(crate) fn connect(mut caller: C, ssid_ptr: u32, ssid_len: u32, pass_ptr: u32, pass_len: u32) {
     let state = caller.data_mut();
     state.called = "wifi.connect";
 
     let Some(memory) = state.memory else {
         state.log_error(HostError::MemoryNotFound);
-        return 1;
+        return;
     };
     let (data, state) = memory.data_and_store_mut(&mut caller);
     let Some(ssid) = load_string(state, data, ssid_ptr, ssid_len) else {
-        return 1;
+        return;
     };
     let Some(pass) = load_string(state, data, pass_ptr, pass_len) else {
-        return 1;
+        return;
     };
 
     let mut wifi = state.device.wifi();
     let res = wifi.connect(ssid, pass);
-    if res.is_ok() {
-        0
-    } else {
-        1
+    if let Err(err) = res {
+        state.log_error(err);
+    }
+}
+
+pub(crate) fn status(mut caller: C) -> u32 {
+    let state = caller.data_mut();
+    state.called = "wifi.status";
+
+    let mut wifi = state.device.wifi();
+    let res = wifi.status();
+    match res {
+        Ok(status) => u32::from(status),
+        Err(err) => {
+            state.log_error(err);
+            0
+        }
     }
 }
 
