@@ -262,6 +262,10 @@ fn select_wifi_external<'a>(
         "connect" => Func::wrap(ctx, wifi::connect),
         "status" => Func::wrap(ctx, wifi::status),
         "disconnect" => Func::wrap(ctx, wifi::disconnect),
+        "tcp_connect" => Func::wrap(ctx, wifi::tcp_connect),
+        "tcp_status" => Func::wrap(ctx, wifi::tcp_status),
+        "tcp_send" => Func::wrap(ctx, wifi::tcp_send),
+        "tcp_close" => Func::wrap(ctx, wifi::tcp_close),
         _ => return None,
     };
     Some(func)
