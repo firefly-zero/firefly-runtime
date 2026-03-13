@@ -132,7 +132,7 @@ pub(crate) fn tcp_send(mut caller: C, ptr: u32, len: u32) {
     let (data, state) = memory.data_and_store_mut(&mut caller);
     let ptr = ptr as usize;
     let len = len as usize;
-    let Some(data) = &data.get(ptr..(ptr + len)) else {
+    let Some(data) = data.get(ptr..(ptr + len)) else {
         state.log_error(HostError::OomPointer);
         return;
     };
@@ -142,6 +142,35 @@ pub(crate) fn tcp_send(mut caller: C, ptr: u32, len: u32) {
     if let Err(err) = res {
         state.log_error(err);
     }
+}
+
+pub(crate) fn tcp_recv(mut caller: C, ptr: u32, len: u32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "wifi.tcp_recv";
+
+    let Some(memory) = state.memory else {
+        state.log_error(HostError::MemoryNotFound);
+        return 0;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let ptr = ptr as usize;
+    let len = len as usize;
+    let Some(target) = data.get_mut(ptr..(ptr + len)) else {
+        state.log_error(HostError::OomPointer);
+        return 0;
+    };
+
+    let mut wifi = state.device.wifi();
+    let Ok(chunk) = wifi.tcp_recv() else {
+        state.log_error("failed to receive TCP chunk");
+        return 0;
+    };
+    if target.len() < chunk.len() {
+        state.log_error("the target buffer is too small");
+        return 0;
+    }
+    target[..chunk.len()].copy_from_slice(&chunk);
+    chunk.len() as u32
 }
 
 pub(crate) fn tcp_close(mut caller: C) {

@@ -246,6 +246,7 @@ fn select_sudo_external<'a>(
         "load_file" => Func::wrap(ctx, sudo::load_file),
         "dump_file" => Func::wrap(ctx, sudo::dump_file),
         "remove_file" => Func::wrap(ctx, sudo::remove_file),
+        "create_dir" => Func::wrap(ctx, sudo::create_dir),
         "remove_dir" => Func::wrap(ctx, sudo::remove_dir),
         "run_app" => Func::wrap(ctx, sudo::run_app),
         _ => return None,
@@ -265,6 +266,7 @@ fn select_wifi_external<'a>(
         "tcp_connect" => Func::wrap(ctx, wifi::tcp_connect),
         "tcp_status" => Func::wrap(ctx, wifi::tcp_status),
         "tcp_send" => Func::wrap(ctx, wifi::tcp_send),
+        "tcp_recv" => Func::wrap(ctx, wifi::tcp_recv),
         "tcp_close" => Func::wrap(ctx, wifi::tcp_close),
         _ => return None,
     };
