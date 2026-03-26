@@ -478,8 +478,12 @@ pub(crate) fn create_dir(mut caller: C, path_ptr: u32, path_len: u32) {
             return;
         }
     };
-    if let Err(err) = dir.create_dir(dir_name) {
-        state.log_error(err);
+
+    let res = dir.create_dir(dir_name);
+    match res {
+        Ok(()) => {}
+        Err(FSError::DirAlreadyExists) => {}
+        Err(err) => state.log_error(err),
     };
 }
 
@@ -518,8 +522,11 @@ pub(crate) fn remove_dir(mut caller: C, path_ptr: u32, path_len: u32) {
             return;
         }
     };
-    if let Err(err) = dir.remove_dir() {
-        state.log_error(err);
+    let res = dir.remove_dir();
+    match res {
+        Ok(()) => {}
+        Err(FSError::NotFound) => {}
+        Err(err) => state.log_error(err),
     };
 }
 
