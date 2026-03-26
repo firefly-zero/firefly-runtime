@@ -58,14 +58,13 @@ pub(crate) enum ConnectionStatus {
 ///
 /// This object is allocated while your are in the launcher.
 /// Its job is to launch an app for everyone when someone picks one to play.
-pub(crate) struct Connection<'a> {
+pub(crate) struct Connection {
     /// In the initial state, a prepared intro for the current device.
     /// Later, when the app to be launched is known, contains the id of the app to launch
     /// and the intro moves into [`Peer`] corresponding to the local device.
     pub app: Option<FullID>,
     pub seed: Option<u32>,
     pub peers: heapless::Vec<Peer, MAX_PEERS>,
-    pub(super) net: NetworkImpl<'a>,
     /// The last time when the device checked if other devices are ready to start.
     pub(super) last_sync: Option<Instant>,
     /// The last time when the device announced that it's ready to start the app.
@@ -74,7 +73,7 @@ pub(crate) struct Connection<'a> {
     pub(super) started_at: Option<Instant>,
 }
 
-impl<'a> Connection<'a> {
+impl Connection {
     pub fn update(&mut self, device: &mut DeviceImpl) -> ConnectionStatus {
         if let Some(started_at) = self.started_at {
             let now = device.now();
@@ -100,9 +99,9 @@ impl<'a> Connection<'a> {
     /// Disconnect from multiplayer.
     ///
     /// Can be called from menu in launcher if connected to multiplayer.
-    pub fn disconnect(mut self) -> Result<(), NetcodeError> {
-        self.broadcast(Req::Disconnect.into())?;
-        self.net.stop()?;
+    pub fn disconnect(self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
+        self.broadcast(device, Req::Disconnect.into())?;
+        device.net_stop()?;
         Ok(())
     }
 
@@ -123,7 +122,7 @@ impl<'a> Connection<'a> {
             stash: intro.stash.clone().into(),
             seed: intro.seed,
         });
-        self.broadcast(resp.into())?;
+        self.broadcast(device, resp.into())?;
         self.app = Some(app);
         self.started_at = Some(device.now());
         let me = self.get_me_mut();
@@ -147,7 +146,7 @@ impl<'a> Connection<'a> {
         }
     }
 
-    pub(crate) fn finalize(self, device: &mut DeviceImpl) -> Box<FrameSyncer<'a>> {
+    pub(crate) fn finalize(self, device: &mut DeviceImpl) -> Box<FrameSyncer> {
         let mut peers = heapless::Vec::<FSPeer, 8>::new();
         let mut seed = 0;
         for peer in self.peers {
@@ -174,7 +173,6 @@ impl<'a> Connection<'a> {
         }
         Box::new(FrameSyncer {
             peers,
-            net: self.net,
             last_sync: None,
             frame: 0,
             last_advance: None,
@@ -186,10 +184,10 @@ impl<'a> Connection<'a> {
 
     fn update_inner(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         let now = device.now();
-        self.sync(now)?;
-        self.send_ready(now)?;
+        self.sync(device, now)?;
+        self.send_ready(device, now)?;
         for _ in 0..4 {
-            let Some((addr, msg)) = self.net.recv()? else {
+            let Some((addr, msg)) = device.net_recv()? else {
                 break;
             };
             self.handle_message(device, addr, msg)?;
@@ -198,19 +196,19 @@ impl<'a> Connection<'a> {
     }
 
     /// Ask other devices if they already started.
-    fn sync(&mut self, now: Instant) -> Result<(), NetcodeError> {
+    fn sync(&mut self, device: &mut DeviceImpl, now: Instant) -> Result<(), NetcodeError> {
         if let Some(prev) = self.last_sync {
             if now - prev < SYNC_EVERY {
                 return Ok(());
             }
         }
         self.last_sync = Some(now);
-        self.broadcast(Req::Start.into())?;
+        self.broadcast(device, Req::Start.into())?;
         Ok(())
     }
 
     /// Tell other devices if we are ready to start.
-    fn send_ready(&mut self, now: Instant) -> Result<(), NetcodeError> {
+    fn send_ready(&mut self, device: &mut DeviceImpl, now: Instant) -> Result<(), NetcodeError> {
         // Say we're ready only if we are actually ready:
         // if we know the next app to launch.
         let Some(app) = &self.app else {
@@ -231,7 +229,7 @@ impl<'a> Connection<'a> {
             stash: intro.stash.clone().into_boxed_slice(),
             seed: intro.seed,
         });
-        self.broadcast(resp.into())?;
+        self.broadcast(device, resp.into())?;
         Ok(())
     }
 
@@ -264,14 +262,19 @@ impl<'a> Connection<'a> {
         }
         let msg = Message::decode(&raw)?;
         match msg {
-            Message::Req(req) => self.handle_req(addr, req),
+            Message::Req(req) => self.handle_req(device, addr, req),
             Message::Resp(resp) => self.handle_resp(device, addr, resp),
         }
     }
 
-    fn handle_req(&mut self, addr: Addr, req: Req) -> Result<(), NetcodeError> {
+    fn handle_req(
+        &mut self,
+        device: &mut DeviceImpl,
+        addr: Addr,
+        req: Req,
+    ) -> Result<(), NetcodeError> {
         match req {
-            Req::Start => self.handle_start_req(addr)?,
+            Req::Start => self.handle_start_req(device, addr)?,
             Req::Disconnect => self.handle_disconnect(addr)?,
             _ => {}
         }
@@ -282,7 +285,7 @@ impl<'a> Connection<'a> {
     ///
     /// The request is sent by other devices to check if the current device
     /// is ready to start an app.
-    fn handle_start_req(&mut self, addr: Addr) -> Result<(), NetcodeError> {
+    fn handle_start_req(&self, device: &mut DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
         let Some(app) = &self.app else {
             return Ok(());
         };
@@ -300,7 +303,7 @@ impl<'a> Connection<'a> {
         let resp = Message::Resp(Resp::Start(resp));
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = resp.encode(&mut buf)?;
-        self.net.send(addr, raw)?;
+        device.net_send(addr, raw)?;
         Ok(())
     }
 
@@ -356,12 +359,12 @@ impl<'a> Connection<'a> {
     }
 
     /// Send the message to all connected peers.
-    fn broadcast(&mut self, msg: Message) -> Result<(), NetcodeError> {
+    fn broadcast(&self, device: &mut DeviceImpl, msg: Message) -> Result<(), NetcodeError> {
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
         for peer in &self.peers {
             if let Some(addr) = peer.addr {
-                self.net.send(addr, raw)?;
+                device.net_send(addr, raw)?;
             }
         }
         Ok(())

@@ -26,9 +26,8 @@ pub(crate) struct PeerInfo {
 /// If you play games with friends, you establish the connection once
 /// at the beginning of the evening and it stays on as long as
 /// all the devices are turned on.
-pub(crate) struct Connector<'a> {
+pub(crate) struct Connector {
     pub me: Intro,
-    net: NetworkImpl<'a>,
     last_advertisement: Option<Instant>,
     peer_addrs: heapless::Vec<Addr, MAX_PEERS>,
     peer_infos: heapless::Vec<PeerInfo, MAX_PEERS>,
@@ -39,11 +38,10 @@ pub(crate) struct Connector<'a> {
     pub status: Option<ConnectStatus>,
 }
 
-impl<'a> Connector<'a> {
-    pub fn new(me: Intro, net: NetworkImpl<'a>) -> Self {
+impl Connector {
+    pub fn new(me: Intro) -> Self {
         Self {
             me,
-            net,
             last_advertisement: None,
             peer_addrs: heapless::Vec::new(),
             peer_infos: heapless::Vec::new(),
@@ -68,10 +66,10 @@ impl<'a> Connector<'a> {
     }
 
     /// Stop all network operations.
-    pub fn cancel(&mut self) -> Result<(), NetcodeError> {
+    pub fn cancel(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         self.stopped = true;
-        self.send_disconnect()?;
-        self.net.stop()?;
+        self.send_disconnect(device)?;
+        device.net_stop()?;
         Ok(())
     }
 
@@ -84,7 +82,7 @@ impl<'a> Connector<'a> {
         Ok(())
     }
 
-    pub fn finalize(self) -> Box<Connection<'a>> {
+    pub fn finalize(self, device: &mut DeviceImpl) -> Box<Connection> {
         let mut peers = heapless::Vec::<Peer, 8>::new();
         for peer in self.peer_infos {
             let peer = Peer {
@@ -100,12 +98,11 @@ impl<'a> Connector<'a> {
             app: None,
         };
         peers.push(me).ok().unwrap();
-        let local_addr = self.net.local_addr();
+        let local_addr = device.net_local_addr();
         peers.sort_by_key(|p| p.addr.unwrap_or(local_addr));
         Box::new(Connection {
             peers,
             app: None,
-            net: self.net,
             last_sync: None,
             last_ready: None,
             seed: None,
@@ -113,17 +110,17 @@ impl<'a> Connector<'a> {
         })
     }
 
-    pub fn update(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
+    pub fn update(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         if !self.started {
             self.started = true;
-            self.net.start()?;
+            device.net_start()?;
         }
         if !self.stopped {
             let now = device.now();
-            self.advertise(now)?;
+            self.advertise(device, now)?;
         }
         for _ in 0..4 {
-            let Some((addr, msg)) = self.net.recv()? else {
+            let Some((addr, msg)) = device.net_recv()? else {
                 break;
             };
             self.handle_message(device, addr, msg)?;
@@ -131,20 +128,20 @@ impl<'a> Connector<'a> {
         Ok(())
     }
 
-    fn advertise(&mut self, now: Instant) -> Result<(), NetcodeError> {
+    fn advertise(&mut self, device: &mut DeviceImpl, now: Instant) -> Result<(), NetcodeError> {
         if let Some(prev) = self.last_advertisement {
             if now - prev < ADVERTISE_EVERY {
                 return Ok(());
             }
         }
         self.last_advertisement = Some(now);
-        self.net.advertise()?;
+        device.net_advertise()?;
         Ok(())
     }
 
     fn handle_message(
         &mut self,
-        device: &DeviceImpl,
+        device: &mut DeviceImpl,
         addr: Addr,
         raw: Box<[u8]>,
     ) -> Result<(), NetcodeError> {
@@ -157,7 +154,7 @@ impl<'a> Connector<'a> {
 
     fn handle_req(
         &mut self,
-        device: &DeviceImpl,
+        device: &mut DeviceImpl,
         addr: Addr,
         req: Req,
     ) -> Result<(), NetcodeError> {
@@ -176,7 +173,7 @@ impl<'a> Connector<'a> {
         }
     }
 
-    fn handle_hello(&mut self, device: &DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
+    fn handle_hello(&mut self, device: &mut DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
         if !self.stopped && !self.peer_addrs.contains(&addr) {
             let res = self.peer_addrs.push(addr);
             if res.is_err() {
@@ -236,21 +233,21 @@ impl<'a> Connector<'a> {
         Ok(())
     }
 
-    fn send_intro(&mut self, _device: &DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
+    fn send_intro(&self, device: &mut DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
         let intro = self.me.clone();
         let msg = Message::Resp(Resp::Intro(intro));
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
-        self.net.send(addr, raw)?;
+        device.net_send(addr, raw)?;
         Ok(())
     }
 
-    fn send_disconnect(&mut self) -> Result<(), NetcodeError> {
+    fn send_disconnect(&self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         let msg = Message::Req(Req::Disconnect);
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
         for addr in &self.peer_addrs {
-            self.net.send(*addr, raw)?;
+            device.net_send(*addr, raw)?;
         }
         Ok(())
     }

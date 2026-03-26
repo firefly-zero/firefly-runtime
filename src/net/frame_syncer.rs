@@ -25,7 +25,7 @@ pub(crate) struct FSPeer {
     pub stash: alloc::vec::Vec<u8>,
 }
 
-pub(crate) struct FrameSyncer<'a> {
+pub(crate) struct FrameSyncer {
     pub frame: u32,
     pub peers: heapless::Vec<FSPeer, MAX_PEERS>,
     /// The initial seed of the current device.
@@ -35,10 +35,9 @@ pub(crate) struct FrameSyncer<'a> {
     pub app: FullID,
     pub(super) last_sync: Option<Instant>,
     pub(super) last_advance: Option<Instant>,
-    pub(super) net: NetworkImpl<'a>,
 }
 
-impl<'a> FrameSyncer<'a> {
+impl FrameSyncer {
     /// Check if we have the state of the current frame for all connected peers.
     pub fn ready(&self) -> bool {
         for peer in &self.peers {
@@ -54,7 +53,7 @@ impl<'a> FrameSyncer<'a> {
     ///
     /// Used when the game exits back into launcher
     /// so that players can launch another app.
-    pub fn into_connection(self) -> Box<Connection<'a>> {
+    pub fn into_connection(self) -> Box<Connection> {
         let mut peers = heapless::Vec::<Peer, 8>::new();
         for peer in self.peers {
             let peer = Peer {
@@ -68,7 +67,6 @@ impl<'a> FrameSyncer<'a> {
             app: None,
             seed: None,
             peers,
-            net: self.net,
             last_sync: None,
             last_ready: None,
             started_at: None,
@@ -104,7 +102,7 @@ impl<'a> FrameSyncer<'a> {
         seed
     }
 
-    pub fn update(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
+    pub fn update(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         let now = device.now();
         let timeout = if self.frame <= 2 {
             FIRST_TIMEOUT
@@ -180,7 +178,7 @@ impl<'a> FrameSyncer<'a> {
 
         for peer in &mut self.peers {
             if let Some(addr) = peer.addr {
-                let res = self.net.send(addr, raw);
+                let res = device.net_send(addr, raw);
                 if let Err(err) = res {
                     device.log_error("netcode", err);
                 }
@@ -190,19 +188,19 @@ impl<'a> FrameSyncer<'a> {
         self.last_sync = Some(now);
     }
 
-    fn update_inner(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
+    fn update_inner(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         for _ in 0..4 {
-            let Some((addr, msg)) = self.net.recv()? else {
+            let Some((addr, msg)) = device.net_recv()? else {
                 break;
             };
-            self.handle_message(addr, msg)?;
+            self.handle_message(device, addr, msg)?;
         }
         self.sync(device)
     }
 
     /// Get every connected peer with unknown state for the current frame
     /// and send them a request for that state.
-    fn sync(&mut self, device: &DeviceImpl) -> Result<(), NetcodeError> {
+    fn sync(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         let now = device.now();
         if let Some(prev) = self.last_sync {
             if now - prev < SYNC_EVERY {
@@ -220,36 +218,46 @@ impl<'a> FrameSyncer<'a> {
             };
             let state = peer.states.get_current();
             if state.is_none() {
-                self.net.send(addr, raw)?;
+                device.net_send(addr, raw)?;
             }
         }
         Ok(())
     }
 
-    fn handle_message(&mut self, addr: Addr, raw: Box<[u8]>) -> Result<(), NetcodeError> {
+    fn handle_message(
+        &mut self,
+        device: &mut DeviceImpl,
+        addr: Addr,
+        raw: Box<[u8]>,
+    ) -> Result<(), NetcodeError> {
         if !self.peers.iter().any(|p| p.addr == Some(addr)) {
             return Err(NetcodeError::UnknownPeer);
         }
         let msg = Message::decode(&raw)?;
         match msg {
-            Message::Req(req) => self.handle_req(addr, req),
+            Message::Req(req) => self.handle_req(device, addr, req),
             Message::Resp(resp) => self.handle_resp(addr, resp),
         }
     }
 
-    fn handle_req(&mut self, addr: Addr, req: Req) -> Result<(), NetcodeError> {
+    fn handle_req(
+        &self,
+        device: &mut DeviceImpl,
+        addr: Addr,
+        req: Req,
+    ) -> Result<(), NetcodeError> {
         // A peer requested a state for a specific frame.
         // Send them the state if available.
         // If not, send nothing, let them timeout.
         match req {
-            Req::State(frame) => self.handle_state_req(addr, frame)?,
-            Req::Start => self.handle_start_req(addr)?,
+            Req::State(frame) => self.handle_state_req(device, addr, frame)?,
+            Req::Start => self.handle_start_req(device, addr)?,
             _ => return Err(NetcodeError::UnexpectedRequest),
         }
         Ok(())
     }
 
-    fn handle_start_req(&mut self, addr: Addr) -> Result<(), NetcodeError> {
+    fn handle_start_req(&self, device: &mut DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
         let me = self.get_me();
         let resp = Start {
             id: self.app.clone(),
@@ -261,18 +269,23 @@ impl<'a> FrameSyncer<'a> {
         let resp = Message::Resp(Resp::Start(resp));
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = resp.encode(&mut buf)?;
-        self.net.send(addr, raw)?;
+        device.net_send(addr, raw)?;
         Ok(())
     }
 
-    fn handle_state_req(&mut self, addr: Addr, frame: u32) -> Result<(), NetcodeError> {
+    fn handle_state_req(
+        &self,
+        device: &mut DeviceImpl,
+        addr: Addr,
+        frame: u32,
+    ) -> Result<(), NetcodeError> {
         let me = self.get_me();
         let state = me.states.get(frame);
         if let Some(state) = state {
             let msg = Message::Resp(Resp::State(state));
             let mut buf = alloc::vec![0u8; MSG_SIZE];
             let raw = msg.encode(&mut buf)?;
-            self.net.send(addr, raw)?;
+            device.net_send(addr, raw)?;
         };
         Ok(())
     }

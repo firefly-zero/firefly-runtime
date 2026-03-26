@@ -1,6 +1,6 @@
 use crate::{error::HostError, state::State};
 use alloc::boxed::Box;
-use firefly_hal::{Device, Wifi};
+use firefly_hal::Wifi;
 
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
 
@@ -20,8 +20,7 @@ pub(crate) fn scan(mut caller: C, ptr: u32, len: u32) -> u32 {
         return 0;
     };
 
-    let mut wifi = state.device.wifi();
-    let points = match wifi.scan() {
+    let points = match state.device.wifi_scan() {
         Ok(points) => points,
         Err(err) => {
             state.log_error(err);
@@ -62,8 +61,7 @@ pub(crate) fn connect(mut caller: C, ssid_ptr: u32, ssid_len: u32, pass_ptr: u32
         return;
     };
 
-    let mut wifi = state.device.wifi();
-    let res = wifi.connect(ssid, pass);
+    let res = state.device.wifi_connect(ssid, pass);
     if let Err(err) = res {
         state.log_error(err);
     }
@@ -73,8 +71,7 @@ pub(crate) fn status(mut caller: C) -> u32 {
     let state = caller.data_mut();
     state.called = "wifi.status";
 
-    let mut wifi = state.device.wifi();
-    let res = wifi.status();
+    let res = state.device.wifi_status();
     match res {
         Ok(status) => u32::from(status),
         Err(err) => {
@@ -88,8 +85,7 @@ pub(crate) fn disconnect(mut caller: C) {
     let state = caller.data_mut();
     state.called = "wifi.disconnect";
 
-    let wifi = state.device.wifi();
-    let res = wifi.disconnect();
+    let res = state.device.wifi_disconnect();
     if let Err(err) = res {
         state.log_error(err);
     }
@@ -99,8 +95,7 @@ pub(crate) fn tcp_connect(mut caller: C, ip: u32, port: u32) {
     let state = caller.data_mut();
     state.called = "wifi.tcp_connect";
 
-    let mut wifi = state.device.wifi();
-    let res = wifi.tcp_connect(ip, port as u16);
+    let res = state.device.tcp_connect(ip, port as u16);
     if let Err(err) = res {
         state.log_error(err);
     }
@@ -110,8 +105,7 @@ pub(crate) fn tcp_status(mut caller: C) -> u32 {
     let state = caller.data_mut();
     state.called = "wifi.tcp_status";
 
-    let mut wifi = state.device.wifi();
-    let res = wifi.tcp_status();
+    let res = state.device.tcp_status();
     match res {
         Ok(status) => u32::from(status),
         Err(err) => {
@@ -137,8 +131,7 @@ pub(crate) fn tcp_send(mut caller: C, ptr: u32, len: u32) {
         return;
     };
 
-    let mut wifi = state.device.wifi();
-    let res = wifi.tcp_send(data);
+    let res = state.device.tcp_send(data);
     if let Err(err) = res {
         state.log_error(err);
     }
@@ -160,8 +153,7 @@ pub(crate) fn tcp_recv(mut caller: C, ptr: u32, len: u32) -> u32 {
         return 0;
     };
 
-    let mut wifi = state.device.wifi();
-    let Ok(chunk) = wifi.tcp_recv() else {
+    let Ok(chunk) = state.device.tcp_recv() else {
         state.log_error("failed to receive TCP chunk");
         return 0;
     };
@@ -177,8 +169,7 @@ pub(crate) fn tcp_close(mut caller: C) {
     let state = caller.data_mut();
     state.called = "wifi.tcp_close";
 
-    let mut wifi = state.device.wifi();
-    let res = wifi.tcp_close();
+    let res = state.device.tcp_close();
     if let Err(err) = res {
         state.log_error(err);
     }

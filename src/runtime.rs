@@ -47,7 +47,6 @@ where
     render_every: u8,
 
     stats: Option<StatsTracker>,
-    serial: SerialImpl,
 }
 
 impl<'a, D, C> Runtime<'a, D, C>
@@ -92,8 +91,7 @@ where
         let sudo = meta.sudo;
         let launcher = meta.launcher;
 
-        let mut serial = config.device.serial();
-        let res = serial.start();
+        let res = config.device.serial_start();
         if let Err(err) = res {
             return Err(Error::SerialStart(err));
         }
@@ -174,7 +172,6 @@ where
             render_every: 2,
             prev_time: now,
             prev_lag: Duration::from_ms(0),
-            serial,
         };
         Ok(runtime)
     }
@@ -405,7 +402,7 @@ where
 
     /// Handle requests and responses on the USB serial port.
     fn handle_serial(&mut self) -> Result<(), Error> {
-        let maybe_msg = match self.serial.recv() {
+        let maybe_msg = match self.device_mut().serial_recv() {
             Ok(msg) => msg,
             Err(err) => return Err(Error::SerialRecv(err)),
         };
@@ -437,7 +434,7 @@ where
             Ok(encoded) => encoded,
             Err(err) => return Err(Error::SerialEncode(err)),
         };
-        let res = self.serial.send(&encoded);
+        let res = self.device_mut().serial_send(&encoded);
         if let Err(err) = res {
             return Err(Error::SerialSend(err));
         }
@@ -516,7 +513,7 @@ where
             Ok(encoded) => encoded,
             Err(err) => return Err(Error::SerialEncode(err)),
         };
-        let res = self.serial.send(&encoded);
+        let res = self.device_mut().serial_send(&encoded);
         if let Err(err) = res {
             return Err(Error::SerialSend(err));
         }

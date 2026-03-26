@@ -20,11 +20,11 @@ use firefly_hal::*;
 use firefly_types::Encode;
 
 #[allow(private_interfaces)]
-pub enum NetHandler<'a> {
+pub enum NetHandler {
     None,
-    Connector(Box<Connector<'a>>),
-    Connection(Box<Connection<'a>>),
-    FrameSyncer(Box<FrameSyncer<'a>>),
+    Connector(Box<Connector>),
+    Connection(Box<Connection>),
+    FrameSyncer(Box<FrameSyncer>),
 }
 
 pub(crate) struct State<'a> {
@@ -88,7 +88,7 @@ pub(crate) struct State<'a> {
     pub stash: alloc::vec::Vec<u8>,
     pub stash_dirty: bool,
 
-    pub net_handler: Cell<NetHandler<'a>>,
+    pub net_handler: Cell<NetHandler>,
     action: Action,
 }
 
@@ -101,7 +101,7 @@ impl<'a> State<'a> {
         id: FullID,
         device: DeviceImpl<'a>,
         rom_dir: DirImpl,
-        net_handler: NetHandler<'a>,
+        net_handler: NetHandler,
         launcher: bool,
     ) -> Box<Self> {
         let seed = match &net_handler {
@@ -398,8 +398,8 @@ impl<'a> State<'a> {
         self.net_handler.replace(handler);
     }
 
-    fn update_connector<'b>(&mut self, mut connector: Box<Connector<'b>>) -> NetHandler<'b> {
-        let res = connector.update(&self.device);
+    fn update_connector(&mut self, mut connector: Box<Connector>) -> NetHandler {
+        let res = connector.update(&mut self.device);
         if let Err(err) = res {
             self.error = Some(ErrorScene::new(alloc::format!("{err}")));
             self.device.log_error("netcode", err);
@@ -423,7 +423,7 @@ impl<'a> State<'a> {
             }
             ConnectStatus::Cancelled => {
                 self.set_next(None);
-                let res = connector.cancel();
+                let res = connector.cancel(&mut self.device);
                 if let Err(err) = res {
                     self.device.log_error("netcode", err);
                 }
@@ -434,13 +434,13 @@ impl<'a> State<'a> {
                     self.error = Some(ErrorScene::new(err.to_owned()))
                 }
                 self.set_next(None);
-                let connection = connector.finalize();
+                let connection = connector.finalize(&mut self.device);
                 NetHandler::Connection(connection)
             }
         }
     }
 
-    fn update_connection<'b>(&mut self, mut connection: Box<Connection<'b>>) -> NetHandler<'b> {
+    fn update_connection(&mut self, mut connection: Box<Connection>) -> NetHandler {
         let status = connection.update(&mut self.device);
         match status {
             ConnectionStatus::Launching => {
@@ -461,7 +461,7 @@ impl<'a> State<'a> {
         NetHandler::Connection(connection)
     }
 
-    fn update_syncer<'b>(&mut self, mut syncer: Box<FrameSyncer<'b>>) -> NetHandler<'b> {
+    fn update_syncer(&mut self, mut syncer: Box<FrameSyncer>) -> NetHandler {
         // * Don't sync seed if it is locked by the app (misc.set_seed was called).
         // * Don't sync seed if misc.get_random was never called.
         // * Don't sync seed too often to avoid poking true RNG too often.
@@ -483,7 +483,7 @@ impl<'a> State<'a> {
 
         syncer.advance(&mut self.device, frame_state);
         while !syncer.ready() {
-            let res = syncer.update(&self.device);
+            let res = syncer.update(&mut self.device);
             if let Err(err) = res {
                 self.device.log_error("netcode", err);
                 self.set_next(None);
@@ -564,9 +564,8 @@ impl<'a> State<'a> {
             theme: s.theme,
             flags,
         };
-        let net = self.device.network();
         self.net_handler
-            .set(NetHandler::Connector(Box::new(Connector::new(me, net))));
+            .set(NetHandler::Connector(Box::new(Connector::new(me))));
         let id = FullID::from_str("sys", "connector").unwrap();
         self.set_next(Some(id));
     }
@@ -574,7 +573,7 @@ impl<'a> State<'a> {
     pub fn disconnect(&mut self) {
         let net_handler = self.net_handler.replace(NetHandler::None);
         if let NetHandler::Connection(conn) = net_handler {
-            let res = conn.disconnect();
+            let res = conn.disconnect(&mut self.device);
             if let Err(err) = res {
                 self.device.log_error("netcode", &err);
                 let msg = alloc::format!("{err}");
