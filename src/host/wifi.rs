@@ -176,7 +176,7 @@ pub(crate) fn tcp_close(mut caller: C) {
 }
 
 pub(super) fn load_string<'a>(
-    state: &State,
+    state: &mut State,
     data: &'a [u8],
     ptr: u32,
     len: u32,

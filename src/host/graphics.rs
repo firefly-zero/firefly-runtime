@@ -522,7 +522,7 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
     const HEADER: usize = 4;
 
     // retrieve the raw data from memory
-    let state = caller.data();
+    let state = caller.data_mut();
     let Some(memory) = state.memory else {
         state.log_error(HostError::MemoryNotFound);
         return;

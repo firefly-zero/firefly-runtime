@@ -118,7 +118,7 @@ pub(crate) fn load_stash(mut caller: C, peer_id: u32, buf_ptr: u32, buf_len: u32
     let stash_len = stash.len();
     if stash_len > buf.len() {
         state.log_error("the buffer is not big enough to fit stash");
-        buf.copy_from_slice(&stash[..buf.len()]);
+        return 0;
     } else {
         buf[..stash_len].copy_from_slice(&stash[..]);
     };

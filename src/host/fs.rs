@@ -228,7 +228,7 @@ pub(crate) fn remove_file(mut caller: C, path_ptr: u32, path_len: u32) {
 
 /// Load, parse, and validate the file name
 pub(super) fn get_file_name<'a>(
-    state: &State,
+    state: &mut State,
     data: &'a [u8],
     path_ptr: u32,
     path_len: u32,
