@@ -7,7 +7,7 @@ use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::RgbColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{
-    CornerRadii, PrimitiveStyle, Rectangle, RoundedRectangle, StyledDrawable, Triangle,
+    CornerRadii, Line, PrimitiveStyle, Rectangle, RoundedRectangle, StyledDrawable, Triangle,
 };
 use embedded_graphics::text::Text;
 use firefly_hal::InputState;
@@ -220,20 +220,37 @@ impl Menu {
         let size = Size::new(232, LINE_HEIGHT as u32);
         let corners = CornerRadii::new(Size::new_equal(4));
 
-        // Render shadow.
-        let box_style = PrimitiveStyle::with_fill(C::PRIMARY);
-        let point = Point::new(4, 3 + i * LINE_HEIGHT);
-        let rect = Rectangle::new(point, size);
-        let rect = RoundedRectangle::new(rect, corners);
-        rect.draw_styled(&box_style, display)?;
-
         // Render the selection box.
-        let mut box_style = PrimitiveStyle::with_stroke(C::PRIMARY, 1);
-        box_style.fill_color = Some(C::BG);
+        let box_style = PrimitiveStyle::with_stroke(C::PRIMARY, 1);
         let point = Point::new(3, 2 + i * LINE_HEIGHT);
         let rect = Rectangle::new(point, size);
         let rect = RoundedRectangle::new(rect, corners);
         rect.draw_styled(&box_style, display)?;
+
+        const LEFT: i32 = 3;
+        const RIGHT: i32 = 234;
+        let top: i32 = 2 + i * LINE_HEIGHT;
+
+        // Bottom.
+        let style = PrimitiveStyle::with_stroke(C::PRIMARY, 1);
+        Line::new(
+            Point::new(LEFT + 3, top + LINE_HEIGHT),
+            Point::new(RIGHT - 1, top + LINE_HEIGHT),
+        )
+        .into_styled(style)
+        .draw(display)?;
+        // Right.
+        Line::new(
+            Point::new(RIGHT + 1, top + 3),
+            Point::new(RIGHT + 1, top + LINE_HEIGHT - 2),
+        )
+        .into_styled(style)
+        .draw(display)?;
+        // Bottom-right corner.
+        Pixel(Point::new(RIGHT, top + LINE_HEIGHT - 2), C::PRIMARY).draw(display)?;
+        Pixel(Point::new(RIGHT, top + LINE_HEIGHT - 1), C::PRIMARY).draw(display)?;
+        Pixel(Point::new(RIGHT - 1, top + LINE_HEIGHT - 1), C::PRIMARY).draw(display)?;
+
         Ok(())
     }
 
@@ -244,7 +261,7 @@ impl Menu {
         C: RgbColor + FromRGB,
     {
         const MAX_WIDTH: u32 = 20;
-        const HEIGHT: u32 = 11;
+        const HEIGHT: u32 = 9;
 
         let Some(battery) = battery else {
             return Ok(());
@@ -277,7 +294,7 @@ impl Menu {
 
         // Draw nibble on the right end.
         {
-            let size = Size::new(1, 5);
+            let size = Size::new(1, 3);
             let box_style = PrimitiveStyle::with_fill(C::PRIMARY);
             let point = point + Point::new(MAX_WIDTH as _, 3);
             let rect = Rectangle::new(point, size);
