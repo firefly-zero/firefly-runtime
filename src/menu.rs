@@ -7,7 +7,7 @@ use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::RgbColor;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{
-    CornerRadii, Line, PrimitiveStyle, Rectangle, RoundedRectangle, StyledDrawable, Triangle,
+    CornerRadii, PrimitiveStyle, Rectangle, RoundedRectangle, StyledDrawable, Triangle,
 };
 use embedded_graphics::text::Text;
 use firefly_hal::InputState;
@@ -227,39 +227,47 @@ impl Menu {
         D: DrawTarget<Color = C, Error = E> + OriginDimensions,
         C: RgbColor + FromRGB,
     {
-        let size = Size::new(232, LINE_HEIGHT as u32);
-        let corners = CornerRadii::new(Size::new_equal(4));
-
-        // Render the selection box.
-        let box_style = PrimitiveStyle::with_stroke(color, 1);
-        let point = Point::new(3, 2 + i * LINE_HEIGHT);
-        let rect = Rectangle::new(point, size);
-        let rect = RoundedRectangle::new(rect, corners);
-        rect.draw_styled(&box_style, display)?;
-
-        const LEFT: i32 = 3;
-        const RIGHT: i32 = 234;
         let top: i32 = 2 + i * LINE_HEIGHT;
 
+        // Top.
+        let top_left = Point::new(5, top);
+        let size = Size::new(228, 1);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+
         // Bottom.
-        let style = PrimitiveStyle::with_stroke(color, 1);
-        Line::new(
-            Point::new(LEFT + 3, top + LINE_HEIGHT),
-            Point::new(RIGHT - 1, top + LINE_HEIGHT),
-        )
-        .into_styled(style)
-        .draw(display)?;
+        let top_left = Point::new(6, top + LINE_HEIGHT - 1);
+        let size = Size::new(228, 2);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+
+        // Left.
+        let top_left = Point::new(3, top + 2);
+        let size = Size::new(1, LINE_HEIGHT as u32 - 4);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+
         // Right.
-        Line::new(
-            Point::new(RIGHT + 1, top + 3),
-            Point::new(RIGHT + 1, top + LINE_HEIGHT - 2),
-        )
-        .into_styled(style)
-        .draw(display)?;
-        // Bottom-right corner.
-        Pixel(Point::new(RIGHT, top + LINE_HEIGHT - 2), color).draw(display)?;
-        Pixel(Point::new(RIGHT, top + LINE_HEIGHT - 1), color).draw(display)?;
-        Pixel(Point::new(RIGHT - 1, top + LINE_HEIGHT - 1), color).draw(display)?;
+        let top_left = Point::new(234, top + 3);
+        let size = Size::new(2, LINE_HEIGHT as u32 - 4);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+
+        // Corners.
+        let size = Size::new(1, 1);
+        // Top-right.
+        let top_left = Point::new(234, top + 2);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+        let top_left = Point::new(233, top + 1);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+        // Top-left.
+        let top_left = Point::new(4, top + 1);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+        // Bottom-left.
+        let top_left = Point::new(4, top + LINE_HEIGHT - 2);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+        let top_left = Point::new(5, top + LINE_HEIGHT - 1);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+        // Bottom-right.
+        let top_left = Point::new(233, top + LINE_HEIGHT - 2);
+        let size = Size::new(2, 2);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
 
         Ok(())
     }
