@@ -243,21 +243,22 @@ impl Menu {
         D: DrawTarget<Color = C, Error = E> + OriginDimensions,
         C: RgbColor + FromRGB,
     {
+        const MAX_WIDTH: u32 = 20;
+        const HEIGHT: u32 = 11;
+
         let Some(battery) = battery else {
             return Ok(());
         };
-        let max_width: u32 = 20;
-        let height: u32 = 11;
-        let point = Point::new(240 - max_width as i32 - 7, 160 - height as i32 - 6);
+        let point = Point::new(240 - MAX_WIDTH as i32 - 7, 160 - HEIGHT as i32 - 6);
         let corners = CornerRadii::new(Size::new_equal(4));
 
         // Draw charge percentage.
         {
-            let percent = battery.percent;
-            let width = max_width * u32::from(percent) / 100 + 1;
-            let width = width.clamp(1, max_width);
-            let width = if battery.full { max_width } else { width };
-            let size = Size::new(width, height);
+            let percent = u32::from(battery.percent);
+            let width = MAX_WIDTH * percent / 100 + 1;
+            let width = width.clamp(1, MAX_WIDTH);
+            let width = if battery.full { MAX_WIDTH } else { width };
+            let size = Size::new(width, HEIGHT);
             let color = if percent <= 20 { C::DANGER } else { C::ACCENT };
             let box_style = PrimitiveStyle::with_fill(color);
             let rect = Rectangle::new(point, size);
@@ -267,7 +268,7 @@ impl Menu {
 
         // Draw box.
         {
-            let size = Size::new(max_width, height);
+            let size = Size::new(MAX_WIDTH, HEIGHT);
             let box_style = PrimitiveStyle::with_stroke(C::PRIMARY, 1);
             let rect = Rectangle::new(point, size);
             let rect = RoundedRectangle::new(rect, corners);
@@ -278,14 +279,14 @@ impl Menu {
         {
             let size = Size::new(1, 5);
             let box_style = PrimitiveStyle::with_fill(C::PRIMARY);
-            let point = point + Point::new(max_width as _, 3);
+            let point = point + Point::new(MAX_WIDTH as _, 3);
             let rect = Rectangle::new(point, size);
             rect.draw_styled(&box_style, display)?;
         }
 
         // Draw indicator of charging (a lighting).
         if battery.connected && !battery.full {
-            let center = point + Point::new(max_width as i32 / 2, height as i32 / 2);
+            let center = point + Point::new(MAX_WIDTH as i32 / 2, HEIGHT as i32 / 2);
             let style = PrimitiveStyle::with_fill(C::PRIMARY);
 
             let triangle = Triangle::new(
