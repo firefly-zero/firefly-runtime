@@ -48,6 +48,9 @@ pub(crate) struct Menu {
     /// True if the menu is currently rendered on the screen.
     rendered: bool,
 
+    /// True if the cursor's new position is not rendered yet.
+    dirty: bool,
+
     /// True if the menu button is currently pressed.
     menu_pressed: bool,
 
@@ -72,6 +75,7 @@ impl Menu {
         Self {
             app_items: alloc::vec::Vec::new(),
             sys_items: items,
+            dirty: true,
             ..Default::default()
         }
     }
@@ -115,6 +119,7 @@ impl Menu {
             if !self.menu_pressed && pressed {
                 self.active = true;
                 self.rendered = false;
+                self.dirty = true;
                 self.was_released = false;
             }
         }
@@ -132,7 +137,7 @@ impl Menu {
             let n_items = self.app_items.len() + self.sys_items.len();
             if !self.up_pressed && self.selected < n_items as i32 - 1 {
                 self.selected += 1;
-                self.rendered = false;
+                self.dirty = true;
             }
             self.up_pressed = true;
         }
@@ -140,7 +145,7 @@ impl Menu {
             self.up_pressed = false;
             if !self.down_pressed && self.selected > 0 {
                 self.selected -= 1;
-                self.rendered = false;
+                self.dirty = true;
             }
             self.down_pressed = true;
         }
@@ -187,41 +192,46 @@ impl Menu {
         D: DrawTarget<Color = C, Error = E> + OriginDimensions,
         C: RgbColor + FromRGB,
     {
-        if self.rendered {
+        if self.rendered && !self.dirty {
             return Ok(());
         }
+        if !self.rendered {
+            display.clear(C::BG)?;
+        }
         self.rendered = true;
+        self.dirty = true;
 
         let mut black_style = MonoTextStyle::new(&FONT_6X9, C::PRIMARY);
         black_style.background_color = Some(C::BG);
         let mut blue_style = MonoTextStyle::new(&FONT_6X9, C::ACCENT);
         blue_style.background_color = Some(C::BG);
 
-        display.clear(C::BG)?;
-        self.draw_cursor(display)?;
         let items = self.app_items.iter().chain(self.sys_items.iter());
         for (item, i) in items.zip(0..) {
+            if i != self.selected {
+                self.draw_cursor(display, C::BG, i)?;
+            };
             let point = Point::new(6, 9 + i * LINE_HEIGHT);
             let is_custom = matches!(item, MenuItem::Custom(_, _));
             let text_style = if is_custom { blue_style } else { black_style };
             let text = Text::new(item.as_str(), point, text_style);
             text.draw(display)?;
         }
+        self.draw_cursor(display, C::PRIMARY, self.selected)?;
         self.draw_battery(display, battery)
     }
 
     /// Indicate which item is currently selected.
-    pub fn draw_cursor<D, C, E>(&self, display: &mut D) -> Result<(), E>
+    pub fn draw_cursor<D, C, E>(&self, display: &mut D, color: C, i: i32) -> Result<(), E>
     where
         D: DrawTarget<Color = C, Error = E> + OriginDimensions,
         C: RgbColor + FromRGB,
     {
-        let i = self.selected;
         let size = Size::new(232, LINE_HEIGHT as u32);
         let corners = CornerRadii::new(Size::new_equal(4));
 
         // Render the selection box.
-        let box_style = PrimitiveStyle::with_stroke(C::PRIMARY, 1);
+        let box_style = PrimitiveStyle::with_stroke(color, 1);
         let point = Point::new(3, 2 + i * LINE_HEIGHT);
         let rect = Rectangle::new(point, size);
         let rect = RoundedRectangle::new(rect, corners);
@@ -232,7 +242,7 @@ impl Menu {
         let top: i32 = 2 + i * LINE_HEIGHT;
 
         // Bottom.
-        let style = PrimitiveStyle::with_stroke(C::PRIMARY, 1);
+        let style = PrimitiveStyle::with_stroke(color, 1);
         Line::new(
             Point::new(LEFT + 3, top + LINE_HEIGHT),
             Point::new(RIGHT - 1, top + LINE_HEIGHT),
@@ -247,9 +257,9 @@ impl Menu {
         .into_styled(style)
         .draw(display)?;
         // Bottom-right corner.
-        Pixel(Point::new(RIGHT, top + LINE_HEIGHT - 2), C::PRIMARY).draw(display)?;
-        Pixel(Point::new(RIGHT, top + LINE_HEIGHT - 1), C::PRIMARY).draw(display)?;
-        Pixel(Point::new(RIGHT - 1, top + LINE_HEIGHT - 1), C::PRIMARY).draw(display)?;
+        Pixel(Point::new(RIGHT, top + LINE_HEIGHT - 2), color).draw(display)?;
+        Pixel(Point::new(RIGHT, top + LINE_HEIGHT - 1), color).draw(display)?;
+        Pixel(Point::new(RIGHT - 1, top + LINE_HEIGHT - 1), color).draw(display)?;
 
         Ok(())
     }
