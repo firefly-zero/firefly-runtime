@@ -199,7 +199,7 @@ impl Menu {
             display.clear(C::BG)?;
         }
         self.rendered = true;
-        self.dirty = true;
+        self.dirty = false;
 
         let mut black_style = MonoTextStyle::new(&FONT_6X9, C::PRIMARY);
         black_style.background_color = Some(C::BG);
@@ -235,8 +235,11 @@ impl Menu {
         display.fill_solid(&Rectangle::new(top_left, size), color)?;
 
         // Bottom.
-        let top_left = Point::new(6, top + LINE_HEIGHT - 1);
-        let size = Size::new(228, 2);
+        let top_left = Point::new(5, top + LINE_HEIGHT - 1);
+        let size = Size::new(230, 1);
+        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+        let top_left = Point::new(6, top + LINE_HEIGHT);
+        let size = Size::new(228, 1);
         display.fill_solid(&Rectangle::new(top_left, size), color)?;
 
         // Left.
@@ -262,11 +265,9 @@ impl Menu {
         // Bottom-left.
         let top_left = Point::new(4, top + LINE_HEIGHT - 2);
         display.fill_solid(&Rectangle::new(top_left, size), color)?;
-        let top_left = Point::new(5, top + LINE_HEIGHT - 1);
-        display.fill_solid(&Rectangle::new(top_left, size), color)?;
         // Bottom-right.
         let top_left = Point::new(233, top + LINE_HEIGHT - 2);
-        let size = Size::new(2, 2);
+        let size = Size::new(2, 1);
         display.fill_solid(&Rectangle::new(top_left, size), color)?;
 
         Ok(())
