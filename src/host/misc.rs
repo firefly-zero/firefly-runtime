@@ -1,5 +1,5 @@
 use crate::error::HostError;
-use crate::net::{ConnectStatus, Intro};
+use crate::net::{ConnectStatus, FSPeer, Intro};
 use crate::state::{NetHandler, State};
 use alloc::boxed::Box;
 use firefly_hal::Device;
@@ -159,6 +159,9 @@ pub(crate) fn get_settings(mut caller: C, index: u32) -> u64 {
     let handler = state.net_handler.get_mut();
     match handler {
         NetHandler::FrameSyncer(syncer) => {
+            if index > 32 {
+                return combine_intros(&syncer.peers[..]);
+            }
             let Some(peer) = syncer.peers.get(index as usize) else {
                 state.log_error("invalid peer ID");
                 return 0;
@@ -191,6 +194,38 @@ pub(crate) fn get_settings(mut caller: C, index: u32) -> u64 {
             pack_intro(&peer.intro)
         }
     }
+}
+
+/// Combine and serialize settings from intros of all peers.
+///
+/// Theme is the peers' theme if all peers have the same theme.
+/// Otherwise, the default theme is used. The same is for language.
+///
+/// For boolean flags, the flag is set to true if any peer has it set to true.
+/// So, for example, if a peer has high contrast set to true,
+/// high contrast will be used for all peers.
+///
+/// Keep in mind that this is only used if the app requests `combined`
+/// settings. The app can and should request and correctly handle settings
+/// for `me` instead. Which, however, poses the challenge of avoiding the state drift.
+/// So, combined settings might be preferred when the app wants to get the same
+/// settings on all devices.
+fn combine_intros(peers: &[FSPeer]) -> u64 {
+    let default_theme = firefly_types::Settings::default().theme;
+    let first = &peers[0].intro;
+    let mut theme = first.theme;
+    let mut flags = 0;
+    let mut lang = first.lang;
+    for peer in peers {
+        flags |= peer.intro.flags;
+        if peer.intro.lang != lang {
+            lang = [b'e', b'n'];
+        }
+        if peer.intro.theme != theme {
+            theme = default_theme;
+        }
+    }
+    pack_settings(theme, flags, lang)
 }
 
 /// Pack settings from peer intro into 64 bits.
