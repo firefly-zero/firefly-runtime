@@ -244,20 +244,40 @@ impl Menu {
 
         let mut black_style = MonoTextStyle::new(&FONT_6X9, C::PRIMARY);
         black_style.background_color = Some(C::BG);
-        let mut blue_style = MonoTextStyle::new(&FONT_6X9, C::ACCENT);
-        blue_style.background_color = Some(C::BG);
 
-        let items = self.app_items.iter().chain(self.sys_items.iter());
-        for (item, i) in items.zip(0..) {
+        // Draw the list of custom items.
+        let mut offset = 9;
+        for (item, i) in self.app_items.iter().zip(0..) {
             if i != self.selected {
                 self.draw_cursor(display, C::BG, i)?;
             };
-            let point = Point::new(6, 9 + i * LINE_HEIGHT);
-            let is_custom = matches!(item, MenuItem::Custom(_, _));
-            let text_style = if is_custom { blue_style } else { black_style };
-            let text = Text::new(item.as_str(), point, text_style);
+            let point = Point::new(6, offset + i * LINE_HEIGHT);
+            let text = Text::new(item.as_str(), point, black_style);
             text.draw(display)?;
         }
+
+        // Draw the list of system items.
+        let n_custom = self.app_items.len() as i32;
+        if n_custom != 0 {
+            offset += 4;
+        }
+        for (item, i) in self.sys_items.iter().zip(n_custom..) {
+            if i != self.selected {
+                self.draw_cursor(display, C::BG, i)?;
+            };
+            let point = Point::new(6, offset + i * LINE_HEIGHT);
+            let text = Text::new(item.as_str(), point, black_style);
+            text.draw(display)?;
+        }
+
+        // Draw the separator line.
+        if n_custom != 0 {
+            let top_left = Point::new(0, n_custom * LINE_HEIGHT + 4);
+            let size = Size::new(240, 1);
+            let area = Rectangle::new(top_left, size);
+            display.fill_solid(&area, C::PRIMARY)?;
+        }
+
         self.draw_cursor(display, C::PRIMARY, self.selected)?;
         self.draw_battery(display, battery)
     }
@@ -268,7 +288,11 @@ impl Menu {
         D: DrawTarget<Color = C, Error = E>,
         C: RgbColor,
     {
-        let top: i32 = 2 + i * LINE_HEIGHT;
+        let mut top: i32 = 2 + i * LINE_HEIGHT;
+        let n_items = self.app_items.len() as i32;
+        if n_items != 0 && i >= n_items {
+            top += 4;
+        }
 
         // Top.
         let top_left = Point::new(5, top);
