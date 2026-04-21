@@ -1,7 +1,7 @@
 use crate::battery::Battery;
 use crate::color::FromRGB;
 use embedded_graphics::draw_target::DrawTarget;
-use embedded_graphics::geometry::{OriginDimensions, Point, Size};
+use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mono_font::ascii::FONT_6X9;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::RgbColor;
@@ -189,7 +189,7 @@ impl Menu {
 
     pub fn render<D, C, E>(&mut self, display: &mut D, battery: &Option<Battery>) -> Result<(), E>
     where
-        D: DrawTarget<Color = C, Error = E> + OriginDimensions,
+        D: DrawTarget<Color = C, Error = E>,
         C: RgbColor + FromRGB,
     {
         if self.rendered && !self.dirty {
@@ -224,8 +224,8 @@ impl Menu {
     /// Indicate which item is currently selected.
     pub fn draw_cursor<D, C, E>(&self, display: &mut D, color: C, i: i32) -> Result<(), E>
     where
-        D: DrawTarget<Color = C, Error = E> + OriginDimensions,
-        C: RgbColor + FromRGB,
+        D: DrawTarget<Color = C, Error = E>,
+        C: RgbColor,
     {
         let top: i32 = 2 + i * LINE_HEIGHT;
 
@@ -253,22 +253,24 @@ impl Menu {
         display.fill_solid(&Rectangle::new(top_left, size), color)?;
 
         // Corners.
-        let size = Size::new(1, 1);
-        // Top-right.
-        let top_left = Point::new(234, top + 2);
-        display.fill_solid(&Rectangle::new(top_left, size), color)?;
-        let top_left = Point::new(233, top + 1);
-        display.fill_solid(&Rectangle::new(top_left, size), color)?;
-        // Top-left.
-        let top_left = Point::new(4, top + 1);
-        display.fill_solid(&Rectangle::new(top_left, size), color)?;
-        // Bottom-left.
-        let top_left = Point::new(4, top + LINE_HEIGHT - 2);
-        display.fill_solid(&Rectangle::new(top_left, size), color)?;
-        // Bottom-right.
-        let top_left = Point::new(233, top + LINE_HEIGHT - 2);
-        let size = Size::new(2, 1);
-        display.fill_solid(&Rectangle::new(top_left, size), color)?;
+        {
+            let size = Size::new(1, 1);
+            // Top-right.
+            let top_left = Point::new(234, top + 2);
+            display.fill_solid(&Rectangle::new(top_left, size), color)?;
+            let top_left = Point::new(233, top + 1);
+            display.fill_solid(&Rectangle::new(top_left, size), color)?;
+            // Top-left.
+            let top_left = Point::new(4, top + 1);
+            display.fill_solid(&Rectangle::new(top_left, size), color)?;
+            // Bottom-left.
+            let top_left = Point::new(4, top + LINE_HEIGHT - 2);
+            display.fill_solid(&Rectangle::new(top_left, size), color)?;
+            // Bottom-right.
+            let top_left = Point::new(233, top + LINE_HEIGHT - 2);
+            let size = Size::new(2, 1);
+            display.fill_solid(&Rectangle::new(top_left, size), color)?;
+        }
 
         Ok(())
     }
@@ -276,7 +278,7 @@ impl Menu {
     /// Indicate which item is currently selected.
     pub fn draw_battery<D, C, E>(&self, display: &mut D, battery: &Option<Battery>) -> Result<(), E>
     where
-        D: DrawTarget<Color = C, Error = E> + OriginDimensions,
+        D: DrawTarget<Color = C, Error = E>,
         C: RgbColor + FromRGB,
     {
         const MAX_WIDTH: u32 = 20;
@@ -294,12 +296,14 @@ impl Menu {
             let width = MAX_WIDTH * percent / 100 + 1;
             let width = width.clamp(1, MAX_WIDTH);
             let width = if battery.full { MAX_WIDTH } else { width };
-            let size = Size::new(width, HEIGHT);
-            let color = if percent <= 20 { C::DANGER } else { C::ACCENT };
-            let box_style = PrimitiveStyle::with_fill(color);
-            let rect = Rectangle::new(point, size);
-            let rect = RoundedRectangle::new(rect, corners);
-            rect.draw_styled(&box_style, display)?;
+            if width >= 4 {
+                let size = Size::new(width, HEIGHT);
+                let color = if percent <= 20 { C::DANGER } else { C::ACCENT };
+                let box_style = PrimitiveStyle::with_fill(color);
+                let rect = Rectangle::new(point, size);
+                let rect = RoundedRectangle::new(rect, corners);
+                rect.draw_styled(&box_style, display)?;
+            }
         }
 
         // Draw box.
