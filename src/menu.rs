@@ -13,6 +13,7 @@ use embedded_graphics::text::Text;
 use firefly_hal::{InputState, Pad};
 
 const LINE_HEIGHT: i32 = 12;
+const OFFSET: i32 = 20;
 
 pub(crate) enum MenuItem {
     Custom(u8, alloc::string::String),
@@ -237,7 +238,7 @@ impl Menu {
             return Ok(());
         }
         if !self.rendered {
-            display.clear(C::BG)?;
+            self.draw_bg(display);
         }
         self.rendered = true;
         self.dirty = false;
@@ -246,12 +247,13 @@ impl Menu {
         black_style.background_color = Some(C::BG);
 
         // Draw the list of custom items.
-        let mut offset = 9;
+        let offset_x = OFFSET + 6;
+        let mut offset_y = OFFSET + 9;
         for (item, i) in self.app_items.iter().zip(0..) {
             if i != self.selected {
                 self.draw_cursor(display, C::BG, i)?;
             };
-            let point = Point::new(6, offset + i * LINE_HEIGHT);
+            let point = Point::new(offset_x, offset_y + i * LINE_HEIGHT);
             let text = Text::new(item.as_str(), point, black_style);
             text.draw(display)?;
         }
@@ -259,21 +261,21 @@ impl Menu {
         // Draw the list of system items.
         let n_custom = self.app_items.len() as i32;
         if n_custom != 0 {
-            offset += 4;
+            offset_y += 4;
         }
         for (item, i) in self.sys_items.iter().zip(n_custom..) {
             if i != self.selected {
                 self.draw_cursor(display, C::BG, i)?;
             };
-            let point = Point::new(6, offset + i * LINE_HEIGHT);
+            let point = Point::new(offset_x, offset_y + i * LINE_HEIGHT);
             let text = Text::new(item.as_str(), point, black_style);
             text.draw(display)?;
         }
 
         // Draw the separator line.
         if n_custom != 0 {
-            let top_left = Point::new(0, n_custom * LINE_HEIGHT + 4);
-            let size = Size::new(240, 1);
+            let top_left = Point::new(OFFSET, n_custom * LINE_HEIGHT + 4 + OFFSET);
+            let size = Size::new(240 - OFFSET as u32 * 2, 1);
             let area = Rectangle::new(top_left, size);
             display.fill_solid(&area, C::PRIMARY)?;
         }
@@ -282,38 +284,50 @@ impl Menu {
         self.draw_battery(display, battery)
     }
 
+    pub fn draw_bg<D, C, E>(&self, display: &mut D) -> Result<(), E>
+    where
+        D: DrawTarget<Color = C, Error = E>,
+        C: RgbColor + FromRGB,
+    {
+        let top_left = Point::new(OFFSET, OFFSET);
+        let size = Size::new(240 - OFFSET as u32 * 2, 160 - OFFSET as u32 * 2);
+        let area = Rectangle::new(top_left, size);
+        display.fill_solid(&area, C::BG)?;
+        Ok(())
+    }
+
     /// Indicate which item is currently selected.
     pub fn draw_cursor<D, C, E>(&self, display: &mut D, color: C, i: i32) -> Result<(), E>
     where
         D: DrawTarget<Color = C, Error = E>,
         C: RgbColor,
     {
-        let mut top: i32 = 2 + i * LINE_HEIGHT;
+        let mut top: i32 = OFFSET + 2 + i * LINE_HEIGHT;
         let n_items = self.app_items.len() as i32;
         if n_items != 0 && i >= n_items {
             top += 4;
         }
 
         // Top.
-        let top_left = Point::new(5, top);
-        let size = Size::new(228, 1);
+        let top_left = Point::new(OFFSET + 5, top);
+        let size = Size::new(228 - OFFSET as u32 * 2, 1);
         display.fill_solid(&Rectangle::new(top_left, size), color)?;
 
         // Bottom.
-        let top_left = Point::new(5, top + LINE_HEIGHT - 1);
-        let size = Size::new(230, 1);
+        let top_left = Point::new(OFFSET + 5, top + LINE_HEIGHT - 1);
+        let size = Size::new(230 - OFFSET as u32 * 2, 1);
         display.fill_solid(&Rectangle::new(top_left, size), color)?;
-        let top_left = Point::new(6, top + LINE_HEIGHT);
-        let size = Size::new(228, 1);
+        let top_left = Point::new(OFFSET + 6, top + LINE_HEIGHT);
+        let size = Size::new(228 - OFFSET as u32 * 2, 1);
         display.fill_solid(&Rectangle::new(top_left, size), color)?;
 
         // Left.
-        let top_left = Point::new(3, top + 2);
+        let top_left = Point::new(OFFSET + 3, top + 2);
         let size = Size::new(1, LINE_HEIGHT as u32 - 4);
         display.fill_solid(&Rectangle::new(top_left, size), color)?;
 
         // Right.
-        let top_left = Point::new(234, top + 3);
+        let top_left = Point::new(234 - OFFSET, top + 3);
         let size = Size::new(2, LINE_HEIGHT as u32 - 4);
         display.fill_solid(&Rectangle::new(top_left, size), color)?;
 
@@ -321,18 +335,18 @@ impl Menu {
         {
             let size = Size::new(1, 1);
             // Top-right.
-            let top_left = Point::new(234, top + 2);
+            let top_left = Point::new(234 - OFFSET, top + 2);
             display.fill_solid(&Rectangle::new(top_left, size), color)?;
-            let top_left = Point::new(233, top + 1);
+            let top_left = Point::new(233 - OFFSET, top + 1);
             display.fill_solid(&Rectangle::new(top_left, size), color)?;
             // Top-left.
-            let top_left = Point::new(4, top + 1);
+            let top_left = Point::new(OFFSET + 4, top + 1);
             display.fill_solid(&Rectangle::new(top_left, size), color)?;
             // Bottom-left.
-            let top_left = Point::new(4, top + LINE_HEIGHT - 2);
+            let top_left = Point::new(OFFSET + 4, top + LINE_HEIGHT - 2);
             display.fill_solid(&Rectangle::new(top_left, size), color)?;
             // Bottom-right.
-            let top_left = Point::new(233, top + LINE_HEIGHT - 2);
+            let top_left = Point::new(233 - OFFSET, top + LINE_HEIGHT - 2);
             let size = Size::new(2, 1);
             display.fill_solid(&Rectangle::new(top_left, size), color)?;
         }
@@ -352,7 +366,10 @@ impl Menu {
         let Some(battery) = battery else {
             return Ok(());
         };
-        let point = Point::new(240 - MAX_WIDTH as i32 - 7, 160 - HEIGHT as i32 - 6);
+        let point = Point::new(
+            240 - MAX_WIDTH as i32 - 7 - OFFSET,
+            160 - HEIGHT as i32 - 6 - OFFSET,
+        );
         let corners = CornerRadii::new(Size::new_equal(4));
 
         // Draw charge percentage.
