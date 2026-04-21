@@ -10,7 +10,7 @@ use embedded_graphics::primitives::{
     CornerRadii, PrimitiveStyle, Rectangle, RoundedRectangle, StyledDrawable, Triangle,
 };
 use embedded_graphics::text::Text;
-use firefly_hal::InputState;
+use firefly_hal::{InputState, Pad};
 
 const LINE_HEIGHT: i32 = 12;
 
@@ -28,6 +28,38 @@ impl MenuItem {
             Self::ScreenShot => "take screenshot",
             Self::Restart => "restart app",
             Self::Quit => "exit app",
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Default)]
+enum DPad4 {
+    #[default]
+    None,
+    Left,
+    Right,
+    Up,
+    Down,
+}
+
+impl DPad4 {
+    fn from_pad(pad: Option<&Pad>) -> Self {
+        const DPAD4_THRESHOLD: i16 = 300;
+        let Some(pad) = pad else {
+            return Self::None;
+        };
+        let x = pad.x;
+        let y = pad.y;
+        if y > DPAD4_THRESHOLD && y > x.abs() {
+            Self::Up
+        } else if y < -DPAD4_THRESHOLD && -y > x.abs() {
+            Self::Down
+        } else if x > DPAD4_THRESHOLD && x > y.abs() {
+            Self::Right
+        } else if x < -DPAD4_THRESHOLD && -x > y.abs() {
+            Self::Left
+        } else {
+            Self::None
         }
     }
 }
@@ -60,8 +92,7 @@ pub(crate) struct Menu {
     /// True if the menu button was released when the menu was open.
     was_released: bool,
 
-    down_pressed: bool,
-    up_pressed: bool,
+    dpad: DPad4,
 }
 
 impl Menu {
@@ -127,27 +158,37 @@ impl Menu {
     }
 
     fn handle_pad(&mut self, input: &InputState) {
-        let Some(pad) = &input.pad else {
-            self.down_pressed = false;
-            self.up_pressed = false;
-            return;
-        };
-        if pad.y < -50 {
-            self.down_pressed = false;
-            let n_items = self.app_items.len() + self.sys_items.len();
-            if !self.up_pressed && self.selected < n_items as i32 - 1 {
-                self.selected += 1;
-                self.dirty = true;
+        let dpad = DPad4::from_pad(input.pad.as_ref());
+        let pressed = if dpad != self.dpad { dpad } else { DPad4::None };
+        self.dpad = dpad;
+        match pressed {
+            DPad4::Up => {
+                if self.selected > 0 {
+                    self.selected -= 1;
+                    self.dirty = true;
+                }
             }
-            self.up_pressed = true;
-        }
-        if pad.y > 50 {
-            self.up_pressed = false;
-            if !self.down_pressed && self.selected > 0 {
-                self.selected -= 1;
-                self.dirty = true;
+            DPad4::Down => {
+                let n_items = self.app_items.len() + self.sys_items.len();
+                if self.selected < n_items as i32 - 1 {
+                    self.selected += 1;
+                    self.dirty = true;
+                }
             }
-            self.down_pressed = true;
+            DPad4::Left => {
+                if self.selected > 0 {
+                    self.selected = 0;
+                    self.dirty = true;
+                }
+            }
+            DPad4::Right => {
+                let n_items = self.app_items.len() + self.sys_items.len();
+                if self.selected < n_items as i32 - 1 {
+                    self.selected = n_items as i32 - 1;
+                    self.dirty = true;
+                }
+            }
+            DPad4::None => {}
         }
     }
 
