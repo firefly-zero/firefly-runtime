@@ -238,7 +238,7 @@ impl Menu {
             return Ok(());
         }
         if !self.rendered {
-            self.draw_bg(display);
+            self.draw_bg(display)?;
         }
         self.rendered = true;
         self.dirty = false;
@@ -290,9 +290,36 @@ impl Menu {
         C: RgbColor + FromRGB,
     {
         let top_left = Point::new(OFFSET, OFFSET);
-        let size = Size::new(240 - OFFSET as u32 * 2, 160 - OFFSET as u32 * 2);
+        let width = 240 - OFFSET as u32 * 2;
+        let height = 160 - OFFSET as u32 * 2;
+        let size = Size::new(width, height);
         let area = Rectangle::new(top_left, size);
         display.fill_solid(&area, C::BG)?;
+
+        // Top border.
+        let top_left = Point::new(OFFSET - 1, OFFSET - 1);
+        let size = Size::new(width + 2, 1);
+        let area = Rectangle::new(top_left, size);
+        display.fill_solid(&area, C::PRIMARY)?;
+
+        // Bottom border.
+        let top_left = Point::new(OFFSET, 160 - OFFSET);
+        let size = Size::new(width + 2, 2);
+        let area = Rectangle::new(top_left, size);
+        display.fill_solid(&area, C::PRIMARY)?;
+
+        // Left border.
+        let top_left = Point::new(OFFSET - 1, OFFSET);
+        let size = Size::new(1, height + 1);
+        let area = Rectangle::new(top_left, size);
+        display.fill_solid(&area, C::PRIMARY)?;
+
+        // Right border.
+        let top_left = Point::new(240 - OFFSET, OFFSET);
+        let size = Size::new(2, height);
+        let area = Rectangle::new(top_left, size);
+        display.fill_solid(&area, C::PRIMARY)?;
+
         Ok(())
     }
 
@@ -367,8 +394,8 @@ impl Menu {
             return Ok(());
         };
         let point = Point::new(
-            240 - MAX_WIDTH as i32 - 7 - OFFSET,
-            160 - HEIGHT as i32 - 6 - OFFSET,
+            240 - MAX_WIDTH as i32 - 5 - OFFSET,
+            160 - HEIGHT as i32 - 5 - OFFSET,
         );
         let corners = CornerRadii::new(Size::new_equal(4));
 
