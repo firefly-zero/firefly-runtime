@@ -54,6 +54,7 @@ pub(crate) fn draw_point(mut caller: C, x: i32, y: i32, color: i32) {
     let state = caller.data_mut();
     state.called = "graphics.draw_point";
     if color == 0 {
+        state.log_error(HostError::NoneColor);
         return;
     }
     let point = Point::new(x, y);
