@@ -1,5 +1,4 @@
 use crate::{FrameBuffer, HEIGHT, WIDTH};
-use embedded_graphics::pixelcolor::*;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;
 
@@ -101,8 +100,7 @@ impl ParsedImage<'_> {
                 byte = byte.rotate_left(BPP as u32);
                 let luma = byte & 0b1111;
                 if luma != self.transp {
-                    let color = Gray4::new(luma);
-                    frame.set_pixel(p, color);
+                    frame.set_pixel(p, luma);
                 };
                 p.x += 1;
                 if p.x >= right_x {
@@ -180,10 +178,9 @@ impl ParsedImage<'_> {
                 let pixel_offset = 8 - BPP * (1 + offset % PPB);
                 let luma = (byte >> pixel_offset) & 0b1111;
                 if luma != self.transp {
-                    let color = Gray4::new(luma);
                     let fx = p.x + (ix - left);
                     let fy = p.y + (iy - top);
-                    frame.set_pixel(Point::new(fx, fy), color);
+                    frame.set_pixel(Point::new(fx, fy), luma);
                 }
             }
         }

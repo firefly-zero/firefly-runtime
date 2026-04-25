@@ -22,10 +22,7 @@ pub(crate) fn clear_screen(mut caller: C, color: i32) {
     if color == 0 {
         return;
     }
-    let Some(color) = parse_color(color) else {
-        state.log_error(HostError::NoneColor);
-        return;
-    };
+    let color = Gray4::new(color as u8 - 1);
     let err = if let Some(canvas) = &state.canvas {
         let mut target = canvas.clone().as_target(&mut caller);
         target.clear(color)
@@ -60,17 +57,14 @@ pub(crate) fn draw_point(mut caller: C, x: i32, y: i32, color: i32) {
         return;
     }
     let point = Point::new(x, y);
-    let Some(color) = parse_color(color) else {
-        state.log_error(HostError::NoneColor);
-        return;
-    };
     if let Some(canvas) = &state.canvas {
+        let color = Gray4::new(color as u8 - 1);
         let pixel = Pixel(point, color);
         let mut target = canvas.clone().as_target(&mut caller);
         never_fails(pixel.draw(&mut target));
     } else {
         state.frame.dirty = true;
-        state.frame.set_pixel(point, color);
+        state.frame.set_pixel(point, color as u8 - 1);
     };
 }
 

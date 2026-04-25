@@ -147,7 +147,7 @@ impl DrawTarget for FrameBuffer {
         self.dirty = true;
         for pixel in pixels {
             let Pixel(point, color) = pixel;
-            self.set_pixel(point, color);
+            self.set_pixel(point, color.luma());
         }
         Ok(())
     }
@@ -238,7 +238,7 @@ impl FrameBuffer {
     /// Set color of a single pixel at the given coordinates.
     ///
     /// Does NOT mark the buffer as dirty. This must be done by the caller.
-    pub(crate) fn set_pixel(&mut self, point: Point, color: Gray4) {
+    pub(crate) fn set_pixel(&mut self, point: Point, luma: u8) {
         // Negative values will be wrapped and filtered out
         // because any wrapped value is bigger than WIDTH/HEIGHT.
         let x = point.x as usize;
@@ -253,9 +253,8 @@ impl FrameBuffer {
         // Safety: if y within WIDTH and HEIGHT (which we checked),
         // the byte_index is is within the buffer.
         let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
-        let color = color.luma();
-        debug_assert!(color < 16);
-        *byte = (color << shift) | (*byte & mask);
+        debug_assert!(luma < 16);
+        *byte = (luma << shift) | (*byte & mask);
     }
 }
 
