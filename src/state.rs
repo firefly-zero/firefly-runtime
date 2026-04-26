@@ -582,7 +582,7 @@ impl<'a> State<'a> {
         }
     }
 
-    /// Log an error/warning occured in the currently executing host function.
+    /// Log an error/warning occurred in the currently executing host function.
     pub(crate) fn log_error<D: Display>(&mut self, msg: D) {
         self.device.log_error(self.called, msg);
     }

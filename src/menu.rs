@@ -304,7 +304,10 @@ impl Menu {
 
         // Bottom border.
         let top_left = Point::new(OFFSET, 160 - OFFSET);
-        let size = Size::new(width + 2, 2);
+        let size = Size::new(width + 2, 1);
+        let area = Rectangle::new(top_left, size);
+        display.fill_solid(&area, C::PRIMARY)?;
+        let top_left = Point::new(OFFSET, 160 - OFFSET + 1);
         let area = Rectangle::new(top_left, size);
         display.fill_solid(&area, C::PRIMARY)?;
 
