@@ -1,9 +1,7 @@
 use crate::utils::read_all;
 use embedded_io::Write;
-use firefly_hal::{Device, DeviceImpl, Dir, FSError};
+use firefly_hal::{BatteryStatus, Device, DeviceImpl, Dir, FSError};
 use firefly_types::{BatteryInfo, Encode};
-
-const K: f32 = 12.;
 
 /// Battery status manager.
 ///
@@ -13,9 +11,9 @@ const K: f32 = 12.;
 /// and updated if the actual voltage ever goes outside of the default range.
 pub struct Battery {
     pub ok: bool,
-    pub connected: bool,
-    pub full: bool,
+    pub changed: bool,
     pub percent: u8,
+    pub status: BatteryStatus,
     min_voltage: u16,
     max_voltage: u16,
 }
@@ -25,39 +23,54 @@ impl Battery {
         let info = ensure_info(device)?;
         let mut battery = Self {
             ok: false,
-            connected: false,
-            full: false,
-            percent: 50,
+            changed: true,
+            percent: 100,
+            status: BatteryStatus {
+                voltage: info.max_voltage,
+                connected: false,
+                full: false,
+            },
             min_voltage: info.min_voltage,
             max_voltage: info.max_voltage,
         };
         battery.update(device)?;
+        battery.changed = true;
         Ok(battery)
     }
 
     pub fn update(&mut self, device: &mut DeviceImpl) -> Result<(), FSError> {
+        const K: f32 = 12.;
+
         let Some(status) = device.get_battery_status() else {
+            self.changed = self.ok;
             self.ok = false;
             return Ok(());
         };
 
-        self.full = status.full;
-        self.connected = status.connected;
+        self.changed = self.status != status;
+        let new_max = self.status.connected && !self.status.full && status.full;
+        self.status = status;
         self.ok = true;
 
-        let range = self.max_voltage - self.min_voltage;
-        let v_norm = (status.voltage - self.min_voltage) as f32 / range as f32;
-        let v_norm = v_norm.clamp(0., 1.);
-        let soc = 100. / (1. + exp(-K * (v_norm - 0.5)));
-        self.percent = soc as _;
-
-        if status.voltage > self.max_voltage {
+        // Update voltage range.
+        if new_max || status.voltage > self.max_voltage {
             self.max_voltage = status.voltage;
             self.sync_info(device)?;
         }
         if status.voltage < self.min_voltage {
             self.min_voltage = status.voltage;
             self.sync_info(device)?;
+        }
+
+        // Calculate percentage.
+        if status.full {
+            self.percent = 100;
+        } else {
+            let range = self.max_voltage - self.min_voltage;
+            let v_norm = (status.voltage - self.min_voltage) as f32 / range as f32;
+            let v_norm = v_norm.clamp(0., 1.);
+            let soc = 100. / (1. + exp(-K * (v_norm - 0.5)));
+            self.percent = soc as u8;
         }
 
         Ok(())

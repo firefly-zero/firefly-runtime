@@ -229,7 +229,11 @@ impl Menu {
         self.active = false;
     }
 
-    pub fn render<D, C, E>(&mut self, display: &mut D, battery: &Option<Battery>) -> Result<(), E>
+    pub fn render<D, C, E>(
+        &mut self,
+        display: &mut D,
+        battery: &mut Option<Battery>,
+    ) -> Result<(), E>
     where
         D: DrawTarget<Color = C, Error = E>,
         C: RgbColor + FromRGB,
@@ -385,7 +389,11 @@ impl Menu {
     }
 
     /// Indicate which item is currently selected.
-    pub fn draw_battery<D, C, E>(&self, display: &mut D, battery: &Option<Battery>) -> Result<(), E>
+    pub fn draw_battery<D, C, E>(
+        &self,
+        display: &mut D,
+        battery: &mut Option<Battery>,
+    ) -> Result<(), E>
     where
         D: DrawTarget<Color = C, Error = E>,
         C: RgbColor + FromRGB,
@@ -396,6 +404,10 @@ impl Menu {
         let Some(battery) = battery else {
             return Ok(());
         };
+        if !battery.changed {
+            return Ok(());
+        }
+        battery.changed = false;
         let point = Point::new(
             240 - MAX_WIDTH as i32 - 5 - OFFSET,
             160 - HEIGHT as i32 - 5 - OFFSET,
@@ -407,7 +419,6 @@ impl Menu {
             let percent = u32::from(battery.percent);
             let width = MAX_WIDTH * percent / 100 + 1;
             let width = width.clamp(1, MAX_WIDTH);
-            let width = if battery.full { MAX_WIDTH } else { width };
             if width >= 4 {
                 let size = Size::new(width, HEIGHT);
                 let color = if percent <= 20 { C::DANGER } else { C::ACCENT };
@@ -437,7 +448,7 @@ impl Menu {
         }
 
         // Draw indicator of charging (a lighting).
-        if battery.connected && !battery.full {
+        if battery.status.connected && !battery.status.full {
             let center = point + Point::new(MAX_WIDTH as i32 / 2, HEIGHT as i32 / 2);
             let style = PrimitiveStyle::with_fill(C::PRIMARY);
 
