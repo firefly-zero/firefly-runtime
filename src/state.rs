@@ -99,11 +99,22 @@ impl<'a> State<'a> {
     /// (arund 1 Kb) for the embedded heap.
     pub(crate) fn new(
         id: FullID,
-        device: DeviceImpl<'a>,
+        mut device: DeviceImpl<'a>,
         rom_dir: DirImpl,
-        net_handler: NetHandler,
+        mut net_handler: NetHandler,
         launcher: bool,
     ) -> Box<Self> {
+        // Networking can be in Connector state only in sys.connector.
+        // If it's in that state in another app, there is a bug somewhere
+        // which we fix here.
+        if matches!(net_handler, NetHandler::Connector(_)) {
+            let is_connector = id.author() == "sys" && id.app() == "connector";
+            if !is_connector {
+                device.log_error("net", "connector state outside sys.connector");
+                net_handler = NetHandler::None;
+            }
+        }
+
         let seed = match &net_handler {
             NetHandler::FrameSyncer(syncer) => syncer.shared_seed,
             _ => 0,
