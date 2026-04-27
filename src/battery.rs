@@ -23,7 +23,7 @@ pub struct Battery {
 impl Battery {
     pub fn new(device: &mut DeviceImpl) -> Result<Self, FSError> {
         let info = ensure_info(device)?;
-        let battery = Self {
+        let mut battery = Self {
             ok: false,
             connected: false,
             full: false,
@@ -31,6 +31,7 @@ impl Battery {
             min_voltage: info.min_voltage,
             max_voltage: info.max_voltage,
         };
+        battery.update(device)?;
         Ok(battery)
     }
 
@@ -115,8 +116,7 @@ mod tests {
     #[test]
     fn test_battery() {
         let mut device = new_device();
-        let mut battery = Battery::new(&mut device).ok().unwrap();
-        battery.update(&mut device).ok().unwrap();
+        let battery = Battery::new(&mut device).ok().unwrap();
         assert!(battery.ok);
         let mut dir = device.open_dir(&["sys"]).ok().unwrap();
         dir.open_file("battery").ok().unwrap();
