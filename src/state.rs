@@ -93,10 +93,10 @@ pub(crate) struct State<'a> {
 }
 
 impl<'a> State<'a> {
-    /// Allocate new state on heap.
+    /// Allocate new state on the heap.
     ///
     /// We automatically box the state because it's relatively fat
-    /// (arund 1 Kb) for the embedded heap.
+    /// (around 1 Kb) for the embedded heap.
     pub(crate) fn new(
         id: FullID,
         mut device: DeviceImpl<'a>,

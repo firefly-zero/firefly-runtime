@@ -18,7 +18,13 @@ use firefly_types::*;
 /// Default frames per second.
 const FPS: u8 = 60;
 const KB: u32 = 1024;
-const FUEL_PER_CALL: u64 = 10_000_000;
+
+const FUEL_INIT: u64 = 10_000_000;
+const FUEL_BOOT: u64 = 10_000_000;
+const FUEL_UPDATE: u64 = 10_000_000;
+const FUEL_RENDER: u64 = 100_000;
+const FUEL_BEFORE_EXIT: u64 = 10_000_000;
+const FUEL_CHEAT: u64 = 60_000;
 
 pub struct Runtime<'a, D, C>
 where
@@ -147,7 +153,7 @@ where
         };
 
         let mut store = wasmi::Store::new(&engine, state);
-        _ = store.set_fuel(FUEL_PER_CALL);
+        _ = store.set_fuel(FUEL_BOOT);
         let instance = {
             let module = wasmi::Module::new(&engine, wasm_bin)?;
             let mut externals = Vec::new();
@@ -202,12 +208,12 @@ where
         let ins = self.instance;
         // The `_initialize` and `_start` functions are defined by wasip1.
         let f = ins.get_typed_func::<(), ()>(&self.store, "_initialize");
-        self.call_callback("_initialize", f.ok())?;
+        self.call_callback("_initialize", f.ok(), FUEL_INIT)?;
         let f = ins.get_typed_func::<(), ()>(&self.store, "_start");
-        self.call_callback("_start", f.ok())?;
+        self.call_callback("_start", f.ok(), FUEL_INIT)?;
         // The `boot` function is defined by our spec.
         let f = ins.get_typed_func::<(), ()>(&self.store, "boot");
-        self.call_callback("boot", f.ok())?;
+        self.call_callback("boot", f.ok(), FUEL_BOOT)?;
 
         // Other functions defined by our spec.
         self.update = ins.get_typed_func(&self.store, "update").ok();
@@ -283,7 +289,7 @@ where
         }
 
         // TODO: continue execution even if an update fails.
-        let fuel_update = self.call_callback("update", self.update)?;
+        let fuel_update = self.call_callback("update", self.update, FUEL_UPDATE)?;
         if let Some(stats) = &mut self.stats {
             stats.update_fuel.add(fuel_update);
         }
@@ -314,7 +320,7 @@ where
         // (when the app is just launched).
         self.n_frames = (self.n_frames + 1) % (FPS * 4);
         if should_render {
-            let fuel_render = self.call_callback("render", self.render)?;
+            let fuel_render = self.call_callback("render", self.render, FUEL_RENDER)?;
             if let Some(stats) = &mut self.stats {
                 stats.render_fuel.add(fuel_render);
             }
@@ -364,7 +370,7 @@ where
     /// 3. Releases [`Device`] ownership.
     /// 3. Tells which app to run next.
     pub fn finalize(mut self) -> Result<RuntimeConfig<'a, D, C>, Error> {
-        self.call_callback("before_exit", self.before_exit)?;
+        self.call_callback("before_exit", self.before_exit, FUEL_BEFORE_EXIT)?;
         let mut state = self.store.into_data();
         state.save_stash();
         state.update_app_stats();
@@ -452,6 +458,7 @@ where
                 if !matches!(state.net_handler.get_mut(), NetHandler::None) {
                     return Err(Error::CheatInNet);
                 }
+                _ = self.store.set_fuel(FUEL_CHEAT);
                 match cheat.call(&mut self.store, (a, b)) {
                     Ok((result,)) => {
                         let resp = serial::Response::Cheat(result);
@@ -526,8 +533,9 @@ where
         &mut self,
         name: &'static str,
         f: Option<wasmi::TypedFunc<(), ()>>,
+        fuel: u64,
     ) -> Result<u32, Error> {
-        _ = self.store.set_fuel(FUEL_PER_CALL);
+        _ = self.store.set_fuel(fuel);
         if let Some(f) = f {
             if let Err(err) = f.call(&mut self.store, ()) {
                 let stats = self.store.data().runtime_stats();
@@ -537,7 +545,7 @@ where
         let Ok(left) = self.store.get_fuel() else {
             return Ok(0);
         };
-        let consumed = FUEL_PER_CALL - left;
+        let consumed = fuel - left;
         let consumed = u32::try_from(consumed).unwrap_or_default();
         Ok(consumed)
     }
