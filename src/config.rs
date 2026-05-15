@@ -1,6 +1,7 @@
-use crate::color::FromRGB;
 use crate::error::Error;
 use crate::state::NetHandler;
+use crate::FireflyDisplay;
+use crate::{color::FromRGB, state::load_settings};
 use core::fmt;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
@@ -13,13 +14,30 @@ use serde::{Deserialize, Serialize};
 /// Contains the basic information and resources needed to run an app.
 pub struct RuntimeConfig<'a, D, C>
 where
-    D: DrawTarget<Color = C> + OriginDimensions,
+    D: DrawTarget<Color = C> + OriginDimensions + FireflyDisplay,
     C: RgbColor + FromRGB,
 {
     pub id: Option<FullID>,
     pub device: DeviceImpl<'a>,
     pub display: D,
     pub net_handler: NetHandler,
+}
+
+impl<D, C> RuntimeConfig<'_, D, C>
+where
+    D: DrawTarget<Color = C> + OriginDimensions + FireflyDisplay,
+    C: RgbColor + FromRGB,
+{
+    /// Read system settings and apply hardware ones.
+    ///
+    /// Rotates screen and sets screen bringhtness.
+    pub fn apply_settings(&mut self) {
+        let Some(s) = load_settings(&mut self.device) else {
+            return;
+        };
+        self.display.rotate(s.rotate_screen);
+        self.display.set_brightness(s.screen_brightness);
+    }
 }
 
 pub enum FullIDError {

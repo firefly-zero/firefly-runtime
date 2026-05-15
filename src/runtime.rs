@@ -1,7 +1,7 @@
 use crate::color::FromRGB;
 use crate::config::{FullID, RuntimeConfig};
 use crate::error::Error;
-use crate::frame_buffer::RenderFB;
+use crate::frame_buffer::FireflyDisplay;
 use crate::linking::populate_externals;
 use crate::state::{NetHandler, State};
 use crate::stats::StatsTracker;
@@ -28,7 +28,7 @@ const FUEL_CHEAT: u64 = 60_000;
 
 pub struct Runtime<'a, D, C>
 where
-    D: DrawTarget<Color = C> + RenderFB + OriginDimensions,
+    D: DrawTarget<Color = C> + FireflyDisplay + OriginDimensions,
     C: RgbColor + FromRGB,
 {
     display: D,
@@ -57,7 +57,7 @@ where
 
 impl<'a, D, C> Runtime<'a, D, C>
 where
-    D: DrawTarget<Color = C> + RenderFB + OriginDimensions,
+    D: DrawTarget<Color = C> + FireflyDisplay + OriginDimensions,
     C: RgbColor + FromRGB,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.

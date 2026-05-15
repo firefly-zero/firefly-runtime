@@ -36,9 +36,11 @@ const DEFAULT_PALETTE: [Rgb16; 16] = [
     Rgb16::from_rgb(0x33, 0x3c, 0x57), // #333c57, dark gray
 ];
 
-pub trait RenderFB {
+pub trait FireflyDisplay {
     type Error;
     fn render_fb(&mut self, frame: &mut FrameBuffer) -> Result<(), Self::Error>;
+    fn rotate(&mut self, rotate: bool);
+    fn set_brightness(&mut self, brightness: u8);
 }
 
 pub struct FrameBuffer {

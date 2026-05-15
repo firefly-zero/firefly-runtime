@@ -599,7 +599,7 @@ impl<'a> State<'a> {
     }
 }
 
-fn load_settings(device: &mut DeviceImpl) -> Option<firefly_types::Settings> {
+pub(crate) fn load_settings(device: &mut DeviceImpl) -> Option<firefly_types::Settings> {
     let mut dir = match device.open_dir(&["sys"]) {
         Ok(dir) => dir,
         Err(err) => {
