@@ -336,7 +336,13 @@ impl<'a> State<'a> {
         }
 
         if self.error.is_none() {
-            self.input = self.device.read_input();
+            let mut input = self.device.read_input();
+            if self.settings.rotate_screen {
+                if let Some(input) = input.as_mut() {
+                    input.rotate();
+                }
+            }
+            self.input = input;
         }
         self.update_net();
 
