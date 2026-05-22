@@ -213,4 +213,17 @@ impl Connector {
         }
         Ok(())
     }
+
+    pub fn send_disconnect_to(
+        &self,
+        device: &mut DeviceImpl,
+        i: usize,
+    ) -> Result<(), NetcodeError> {
+        let msg = Message::Req(Req::Disconnect);
+        let mut buf = alloc::vec![0u8; MSG_SIZE];
+        let raw = msg.encode(&mut buf)?;
+        let addr = &self.peer_addrs[i];
+        device.net_send(*addr, raw)?;
+        Ok(())
+    }
 }

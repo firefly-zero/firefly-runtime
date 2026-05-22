@@ -253,7 +253,11 @@ pub(crate) fn restart(mut caller: C) {
     state.set_next(Some(state.id.clone()));
 }
 
-/// Undocumented function used by the connector app.
+/// Undocumented function called from `sys.connector` in `before_exit`.
+///
+/// Sets the mapping of the peers that the user accepted
+/// and transitions net state from Connector into Connection.
+/// If none of the peers are accepted, transitions into None (offline) instead.
 ///
 /// It doesn't need to be sudo because it only works in the `Connector` state
 /// which is only available when `sys.connector` is running.
@@ -270,17 +274,19 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
 
     // TODO: do this into a single loop and without Vec.
     let mut to_remove: Vec<usize> = Vec::new();
-    let mut i = 0;
     let mut peer_map = peer_map;
-    while peer_map != 0 && i < connector.peer_infos.len() {
+    for i in 0..connector.peer_infos.len() {
         if peer_map & 1 == 0 {
             to_remove.push(i);
         }
         peer_map >>= 1;
-        i += 1;
     }
     to_remove.reverse();
     for i in to_remove {
+        let res = connector.send_disconnect_to(&mut state.device, i);
+        if let Err(err) = res {
+            state.device.log_error("netcode", err);
+        }
         connector.peer_infos.remove(i);
     }
 
