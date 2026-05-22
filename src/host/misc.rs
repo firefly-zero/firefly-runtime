@@ -283,7 +283,6 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
     for i in to_remove {
         connector.peer_infos.remove(i);
     }
-    connector.stopped = true;
 
     if connector.peer_infos.is_empty() {
         state.set_next(None);

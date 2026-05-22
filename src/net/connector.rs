@@ -23,8 +23,6 @@ pub(crate) struct Connector {
     pub peer_infos: heapless::Vec<PeerInfo, MAX_PEERS>,
     /// If the network interface (WiFi) has been activated.
     started: bool,
-    /// If the device should not accept any new connections.
-    pub stopped: bool,
 }
 
 impl Connector {
@@ -35,13 +33,11 @@ impl Connector {
             peer_addrs: heapless::Vec::new(),
             peer_infos: heapless::Vec::new(),
             started: false,
-            stopped: false,
         }
     }
 
     /// Stop all network operations.
-    pub fn cancel(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
-        self.stopped = true;
+    pub fn cancel(self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         self.send_disconnect(device)?;
         device.net_stop()?;
         Ok(())
@@ -89,10 +85,8 @@ impl Connector {
             self.started = true;
             device.net_start()?;
         }
-        if !self.stopped {
-            let now = device.now();
-            self.advertise(device, now)?;
-        }
+        let now = device.now();
+        self.advertise(device, now)?;
         for _ in 0..4 {
             let Some((addr, msg)) = device.net_recv()? else {
                 break;
@@ -148,7 +142,7 @@ impl Connector {
     }
 
     fn handle_hello(&mut self, device: &mut DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
-        if !self.stopped && !self.peer_addrs.contains(&addr) {
+        if !self.peer_addrs.contains(&addr) {
             let res = self.peer_addrs.push(addr);
             if res.is_err() {
                 return Err(NetcodeError::PeerListFull);
@@ -159,9 +153,6 @@ impl Connector {
     }
 
     fn handle_intro(&mut self, addr: Addr, intro: Intro) -> Result<(), NetcodeError> {
-        if self.stopped {
-            return Ok(());
-        }
         for info in &self.peer_infos {
             if info.addr == addr {
                 return Ok(());
@@ -201,10 +192,7 @@ impl Connector {
             self.peer_addrs.remove(index);
         }
 
-        if self.stopped {
-            return Err(NetcodeError::Disconnected(name));
-        }
-        Ok(())
+        Err(NetcodeError::Disconnected(name))
     }
 
     fn send_intro(&self, device: &mut DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
