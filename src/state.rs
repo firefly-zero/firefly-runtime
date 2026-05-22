@@ -9,7 +9,6 @@ use crate::menu::{Menu, MenuItem};
 use crate::net::*;
 use crate::utils::{read_all, read_all_into};
 use crate::Error;
-use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
 use core::cell::Cell;
 use core::fmt::Display;
@@ -285,7 +284,7 @@ impl<'a> State<'a> {
     fn player_count(&mut self) -> usize {
         match self.net_handler.get_mut() {
             NetHandler::None => 1,
-            NetHandler::Connector(connector) => connector.peer_infos().len() + 1,
+            NetHandler::Connector(connector) => connector.peer_infos.len() + 1,
             NetHandler::Connection(connection) => connection.peers.len(),
             NetHandler::FrameSyncer(frame_syncer) => frame_syncer.peers.len(),
         }
@@ -420,41 +419,8 @@ impl<'a> State<'a> {
         if let Err(err) = res {
             self.error = Some(ErrorScene::new(alloc::format!("{err}")));
             self.device.log_error("netcode", err);
-            return NetHandler::Connector(connector);
         }
-        let Some(mut conn_status) = connector.status else {
-            return NetHandler::Connector(connector);
-        };
-        // If the peers list contains only the current device itself,
-        // we can't start multiplayer: treat confirmation as cancellation.
-        if conn_status == ConnectStatus::Finished && connector.peer_infos().is_empty() {
-            conn_status = ConnectStatus::Cancelled;
-        }
-        match conn_status {
-            ConnectStatus::Stopped => {
-                let res = connector.pause();
-                if let Err(err) = res {
-                    self.device.log_error("netcode", err);
-                }
-                NetHandler::Connector(connector)
-            }
-            ConnectStatus::Cancelled => {
-                self.set_next(None);
-                let res = connector.cancel(&mut self.device);
-                if let Err(err) = res {
-                    self.device.log_error("netcode", err);
-                }
-                NetHandler::None
-            }
-            ConnectStatus::Finished => {
-                if let Err(err) = connector.validate() {
-                    self.error = Some(ErrorScene::new(err.to_owned()))
-                }
-                self.set_next(None);
-                let connection = connector.finalize(&mut self.device);
-                NetHandler::Connection(connection)
-            }
-        }
+        NetHandler::Connector(connector)
     }
 
     fn update_connection(&mut self, mut connection: Box<Connection>) -> NetHandler {

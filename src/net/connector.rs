@@ -6,16 +6,6 @@ const ADVERTISE_EVERY: Duration = Duration::from_ms(100);
 const MAX_PEERS: usize = 7;
 const MSG_SIZE: usize = 64;
 
-#[derive(PartialEq, Copy, Clone)]
-pub(crate) enum ConnectStatus {
-    /// Stopped listening, [Connector] should do nothing.
-    Stopped,
-    /// Cancelled connecting, destroy [Connector].
-    Cancelled,
-    /// Finished connecting, proceed to multiplayer.
-    Finished,
-}
-
 pub(crate) struct PeerInfo {
     pub addr: Addr,
     pub intro: Intro,
@@ -30,12 +20,11 @@ pub(crate) struct Connector {
     pub me: Intro,
     last_advertisement: Option<Instant>,
     peer_addrs: heapless::Vec<Addr, MAX_PEERS>,
-    peer_infos: heapless::Vec<PeerInfo, MAX_PEERS>,
+    pub peer_infos: heapless::Vec<PeerInfo, MAX_PEERS>,
     /// If the network interface (WiFi) has been activated.
     started: bool,
-    /// If the device should not accept eny new connections.
-    stopped: bool,
-    pub status: Option<ConnectStatus>,
+    /// If the device should not accept any new connections.
+    pub stopped: bool,
 }
 
 impl Connector {
@@ -47,18 +36,7 @@ impl Connector {
             peer_infos: heapless::Vec::new(),
             started: false,
             stopped: false,
-            status: None,
         }
-    }
-
-    pub fn peer_infos(&self) -> &heapless::Vec<PeerInfo, MAX_PEERS> {
-        &self.peer_infos
-    }
-
-    /// Stop announcing and accepting new connections.
-    pub fn pause(&mut self) -> Result<(), NetcodeError> {
-        self.stopped = true;
-        Ok(())
     }
 
     /// Stop all network operations.

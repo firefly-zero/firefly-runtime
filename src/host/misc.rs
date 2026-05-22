@@ -1,7 +1,8 @@
 use crate::error::HostError;
-use crate::net::{ConnectStatus, FSPeer, Intro};
+use crate::net::{FSPeer, Intro};
 use crate::state::{NetHandler, State};
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use firefly_hal::Device;
 
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
@@ -116,7 +117,7 @@ pub(crate) fn get_name(mut caller: C, index: u32, ptr: u32) -> u32 {
                 &connector.me.name
             } else {
                 let index = index as usize - 1;
-                match connector.peer_infos().get(index) {
+                match connector.peer_infos.get(index) {
                     Some(peer) => &peer.intro.name,
                     None => return 0,
                 }
@@ -175,7 +176,7 @@ pub(crate) fn get_settings(mut caller: C, index: u32) -> u64 {
                 pack_intro(&connector.me)
             } else {
                 let index = index as usize - 1;
-                match connector.peer_infos().get(index) {
+                match connector.peer_infos.get(index) {
                     Some(peer) => pack_intro(&peer.intro),
                     None => 0,
                 }
@@ -253,22 +254,53 @@ pub(crate) fn restart(mut caller: C) {
 }
 
 /// Undocumented function used by the connector app.
-pub(crate) fn set_conn_status(mut caller: C, val: u32) {
+///
+/// It doesn't need to be sudo because it only works in the `Connector` state
+/// which is only available when `sys.connector` is running.
+/// Curiously enough, `sys.connector` is not a `sudo` app.
+pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
     let state = caller.data_mut();
-    state.called = "misc.set_conn_status";
-    let state = caller.data_mut();
-    let status = match val {
-        1 => ConnectStatus::Stopped,
-        2 => ConnectStatus::Cancelled,
-        3 => ConnectStatus::Finished,
-        _ => {
-            state.log_error("invalid connection status");
-            return;
-        }
-    };
-    let NetHandler::Connector(connector) = state.net_handler.get_mut() else {
+    state.called = "misc.set_peers";
+    let handler = state.net_handler.replace(NetHandler::None);
+    let NetHandler::Connector(mut connector) = handler else {
+        state.net_handler.replace(handler);
         state.log_error("can set connection status only for connector");
         return;
     };
-    connector.status = Some(status);
+
+    // TODO: do this into a single loop and without Vec.
+    let mut to_remove: Vec<usize> = Vec::new();
+    let mut i = 0;
+    let mut peer_map = peer_map;
+    while peer_map != 0 && i < connector.peer_infos.len() {
+        if peer_map & 1 == 0 {
+            to_remove.push(i);
+        }
+        peer_map >>= 1;
+        i += 1;
+    }
+    to_remove.reverse();
+    for i in to_remove {
+        connector.peer_infos.remove(i);
+    }
+    connector.stopped = true;
+
+    if connector.peer_infos.is_empty() {
+        state.set_next(None);
+        let res = connector.cancel(&mut state.device);
+        if let Err(err) = res {
+            state.device.log_error("netcode", err);
+        }
+        return;
+    }
+
+    if let Err(err) = connector.validate() {
+        state.device.log_error("netcode", err);
+        // state.error = Some(ErrorScene::new(err.to_owned()))
+    }
+    state.set_next(None);
+    let connection = connector.finalize(&mut state.device);
+    state
+        .net_handler
+        .replace(NetHandler::Connection(connection));
 }
