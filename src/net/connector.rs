@@ -51,10 +51,6 @@ impl Connector {
         }
     }
 
-    pub fn peer_addrs(&self) -> &heapless::Vec<Addr, MAX_PEERS> {
-        &self.peer_addrs
-    }
-
     pub fn peer_infos(&self) -> &heapless::Vec<PeerInfo, MAX_PEERS> {
         &self.peer_infos
     }

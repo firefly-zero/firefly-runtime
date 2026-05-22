@@ -118,13 +118,7 @@ pub(crate) fn get_name(mut caller: C, index: u32, ptr: u32) -> u32 {
                 let index = index as usize - 1;
                 match connector.peer_infos().get(index) {
                     Some(peer) => &peer.intro.name,
-                    None => {
-                        let peers = connector.peer_addrs().len();
-                        if index > peers {
-                            return 0;
-                        }
-                        "???"
-                    }
+                    None => return 0,
                 }
             }
         }
