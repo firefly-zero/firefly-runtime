@@ -255,7 +255,7 @@ pub(crate) fn restart(mut caller: C) {
 /// Undocumented function used by the connector app.
 pub(crate) fn set_conn_status(mut caller: C, val: u32) {
     let state = caller.data_mut();
-    state.called = "misc.restart";
+    state.called = "misc.set_conn_status";
     let state = caller.data_mut();
     let status = match val {
         1 => ConnectStatus::Stopped,

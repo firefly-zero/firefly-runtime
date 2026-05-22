@@ -4,6 +4,7 @@ use firefly_hal::Wifi;
 
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
 
+/// List available wifi access points.
 pub(crate) fn scan(mut caller: C, ptr: u32, len: u32) -> u32 {
     let state = caller.data_mut();
     state.called = "wifi.scan";
@@ -45,6 +46,7 @@ pub(crate) fn scan(mut caller: C, ptr: u32, len: u32) -> u32 {
     pos as u32
 }
 
+/// Connect to the given wifi access point.
 pub(crate) fn connect(mut caller: C, ssid_ptr: u32, ssid_len: u32, pass_ptr: u32, pass_len: u32) {
     let state = caller.data_mut();
     state.called = "wifi.connect";
@@ -67,6 +69,7 @@ pub(crate) fn connect(mut caller: C, ssid_ptr: u32, ssid_len: u32, pass_ptr: u32
     }
 }
 
+/// Get wifi connecion status.
 pub(crate) fn status(mut caller: C) -> u32 {
     let state = caller.data_mut();
     state.called = "wifi.status";
@@ -81,6 +84,7 @@ pub(crate) fn status(mut caller: C) -> u32 {
     }
 }
 
+/// Disconnect from the currently connected wifi access point.
 pub(crate) fn disconnect(mut caller: C) {
     let state = caller.data_mut();
     state.called = "wifi.disconnect";
@@ -91,6 +95,7 @@ pub(crate) fn disconnect(mut caller: C) {
     }
 }
 
+/// Establish TCP connection to a remote server.
 pub(crate) fn tcp_connect(mut caller: C, ip: u32, port: u32) {
     let state = caller.data_mut();
     state.called = "wifi.tcp_connect";
@@ -101,6 +106,7 @@ pub(crate) fn tcp_connect(mut caller: C, ip: u32, port: u32) {
     }
 }
 
+/// Get status of the current TCP connection.
 pub(crate) fn tcp_status(mut caller: C) -> u32 {
     let state = caller.data_mut();
     state.called = "wifi.tcp_status";
@@ -115,6 +121,7 @@ pub(crate) fn tcp_status(mut caller: C) -> u32 {
     }
 }
 
+/// Send the given bytes into the currently open TCP connection.
 pub(crate) fn tcp_send(mut caller: C, ptr: u32, len: u32) {
     let state = caller.data_mut();
     state.called = "wifi.tcp_send";
@@ -137,6 +144,7 @@ pub(crate) fn tcp_send(mut caller: C, ptr: u32, len: u32) {
     }
 }
 
+/// Read the pending incoming data from the current TCP connection.
 pub(crate) fn tcp_recv(mut caller: C, ptr: u32, len: u32) -> u32 {
     let state = caller.data_mut();
     state.called = "wifi.tcp_recv";
@@ -165,6 +173,7 @@ pub(crate) fn tcp_recv(mut caller: C, ptr: u32, len: u32) -> u32 {
     chunk.len() as u32
 }
 
+/// Close the currently open TCP connection.
 pub(crate) fn tcp_close(mut caller: C) {
     let state = caller.data_mut();
     state.called = "wifi.tcp_close";
@@ -175,12 +184,7 @@ pub(crate) fn tcp_close(mut caller: C) {
     }
 }
 
-pub(super) fn load_string<'a>(
-    state: &mut State,
-    data: &'a [u8],
-    ptr: u32,
-    len: u32,
-) -> Option<&'a str> {
+fn load_string<'a>(state: &mut State, data: &'a [u8], ptr: u32, len: u32) -> Option<&'a str> {
     let ptr = ptr as usize;
     let len = len as usize;
     let Some(text_bytes) = &data.get(ptr..(ptr + len)) else {
