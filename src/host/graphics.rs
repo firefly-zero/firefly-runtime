@@ -488,6 +488,85 @@ pub(crate) fn unset_canvas(mut caller: C) {
     state.canvas = None;
 }
 
+const IMG_HEADER: usize = 4;
+
+/// Tile the given screen area with the provided sub-image.
+pub(crate) fn draw_sub_tile(
+    mut caller: C,
+    ptr: u32,
+    len: u32,
+    // Screen area to fill.
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    // Image sub-region to use.
+    sub_x: i32,
+    sub_y: i32,
+    sub_width: u32,
+    sub_height: u32,
+) {
+    let state = caller.data_mut();
+    state.called = "graphics.draw_nine_slice";
+
+    // Retrieve the raw data from memory.
+    let state = caller.data_mut();
+    let Some(memory) = state.memory else {
+        state.log_error(HostError::MemoryNotFound);
+        return;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let Some(image_bytes) = load_image(state, data, ptr, len) else {
+        return;
+    };
+
+    let width = u16::from_le_bytes([image_bytes[1], image_bytes[2]]) as u32;
+    if width == 0 {
+        state.log_error("image has zero width");
+        return;
+    }
+    let transp = u8::from_le_bytes([image_bytes[3]]);
+    let image_bytes = &image_bytes[IMG_HEADER..];
+    if !(image_bytes.len() * 2).is_multiple_of(width as usize) {
+        state.log_error(HostError::InvalidWidth);
+        return;
+    }
+
+    if !(w as u32).is_multiple_of(width) {
+        state.log_error("area width must be a multiple of image width");
+        return;
+    }
+    let height = image_bytes.len() as u32 / (width / 2);
+    if !(h as u32).is_multiple_of(height) {
+        state.log_error("area width must be a multiple of image width");
+        return;
+    }
+
+    // TODO: support canvas
+    if state.canvas.is_some() {
+        state.log_error("images cannot be drawn on canvas yet");
+        return;
+    }
+
+    let sub_point = Point::new(sub_x, sub_y);
+    let sub_size = Size::new(sub_width, sub_height);
+    let sub = Rectangle::new(sub_point, sub_size);
+
+    let image = ParsedImage {
+        bytes: image_bytes,
+        width,
+        transp,
+        sub: Some(sub),
+    };
+
+    for px in x..x + w {
+        for py in y..y + h {
+            let point = Point::new(px, py);
+            image.render(point, &mut state.frame);
+        }
+    }
+}
+
 pub(crate) fn draw_sub_image(
     mut caller: C,
     ptr: u32,
@@ -514,37 +593,16 @@ pub(crate) fn draw_image(mut caller: C, ptr: u32, len: u32, x: i32, y: i32) {
 }
 
 fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Option<Rectangle>) {
-    const HEADER: usize = 4;
-
-    // retrieve the raw data from memory
+    // Retrieve the raw data from memory.
     let state = caller.data_mut();
     let Some(memory) = state.memory else {
         state.log_error(HostError::MemoryNotFound);
         return;
     };
     let (data, state) = memory.data_and_store_mut(&mut caller);
-    let ptr = ptr as usize;
-    let len = len as usize;
-    let maybe_buf = data.get(ptr..(ptr + len));
-    let Some(image_bytes) = &maybe_buf else {
-        state.log_error(HostError::OomPointer);
+    let Some(image_bytes) = load_image(state, data, ptr, len) else {
         return;
     };
-    if image_bytes.len() < HEADER {
-        let msg = if ptr == 0 {
-            "image is a nil pointer: make sure you've loaded it"
-        } else if image_bytes.is_empty() {
-            "image file is empty: make sure you load it with the correct name"
-        } else {
-            "image file is too small"
-        };
-        state.log_error(msg);
-        return;
-    }
-    if image_bytes[0] != 0x22 {
-        state.log_error("invalid magic number");
-        return;
-    }
 
     let width = u16::from_le_bytes([image_bytes[1], image_bytes[2]]) as u32;
     if width == 0 {
@@ -552,7 +610,7 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         return;
     }
     let transp = u8::from_le_bytes([image_bytes[3]]);
-    let image_bytes = &image_bytes[HEADER..];
+    let image_bytes = &image_bytes[IMG_HEADER..];
     if !(image_bytes.len() * 2).is_multiple_of(width as usize) {
         state.log_error(HostError::InvalidWidth);
         return;
@@ -572,6 +630,32 @@ fn draw_image_inner(mut caller: C, ptr: u32, len: u32, x: i32, y: i32, sub: Opti
         sub,
     };
     image.render(point, &mut state.frame);
+}
+
+fn load_image<'a>(state: &mut State, data: &'a [u8], ptr: u32, len: u32) -> Option<&'a [u8]> {
+    let ptr = ptr as usize;
+    let len = len as usize;
+    let maybe_buf = data.get(ptr..(ptr + len));
+    let Some(image_bytes) = &maybe_buf else {
+        state.log_error(HostError::OomPointer);
+        return None;
+    };
+    if image_bytes.len() < IMG_HEADER {
+        let msg = if ptr == 0 {
+            "image is a nil pointer: make sure you've loaded it"
+        } else if image_bytes.is_empty() {
+            "image file is empty: make sure you load it with the correct name"
+        } else {
+            "image file is too small"
+        };
+        state.log_error(msg);
+        return None;
+    }
+    if image_bytes[0] != 0x22 {
+        state.log_error("invalid magic number");
+        return None;
+    }
+    Some(image_bytes)
 }
 
 fn get_shape_style(fill_color: u32, stroke_color: u32, stroke_width: u32) -> PrimitiveStyle<Gray4> {
