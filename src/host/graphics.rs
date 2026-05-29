@@ -532,13 +532,12 @@ pub(crate) fn draw_sub_tile(
         return;
     }
 
-    if !(w as u32).is_multiple_of(width) {
-        state.log_error("area width must be a multiple of image width");
+    if !(w as u32).is_multiple_of(sub_width) {
+        state.log_error("area width must be a multiple of sib-image width");
         return;
     }
-    let height = image_bytes.len() as u32 / (width / 2);
-    if !(h as u32).is_multiple_of(height) {
-        state.log_error("area width must be a multiple of image width");
+    if !(h as u32).is_multiple_of(sub_height) {
+        state.log_error("area width must be a multiple of sub-image height");
         return;
     }
 
@@ -559,8 +558,8 @@ pub(crate) fn draw_sub_tile(
         sub: Some(sub),
     };
 
-    for px in x..x + w {
-        for py in y..y + h {
+    for px in (x..x + w).step_by(sub_width as _) {
+        for py in (y..y + h).step_by(sub_height as _) {
             let point = Point::new(px, py);
             image.render(point, &mut state.frame);
         }
