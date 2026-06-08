@@ -227,32 +227,39 @@ pub(crate) fn mod_linear(
     mut caller: C,
     node_id: u32,
     param: u32,
-    start: f32,
-    end: f32,
+    low: f32,
+    high: f32,
     start_at: u32,
     end_at: u32,
 ) {
     let state = caller.data_mut();
     state.called = "audio.mod_linear";
-    let lfo = modulators::Linear::new(start, end, start_at, end_at);
-    modulate(state, node_id, param, Box::new(lfo));
+    let lfo = modulators::Linear::new(start_at, end_at);
+    modulate(state, node_id, param, Box::new(lfo), low, high);
 }
 
-pub(crate) fn mod_hold(mut caller: C, node_id: u32, param: u32, v1: f32, v2: f32, time: u32) {
+pub(crate) fn mod_hold(mut caller: C, node_id: u32, param: u32, low: f32, high: f32, time: u32) {
     let state = caller.data_mut();
     state.called = "audio.mod_hold";
-    let lfo = modulators::Hold::new(v1, v2, time);
-    modulate(state, node_id, param, Box::new(lfo));
+    let lfo = modulators::Hold::new(time);
+    modulate(state, node_id, param, Box::new(lfo), low, high);
 }
 
 pub(crate) fn mod_sine(mut caller: C, node_id: u32, param: u32, freq: f32, low: f32, high: f32) {
     let state = caller.data_mut();
     state.called = "audio.mod_sine";
-    let lfo = modulators::Sine::new(freq, low, high);
-    modulate(state, node_id, param, Box::new(lfo));
+    let lfo = modulators::Sine::new(freq);
+    modulate(state, node_id, param, Box::new(lfo), low, high);
 }
 
-fn modulate(state: &mut State, node_id: u32, param: u32, lfo: Box<dyn modulators::Modulator>) {
+fn modulate(
+    state: &mut State,
+    node_id: u32,
+    param: u32,
+    lfo: Box<dyn modulators::Modulator>,
+    low: f32,
+    high: f32,
+) {
     let node = match state.audio.get_node(node_id) {
         Ok(node) => node,
         Err(err) => {
@@ -264,7 +271,7 @@ fn modulate(state: &mut State, node_id: u32, param: u32, lfo: Box<dyn modulators
         state.log_error("param value is too high");
         return;
     }
-    node.modulate(param as u8, lfo);
+    node.modulate(param as u8, lfo, low, high);
 }
 
 /// Reset the given node.
