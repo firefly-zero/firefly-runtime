@@ -245,10 +245,57 @@ pub(crate) fn mod_hold(mut caller: C, node_id: u32, param: u32, low: f32, high: 
     modulate(state, node_id, param, Box::new(lfo), low, high);
 }
 
+pub(crate) fn mod_adsr(
+    mut caller: C,
+    node_id: u32,
+    param: u32,
+    low: f32,
+    high: f32,
+    attack: u32,
+    decay: u32,
+    sustain: u32,
+    sustain_level: f32,
+    release: u32,
+) {
+    let state = caller.data_mut();
+    state.called = "audio.mod_adsr";
+    let lfo = modulators::Adsr::new(attack, decay, sustain, sustain_level, release);
+    modulate(state, node_id, param, Box::new(lfo), low, high);
+}
+
+// TODO(@orsinium): Put `low` and `high` before modulator params for consistency.
 pub(crate) fn mod_sine(mut caller: C, node_id: u32, param: u32, freq: f32, low: f32, high: f32) {
     let state = caller.data_mut();
     state.called = "audio.mod_sine";
     let lfo = modulators::Sine::new(freq);
+    modulate(state, node_id, param, Box::new(lfo), low, high);
+}
+
+pub(crate) fn mod_square(
+    mut caller: C,
+    node_id: u32,
+    param: u32,
+    low: f32,
+    high: f32,
+    period: u32,
+) {
+    let state = caller.data_mut();
+    state.called = "audio.mod_square";
+    let lfo = modulators::Pulse::new_square(period);
+    modulate(state, node_id, param, Box::new(lfo), low, high);
+}
+
+pub(crate) fn mod_sawtooth(
+    mut caller: C,
+    node_id: u32,
+    param: u32,
+    low: f32,
+    high: f32,
+    period: u32,
+) {
+    let state = caller.data_mut();
+    state.called = "audio.mod_sawtooth";
+    let lfo = modulators::Triangle::new_sawtooth(period);
     modulate(state, node_id, param, Box::new(lfo), low, high);
 }
 
