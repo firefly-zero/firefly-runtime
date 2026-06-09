@@ -222,6 +222,23 @@ fn add_node(state: &mut State, parent_id: u32, proc: Box<dyn firefly_audio::Proc
     }
 }
 
+pub(crate) fn set_param(mut caller: C, node_id: u32, param: u32, val: f32) {
+    let state = caller.data_mut();
+    state.called = "audio.set_param";
+    let node = match state.audio.get_node(node_id) {
+        Ok(node) => node,
+        Err(err) => {
+            state.log_error(HostError::AudioNode(err));
+            return;
+        }
+    };
+    if param > 4 {
+        state.log_error("param index is too high");
+        return;
+    }
+    node.set(param as u8, val);
+}
+
 /// Modulate a parameter of the given node using linear modulation.
 pub(crate) fn mod_linear(
     mut caller: C,
@@ -314,8 +331,8 @@ fn modulate(
             return;
         }
     };
-    if param > 8 {
-        state.log_error("param value is too high");
+    if param > 4 {
+        state.log_error("param index is too high");
         return;
     }
     node.modulate(param as u8, lfo, low, high);

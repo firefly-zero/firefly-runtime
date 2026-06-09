@@ -117,6 +117,7 @@ fn select_audio_external<'a>(
         "reset" => Func::wrap(ctx, audio::reset),
         "reset_all" => Func::wrap(ctx, audio::reset_all),
         "clear" => Func::wrap(ctx, audio::clear),
+        "set_param" => Func::wrap(ctx, audio::set_param),
 
         // Processors.
         "add_all_for_one" => Func::wrap(ctx, audio::add_all_for_one),
