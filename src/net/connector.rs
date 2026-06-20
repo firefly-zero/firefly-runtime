@@ -82,8 +82,8 @@ impl Connector {
 
     pub fn update(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         if !self.started {
-            self.started = true;
             device.net_start()?;
+            self.started = true;
         }
         let now = device.now();
         self.advertise(device, now)?;

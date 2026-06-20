@@ -292,6 +292,7 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
 
     if connector.peer_infos.is_empty() {
         state.set_next(None);
+        state.net_handler.replace(NetHandler::None);
         let res = connector.cancel(&mut state.device);
         if let Err(err) = res {
             state.device.log_error("netcode", err);
