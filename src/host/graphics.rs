@@ -566,6 +566,191 @@ pub(crate) fn draw_sub_tile(
     }
 }
 
+/// Render the image using 9-slice scaling.
+///
+/// https://en.wikipedia.org/wiki/9-slice_scaling
+pub(crate) fn draw_nine_slice(
+    mut caller: C,
+    ptr: u32,
+    len: u32,
+    // Screen area to fill.
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    // The area of the middle square on the image.
+    mid_x: i32,
+    mid_y: i32,
+    mid_width: u32,
+    mid_height: u32,
+) {
+    let state = caller.data_mut();
+    state.called = "graphics.draw_nine_slice";
+
+    // Retrieve the raw data from memory.
+    let state = caller.data_mut();
+    let Some(memory) = state.memory else {
+        state.log_error(HostError::MemoryNotFound);
+        return;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let Some(image_bytes) = load_image(state, data, ptr, len) else {
+        return;
+    };
+
+    let width = u16::from_le_bytes([image_bytes[1], image_bytes[2]]) as u32;
+    if width == 0 {
+        state.log_error("image has zero width");
+        return;
+    }
+    let transp = u8::from_le_bytes([image_bytes[3]]);
+    let image_bytes = &image_bytes[IMG_HEADER..];
+    if !(image_bytes.len() * 2).is_multiple_of(width as usize) {
+        state.log_error(HostError::InvalidWidth);
+        return;
+    }
+
+    // TODO: support canvas
+    if state.canvas.is_some() {
+        state.log_error("images cannot be drawn on canvas yet");
+        return;
+    }
+
+    let height = image_bytes.len() as u32 * 2 / width;
+    let mut image = ParsedImage {
+        bytes: image_bytes,
+        width,
+        transp,
+        sub: None,
+    };
+
+    // Make sure that all segments of 9-slice fully fit into the area.
+    // This limitation might be relaxed or removed in the future
+    // when the implementation handles such cases correctly
+    // (if this can be done without losing performance).
+    if width > w as u32 {
+        state.log_error("9-slice width is bigger than width of the target area");
+        return;
+    }
+    if height > h as u32 {
+        state.log_error("9-slice height is bigger than width of the target area");
+        return;
+    }
+    if !(w as u32 - width).is_multiple_of(mid_width) {
+        state.log_error("drawing area width cannot be tiled with 9-slice middle segment");
+        return;
+    }
+    if !(h as u32 - height).is_multiple_of(mid_height) {
+        state.log_error("drawing area height cannot be tiled with 9-slice middle segment");
+        return;
+    }
+
+    // Segment corners.
+    let x1 = 0i32;
+    // TODO: handle mid_x being outside the image.
+    let x2 = mid_x;
+    let x3 = x2 + mid_width as i32;
+    let x4 = width as i32;
+    let y1 = 0i32;
+    let y2 = mid_y;
+    let y3 = y2 + mid_height as i32;
+    let y4 = height as i32;
+
+    // Segment sizes.
+    let wl = (x2 - x1) as u32;
+    let wm = (x3 - x2) as u32;
+    let wr = (x4 - x3) as u32;
+    let ht = (y2 - y1) as u32;
+    let hm = (y3 - y2) as u32;
+    let hb = (y4 - y3) as u32;
+
+    // Top-left corner.
+    {
+        let size = Size::new(wl, ht);
+        let point = Point::new(x1, y1);
+        image.sub = Some(Rectangle::new(point, size));
+        let point = Point::new(x, y);
+        image.render(point, &mut state.frame);
+    }
+    // Top-right corner.
+    {
+        let size = Size::new(wr, ht);
+        let point = Point::new(x3, y1);
+        image.sub = Some(Rectangle::new(point, size));
+        let point = Point::new(x + w - wr as i32, y);
+        image.render(point, &mut state.frame);
+    }
+    // Bottom-left corner.
+    {
+        let size = Size::new(wl, hb);
+        let point = Point::new(x1, y3);
+        image.sub = Some(Rectangle::new(point, size));
+        let point = Point::new(x, y + h - hb as i32);
+        image.render(point, &mut state.frame);
+    }
+    // Bottom-right corner.
+    {
+        let size = Size::new(wr, hb);
+        let point = Point::new(x3, y3);
+        image.sub = Some(Rectangle::new(point, size));
+        let point = Point::new(x + w - wr as i32, y + h - hb as i32);
+        image.render(point, &mut state.frame);
+    }
+
+    // Top edge.
+    let range_x = (x + mid_x..x + w - wr as i32).step_by(mid_width as usize);
+    {
+        let size = Size::new(wm, ht);
+        let point = Point::new(x2, y1);
+        image.sub = Some(Rectangle::new(point, size));
+        for sx in range_x.clone() {
+            image.render(Point::new(sx, y), &mut state.frame);
+        }
+    }
+    // Bottom edge.
+    {
+        let size = Size::new(wm, hb);
+        let point = Point::new(x2, y3);
+        image.sub = Some(Rectangle::new(point, size));
+        let sy = y + h - hb as i32;
+        for sx in range_x.clone() {
+            image.render(Point::new(sx, sy), &mut state.frame);
+        }
+    }
+    // Left edge.
+    let range_y = (y + mid_y..y + h - hb as i32).step_by(mid_height as usize);
+    {
+        let size = Size::new(wl, hm);
+        let point = Point::new(x1, y2);
+        image.sub = Some(Rectangle::new(point, size));
+        for sy in range_y.clone() {
+            image.render(Point::new(x, sy), &mut state.frame);
+        }
+    }
+    // Right edge.
+    {
+        let size = Size::new(wr, hm);
+        let point = Point::new(x3, y2);
+        image.sub = Some(Rectangle::new(point, size));
+        let sx = x + w - wr as i32;
+        for sy in range_y.clone() {
+            image.render(Point::new(sx, sy), &mut state.frame);
+        }
+    }
+
+    // Middle.
+    {
+        let size = Size::new(wm, hm);
+        let point = Point::new(x2, y2);
+        image.sub = Some(Rectangle::new(point, size));
+        for sy in range_y {
+            for sx in range_x.clone() {
+                image.render(Point::new(sx, sy), &mut state.frame);
+            }
+        }
+    }
+}
+
 pub(crate) fn draw_sub_image(
     mut caller: C,
     ptr: u32,

@@ -88,6 +88,10 @@ fn select_graphics_external<'a>(
     let func = match fn_name {
         "clear_screen" => Func::wrap(ctx, graphics::clear_screen),
         "set_color" => Func::wrap(ctx, graphics::set_color),
+        "set_canvas" => Func::wrap(ctx, graphics::set_canvas),
+        "unset_canvas" => Func::wrap(ctx, graphics::unset_canvas),
+
+        // Primitives (shapes).
         "draw_point" => Func::wrap(ctx, graphics::draw_point),
         "draw_line" => Func::wrap(ctx, graphics::draw_line),
         "draw_rect" => Func::wrap(ctx, graphics::draw_rect),
@@ -97,13 +101,14 @@ fn select_graphics_external<'a>(
         "draw_triangle" => Func::wrap(ctx, graphics::draw_triangle),
         "draw_arc" => Func::wrap(ctx, graphics::draw_arc),
         "draw_sector" => Func::wrap(ctx, graphics::draw_sector),
+
+        // Binary content from RAM (text, images, etc).
         "draw_qr" => Func::wrap(ctx, graphics::draw_qr),
         "draw_text" => Func::wrap(ctx, graphics::draw_text),
         "draw_image" => Func::wrap(ctx, graphics::draw_image),
+        "draw_nine_slice" => Func::wrap(ctx, graphics::draw_nine_slice),
         "draw_sub_tile" => Func::wrap(ctx, graphics::draw_sub_tile),
         "draw_sub_image" => Func::wrap(ctx, graphics::draw_sub_image),
-        "set_canvas" => Func::wrap(ctx, graphics::set_canvas),
-        "unset_canvas" => Func::wrap(ctx, graphics::unset_canvas),
         _ => return None,
     };
     Some(func)
