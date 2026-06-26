@@ -417,7 +417,6 @@ impl<'a> State<'a> {
     fn update_connector(&mut self, mut connector: Box<Connector>) -> NetHandler {
         let res = connector.update(&mut self.device);
         if let Err(err) = res {
-            self.error = Some(ErrorScene::new(alloc::format!("{err}")));
             self.device.log_error("netcode", err);
         }
         NetHandler::Connector(connector)
