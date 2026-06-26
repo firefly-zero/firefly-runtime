@@ -21,8 +21,6 @@ pub(crate) struct Connector {
     last_advertisement: Option<Instant>,
     peer_addrs: heapless::Vec<Addr, MAX_PEERS>,
     pub peer_infos: heapless::Vec<PeerInfo, MAX_PEERS>,
-    /// If the network interface (WiFi) has been activated.
-    started: bool,
 }
 
 impl Connector {
@@ -32,7 +30,6 @@ impl Connector {
             last_advertisement: None,
             peer_addrs: heapless::Vec::new(),
             peer_infos: heapless::Vec::new(),
-            started: false,
         }
     }
 
@@ -81,10 +78,6 @@ impl Connector {
     }
 
     pub fn update(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
-        if !self.started {
-            device.net_start()?;
-            self.started = true;
-        }
         let now = device.now();
         self.advertise(device, now)?;
         for _ in 0..4 {

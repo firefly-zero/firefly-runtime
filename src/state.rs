@@ -531,7 +531,12 @@ impl<'a> State<'a> {
         if !matches!(self.net_handler.get_mut(), NetHandler::None) {
             return;
         }
-        let name = &self.settings.name;
+
+        let res = self.device.net_start();
+        if let Err(err) = res {
+            self.device.log_error("netcode", err);
+        }
+        let name = self.device.get_name().unwrap_or(&self.settings.name);
         let name = heapless::String::from_str(name).unwrap_or_default();
         // TODO: validate the name
         let s = &self.settings;
@@ -547,8 +552,8 @@ impl<'a> State<'a> {
             theme: s.theme,
             flags,
         };
-        self.net_handler
-            .set(NetHandler::Connector(Box::new(Connector::new(me))));
+        let handler = NetHandler::Connector(Box::new(Connector::new(me)));
+        self.net_handler.set(handler);
         let id = FullID::from_str("sys", "connector").unwrap();
         self.set_next(Some(id));
     }
@@ -593,13 +598,16 @@ pub(crate) fn load_settings(device: &mut DeviceImpl) -> Option<firefly_types::Se
             return None;
         }
     };
-    let settings = match firefly_types::Settings::decode(&raw[..]) {
+    let mut settings = match firefly_types::Settings::decode(&raw[..]) {
         Ok(settings) => settings,
         Err(err) => {
             device.log_error("settings", err);
             return None;
         }
     };
+    if let Some(name) = device.get_name() {
+        settings.name = alloc::string::String::from(name);
+    }
     Some(settings)
 }
 
