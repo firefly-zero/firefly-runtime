@@ -3,7 +3,7 @@ use crate::net::{FSPeer, Intro};
 use crate::state::{NetHandler, State};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use firefly_hal::Device;
+use firefly_hal::{Device, Network};
 
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
 
@@ -272,7 +272,7 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
         return;
     };
 
-    // TODO: do this into a single loop and without Vec.
+    // TODO: do this in a single loop and without Vec.
     let mut to_remove: Vec<usize> = Vec::new();
     let mut peer_map = peer_map;
     for i in 0..connector.peer_infos.len() {
@@ -281,19 +281,27 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
         }
         peer_map >>= 1;
     }
-    to_remove.reverse();
-    for i in to_remove {
-        let res = connector.send_disconnect_to(&mut state.device, i);
-        if let Err(err) = res {
-            state.device.log_error("netcode", err);
+    if !to_remove.is_empty() {
+        to_remove.reverse();
+        for i in to_remove {
+            let res = connector.send_disconnect_to(&mut state.device, i);
+            if let Err(err) = res {
+                state.device.log_error("netcode", err);
+            }
+            connector.peer_infos.remove(i);
         }
-        connector.peer_infos.remove(i);
+        // If we sent disconnect to some peers and there are no more peers left
+        // (which will make us disable networking below), wait a bit to make sure
+        // the disconnect messages are delivered before we turn off wifi.
+        if connector.peer_infos.is_empty() {
+            state.device.delay(firefly_hal::Duration::from_ms(50));
+        }
     }
 
     if connector.peer_infos.is_empty() {
         state.set_next(None);
         state.net_handler.replace(NetHandler::None);
-        let res = connector.cancel(&mut state.device);
+        let res = state.device.net_stop();
         if let Err(err) = res {
             state.device.log_error("netcode", err);
         }
@@ -302,7 +310,6 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
 
     if let Err(err) = connector.validate() {
         state.device.log_error("netcode", err);
-        // state.error = Some(ErrorScene::new(err.to_owned()))
     }
     state.set_next(None);
     let connection = connector.finalize(&mut state.device);

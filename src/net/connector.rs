@@ -33,13 +33,6 @@ impl Connector {
         }
     }
 
-    /// Stop all network operations.
-    pub fn cancel(self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
-        self.send_disconnect(device)?;
-        device.net_stop()?;
-        Ok(())
-    }
-
     pub fn validate(&self) -> Result<(), &'static str> {
         for peer in &self.peer_infos {
             if peer.intro.version != self.me.version {
@@ -194,16 +187,6 @@ impl Connector {
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
         device.net_send(addr, raw)?;
-        Ok(())
-    }
-
-    fn send_disconnect(&self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
-        let msg = Message::Req(Req::Disconnect);
-        let mut buf = alloc::vec![0u8; MSG_SIZE];
-        let raw = msg.encode(&mut buf)?;
-        for addr in &self.peer_addrs {
-            device.net_send(*addr, raw)?;
-        }
         Ok(())
     }
 
