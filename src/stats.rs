@@ -122,6 +122,7 @@ impl CallbackFuel {
         *self = Self::default();
     }
 
+    #[allow(clippy::suboptimal_flops)]
     pub fn add(&mut self, v: u32) {
         self.min = match self.min {
             Some(min) => Some(min.min(v)),
@@ -136,7 +137,7 @@ impl CallbackFuel {
         let delta = v - self.mean;
         self.mean += delta / self.count as f32;
         let delta2 = v - self.mean;
-        self.m2 = delta.mul_add(delta2, self.m2);
+        self.m2 += delta * delta2;
     }
 
     fn as_fuel(&self) -> serial::Fuel {
