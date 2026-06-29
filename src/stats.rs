@@ -136,7 +136,7 @@ impl CallbackFuel {
         let delta = v - self.mean;
         self.mean += delta / self.count as f32;
         let delta2 = v - self.mean;
-        self.m2 += delta * delta2;
+        self.m2 = delta.mul_add(delta2, self.m2);
     }
 
     fn as_fuel(&self) -> serial::Fuel {
