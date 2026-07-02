@@ -202,10 +202,10 @@ impl FrameSyncer {
     /// and send them a request for that state.
     fn sync(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         let now = device.now();
-        if let Some(prev) = self.last_sync {
-            if now - prev < SYNC_EVERY {
-                return Ok(());
-            }
+        if let Some(prev) = self.last_sync
+            && now - prev < SYNC_EVERY
+        {
+            return Ok(());
         }
         device.log_debug("netcode", "requesting sync");
         self.last_sync = Some(now);

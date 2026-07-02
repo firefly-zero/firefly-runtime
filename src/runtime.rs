@@ -245,12 +245,12 @@ where
         // TODO: pause audio when opening menu
         let menu_is_active = state.menu.active();
         if menu_is_active {
-            if self.n_frames.is_multiple_of(120) {
-                if let Some(battery) = &mut state.battery {
-                    let res = battery.update(&mut state.device);
-                    if let Err(err) = res {
-                        state.device.log_error("battery", err);
-                    }
+            if self.n_frames.is_multiple_of(120)
+                && let Some(battery) = &mut state.battery
+            {
+                let res = battery.update(&mut state.device);
+                if let Err(err) = res {
+                    state.device.log_error("battery", err);
                 }
             }
             self.n_frames = (self.n_frames + 1) % (FPS * 4);
@@ -279,14 +279,13 @@ where
         }
 
         // If a custom menu item is selected, trigger the handle_menu callback.
-        if let Some(custom_menu) = menu_index {
-            if let Some(handle_menu) = self.handle_menu {
-                if let Err(err) = handle_menu.call(&mut self.store, (custom_menu as u32,)) {
-                    let stats = self.store.data().runtime_stats();
-                    return Err(Error::FuncCall("handle_menu", err, stats));
-                };
-            }
-        }
+        if let Some(custom_menu) = menu_index
+            && let Some(handle_menu) = self.handle_menu
+            && let Err(err) = handle_menu.call(&mut self.store, (custom_menu as u32,))
+        {
+            let stats = self.store.data().runtime_stats();
+            return Err(Error::FuncCall("handle_menu", err, stats));
+        };
 
         // TODO: continue execution even if an update fails.
         let fuel_update = self.call_callback("update", self.update, FUEL_UPDATE)?;
@@ -536,11 +535,11 @@ where
         fuel: u64,
     ) -> Result<u32, Error> {
         _ = self.store.set_fuel(fuel);
-        if let Some(f) = f {
-            if let Err(err) = f.call(&mut self.store, ()) {
-                let stats = self.store.data().runtime_stats();
-                return Err(Error::FuncCall(name, err, stats));
-            }
+        if let Some(f) = f
+            && let Err(err) = f.call(&mut self.store, ())
+        {
+            let stats = self.store.data().runtime_stats();
+            return Err(Error::FuncCall(name, err, stats));
         }
         let Ok(left) = self.store.get_fuel() else {
             return Ok(0);

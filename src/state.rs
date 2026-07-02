@@ -1,3 +1,4 @@
+use crate::Error;
 use crate::battery::Battery;
 use crate::canvas::Canvas;
 use crate::color::Rgb16;
@@ -8,7 +9,6 @@ use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
 use crate::net::*;
 use crate::utils::{read_all, read_all_into};
-use crate::Error;
 use alloc::boxed::Box;
 use core::cell::Cell;
 use core::fmt::Display;
@@ -336,10 +336,10 @@ impl<'a> State<'a> {
 
         if self.error.is_none() {
             let mut input = self.device.read_input();
-            if self.settings.rotate_screen {
-                if let Some(input) = input.as_mut() {
-                    input.rotate();
-                }
+            if self.settings.rotate_screen
+                && let Some(input) = input.as_mut()
+            {
+                input.rotate();
             }
             self.input = input;
         }

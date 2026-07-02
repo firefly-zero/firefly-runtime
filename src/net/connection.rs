@@ -1,6 +1,6 @@
 use super::*;
-use crate::utils::{read_all, read_into, write_all};
 use crate::FullID;
+use crate::utils::{read_all, read_into, write_all};
 use alloc::boxed::Box;
 use embedded_io::{Read, Write};
 use firefly_hal::*;
@@ -197,10 +197,10 @@ impl Connection {
 
     /// Ask other devices if they already started.
     fn sync(&mut self, device: &mut DeviceImpl, now: Instant) -> Result<(), NetcodeError> {
-        if let Some(prev) = self.last_sync {
-            if now - prev < SYNC_EVERY {
-                return Ok(());
-            }
+        if let Some(prev) = self.last_sync
+            && now - prev < SYNC_EVERY
+        {
+            return Ok(());
         }
         self.last_sync = Some(now);
         self.broadcast(device, Req::Start.into())?;
@@ -214,10 +214,10 @@ impl Connection {
         let Some(app) = &self.app else {
             return Ok(());
         };
-        if let Some(prev) = self.last_ready {
-            if now - prev < READY_EVERY {
-                return Ok(());
-            }
+        if let Some(prev) = self.last_ready
+            && now - prev < READY_EVERY
+        {
+            return Ok(());
         }
         self.last_ready = Some(now);
         let me = self.get_me();
@@ -372,10 +372,10 @@ impl Connection {
 
     fn get_peer(&mut self, addr: Addr) -> Option<&mut Peer> {
         for peer in &mut self.peers {
-            if let Some(peer_addr) = peer.addr {
-                if peer_addr == addr {
-                    return Some(peer);
-                }
+            if let Some(peer_addr) = peer.addr
+                && peer_addr == addr
+            {
+                return Some(peer);
             }
         }
         None

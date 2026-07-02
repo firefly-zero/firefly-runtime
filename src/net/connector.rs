@@ -83,10 +83,10 @@ impl Connector {
     }
 
     fn advertise(&mut self, device: &mut DeviceImpl, now: Instant) -> Result<(), NetcodeError> {
-        if let Some(prev) = self.last_advertisement {
-            if now - prev < ADVERTISE_EVERY {
-                return Ok(());
-            }
+        if let Some(prev) = self.last_advertisement
+            && now - prev < ADVERTISE_EVERY
+        {
+            return Ok(());
         }
         self.last_advertisement = Some(now);
         device.net_advertise()?;
