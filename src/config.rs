@@ -6,8 +6,9 @@ use core::fmt;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
+use embedded_io::Write;
 use firefly_hal::*;
-use firefly_types::validate_id;
+use firefly_types::{validate_id, DeviceInfo, Encode};
 use heapless::String;
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +38,20 @@ where
         };
         self.display.rotate(s.rotate_screen);
         self.display.set_brightness(s.screen_brightness);
+    }
+
+    /// Write device info into a system file (`sys/device`).
+    pub fn save_device_info(&mut self, info: DeviceInfo) {
+        let Ok(mut dir) = self.device.open_dir(&["sys"]) else {
+            return;
+        };
+        let Ok(mut file) = dir.create_file("device") else {
+            return;
+        };
+        let Ok(raw) = info.encode_vec() else {
+            return;
+        };
+        _ = file.write_all(&raw);
     }
 }
 

@@ -22,3 +22,4 @@ wasmi = { version = "1.0.9", default-features = false }
 
 [patch.crates-io]
 firefly-hal = { path = "../firefly-hal" }
+firefly-types = { path = "../firefly-types" }

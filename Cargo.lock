@@ -977,8 +977,6 @@ dependencies = [
 [[package]]
 name = "firefly-types"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f54b0d955fd4f7c742f0f5c59caee9c3bae75fe15ec67469731bb6db999c381"
 dependencies = [
  "postcard",
  "serde",
