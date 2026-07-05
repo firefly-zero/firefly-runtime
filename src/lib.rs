@@ -30,6 +30,7 @@ mod utils;
 pub use color::Rgb16;
 pub use config::{FullID, FullIDError, RuntimeConfig};
 pub use error::Error;
+pub use firefly_types::DeviceInfo;
 pub use frame_buffer::{FireflyDisplay, FrameBuffer, HEIGHT, WIDTH};
 pub use runtime::Runtime;
 pub use state::NetHandler;
