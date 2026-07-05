@@ -1,6 +1,6 @@
+use crate::FireflyDisplay;
 use crate::error::Error;
 use crate::state::NetHandler;
-use crate::FireflyDisplay;
 use crate::{color::FromRGB, state::load_settings};
 use core::fmt;
 use embedded_graphics::draw_target::DrawTarget;
@@ -8,7 +8,7 @@ use embedded_graphics::geometry::OriginDimensions;
 use embedded_graphics::pixelcolor::RgbColor;
 use embedded_io::Write;
 use firefly_hal::*;
-use firefly_types::{validate_id, DeviceInfo, Encode};
+use firefly_types::{DeviceInfo, Encode, validate_id};
 use heapless::String;
 use serde::{Deserialize, Serialize};
 
@@ -90,12 +90,8 @@ impl FullID {
     }
 
     pub fn from_str(author: &str, app: &str) -> Option<Self> {
-        let Ok(author) = String::try_from(author) else {
-            return None;
-        };
-        let Ok(app) = String::try_from(app) else {
-            return None;
-        };
+        let author = String::try_from(author).ok()?;
+        let app = String::try_from(app).ok()?;
         Some(Self { author, app })
     }
 

@@ -1,7 +1,7 @@
+use crate::NetHandler;
 use crate::error::HostError;
 use crate::state::State;
 use crate::utils::{read_into, write_all};
-use crate::NetHandler;
 use alloc::boxed::Box;
 use embedded_io::Write;
 use firefly_hal::{Device, Dir, FSError};

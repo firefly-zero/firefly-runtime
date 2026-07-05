@@ -7,7 +7,7 @@ use crate::state::State;
 use alloc::boxed::Box;
 use core::convert::Infallible;
 use embedded_graphics::image::ImageRaw;
-use embedded_graphics::mono_font::{mapping, DecorationDimensions, MonoFont, MonoTextStyle};
+use embedded_graphics::mono_font::{DecorationDimensions, MonoFont, MonoTextStyle, mapping};
 use embedded_graphics::pixelcolor::Gray4;
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::*;
