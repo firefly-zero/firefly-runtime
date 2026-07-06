@@ -261,6 +261,7 @@ fn select_sudo_external<'a>(
         "get_file_size" => Func::wrap(ctx, sudo::get_file_size),
         "load_file" => Func::wrap(ctx, sudo::load_file),
         "dump_file" => Func::wrap(ctx, sudo::dump_file),
+        "append_file" => Func::wrap(ctx, sudo::append_file),
         "remove_file" => Func::wrap(ctx, sudo::remove_file),
         "create_dir" => Func::wrap(ctx, sudo::create_dir),
         "remove_dir" => Func::wrap(ctx, sudo::remove_dir),

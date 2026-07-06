@@ -395,6 +395,76 @@ pub(crate) fn dump_file(
     file_size as u32
 }
 
+pub(crate) fn append_file(
+    mut caller: C,
+    path_ptr: u32,
+    path_len: u32,
+    buf_ptr: u32,
+    buf_len: u32,
+) -> u32 {
+    let state = caller.data_mut();
+    state.called = "sudo.append_file";
+    let Some(memory) = state.memory else {
+        state.log_error(HostError::MemoryNotFound);
+        return 0;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let Some((path_bytes, buf)) = get_safe_subsclices(data, path_ptr, path_len, buf_ptr, buf_len)
+    else {
+        state.log_error(HostError::OomPointer);
+        return 0;
+    };
+
+    // parse and validate the dir path.
+    let Ok(path) = core::str::from_utf8(path_bytes) else {
+        state.log_error(HostError::FileNameUtf8);
+        return 0;
+    };
+    let parts: Vec<&str, MAX_DEPTH> = path.split('/').collect();
+    for part in &parts {
+        if let Err(err) = validate_path_part(part) {
+            state.log_error(HostError::FileName(err));
+            return 0;
+        }
+    }
+
+    let Some((file_name, dir_path)) = parts.split_last() else {
+        state.log_error(HostError::FileNotFound);
+        return 0;
+    };
+    let mut dir = match state.device.open_dir(dir_path) {
+        Ok(dir) => dir,
+        Err(err) => {
+            state.log_error(err);
+            return 0;
+        }
+    };
+
+    let mut file = match dir.append_file(file_name) {
+        Ok(file) => file,
+        Err(err) => {
+            state.log_error(err);
+            return 0;
+        }
+    };
+    let file_size = match write_all(&mut file, buf) {
+        Ok(file_size) => file_size,
+        Err(_) => {
+            state.log_error(HostError::FileWrite);
+            return 0;
+        }
+    };
+    if file.flush().is_err() {
+        state.log_error(HostError::FileFlush);
+        return 0;
+    }
+    if file_size != buf_len as usize {
+        state.log_error(HostError::BufferSize);
+        return 0;
+    }
+    file_size as u32
+}
+
 pub(crate) fn remove_file(mut caller: C, path_ptr: u32, path_len: u32) {
     let state = caller.data_mut();
     state.called = "sudo.remove_file";
