@@ -1,6 +1,6 @@
 [package]
 name = "firefly-runtime"
-version = "0.12.0"
+version = "0.12.1"
 rust-version = "1.91.0"
 edition = "2024"
 description = "The beating heart of Firefly Zero"
@@ -11,7 +11,7 @@ repository = "https://github.com/firefly-zero/firefly-runtime"
 embedded-graphics = "0.8.2"
 embedded-io = "0.6.1"
 firefly-audio = "0.3.0"
-firefly-hal = "0.5.0"
+firefly-hal = "0.5.1"
 firefly-types = "0.11.0"
 heapless = { version = "0.9.3", features = ["serde"] }
 micromath = "2.1.0"
