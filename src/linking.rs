@@ -265,6 +265,8 @@ fn select_sudo_external<'a>(
         "remove_file" => Func::wrap(ctx, sudo::remove_file),
         "create_dir" => Func::wrap(ctx, sudo::create_dir),
         "remove_dir" => Func::wrap(ctx, sudo::remove_dir),
+        "write_partition" => Func::wrap(ctx, sudo::write_partition),
+        "switch_partition" => Func::wrap(ctx, sudo::switch_partition),
         "run_app" => Func::wrap(ctx, sudo::run_app),
         _ => return None,
     };
