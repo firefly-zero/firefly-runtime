@@ -600,35 +600,21 @@ pub(crate) fn remove_dir(mut caller: C, path_ptr: u32, path_len: u32) {
     };
 }
 
-pub(crate) fn write_partition(mut caller: C, part: u32, path_ptr: u32, path_len: u32) -> u32 {
+pub(crate) fn write_main_flash(mut caller: C, offset: u32, ptr: u32, len: u32) -> u32 {
     let state = caller.data_mut();
-    state.called = "sudo.write_partition";
+    state.called = "sudo.write_main_flash";
     let Some(memory) = state.memory else {
         state.log_error(HostError::MemoryNotFound);
         return 1;
     };
     let (data, state) = memory.data_and_store_mut(&mut caller);
-    let path_ptr = path_ptr as usize;
-    let path_len = path_len as usize;
-    let Some(path_bytes) = data.get(path_ptr..path_ptr + path_len) else {
+    let ptr = ptr as usize;
+    let len = len as usize;
+    let Some(bytes) = data.get(ptr..ptr + len) else {
         state.log_error(HostError::OomPointer);
         return 1;
     };
-
-    // parse and validate the path.
-    let Ok(path) = core::str::from_utf8(path_bytes) else {
-        state.log_error(HostError::FileNameUtf8);
-        return 1;
-    };
-    let parts: Vec<&str, MAX_DEPTH> = path.split('/').collect();
-    for part in &parts {
-        if let Err(err) = validate_path_part(part) {
-            state.log_error(HostError::FileName(err));
-            return 1;
-        }
-    }
-
-    let res = state.device.write_partition(part as u8, &parts);
+    let res = state.device.write_main_flash(offset, bytes);
     if let Err(err) = res {
         state.log_error(err);
         return 1;
@@ -636,10 +622,49 @@ pub(crate) fn write_partition(mut caller: C, part: u32, path_ptr: u32, path_len:
     0
 }
 
-pub(crate) fn switch_partition(mut caller: C, part: u32) {
+pub(crate) fn write_io_flash(mut caller: C, offset: u32, ptr: u32, len: u32) -> u32 {
     let state = caller.data_mut();
-    state.called = "sudo.switch_partition";
-    let res = state.device.switch_partition(part as u8);
+    state.called = "sudo.write_io_flash";
+    let Some(memory) = state.memory else {
+        state.log_error(HostError::MemoryNotFound);
+        return 1;
+    };
+    let (data, state) = memory.data_and_store_mut(&mut caller);
+    let ptr = ptr as usize;
+    let len = len as usize;
+    let Some(bytes) = data.get(ptr..ptr + len) else {
+        state.log_error(HostError::OomPointer);
+        return 1;
+    };
+    let res = state.device.write_io_flash(offset, bytes);
+    if let Err(err) = res {
+        state.log_error(err);
+        return 1;
+    }
+    0
+}
+
+pub(crate) fn switch_main_partition(mut caller: C, part: u32) {
+    let state = caller.data_mut();
+    state.called = "sudo.switch_main_partition";
+    if part > 2 {
+        state.log_error("partition is out of range");
+        return;
+    }
+    let res = state.device.switch_main_partition(part as u8);
+    if let Err(err) = res {
+        state.log_error(err);
+    }
+}
+
+pub(crate) fn switch_io_partition(mut caller: C, part: u32) {
+    let state = caller.data_mut();
+    state.called = "sudo.switch_io_partition";
+    if part > 2 {
+        state.log_error("partition is out of range");
+        return;
+    }
+    let res = state.device.switch_io_partition(part as u8);
     if let Err(err) = res {
         state.log_error(err);
     }

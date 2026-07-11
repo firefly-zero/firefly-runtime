@@ -12,7 +12,7 @@ embedded-graphics = "0.8.2"
 embedded-io = "0.6.1"
 firefly-audio = "0.3.0"
 firefly-hal = "0.5.1"
-firefly-types = "0.11.1"
+firefly-types = "0.11.3"
 heapless = { version = "0.9.3", features = ["serde"] }
 micromath = "2.1.0"
 postcard = "1.0.8"
