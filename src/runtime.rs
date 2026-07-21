@@ -24,7 +24,7 @@ const FUEL_BOOT: u64 = 10_000_000;
 const FUEL_UPDATE: u64 = 10_000_000;
 const FUEL_RENDER: u64 = 10_000_000;
 const FUEL_BEFORE_EXIT: u64 = 10_000_000;
-const FUEL_CHEAT: u64 = 60_000;
+const FUEL_CHEAT: u64 = 10_000_000;
 
 pub struct Runtime<'a, D, C>
 where
