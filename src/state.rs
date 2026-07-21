@@ -7,7 +7,7 @@ use crate::error::RuntimeStats;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
 use crate::net::*;
-use crate::utils::{read_all, read_all_into};
+use crate::utils::{copy_stream, read_all, read_all_into};
 use alloc::boxed::Box;
 use core::cell::Cell;
 use core::fmt::Display;
@@ -557,8 +557,27 @@ impl<'a> State<'a> {
     }
 
     /// Log an error/warning occurred in the currently executing host function.
-    pub(crate) fn log_error<D: Display>(&mut self, msg: D) {
-        self.device.log_error(self.called, msg);
+    pub fn log_error<D: Display>(&mut self, msg: D) {
+        self.device.log_error(self.called, &msg);
+        _ = self.save_log("error", msg);
+    }
+
+    pub fn save_log<D: Display>(&mut self, lvl: &'static str, msg: D) -> Result<(), FSError> {
+        let dir_path = &["data", self.id.author(), self.id.app()];
+        let mut dir = self.device.open_dir(dir_path)?;
+        let size = dir.get_file_size("logs").unwrap_or_default();
+        let mut stream = if size == 0 {
+            dir.create_file("logs")?
+        } else if size > 512 * 1024 {
+            let output = dir.create_file("old-logs")?;
+            let input = dir.open_file("logs")?;
+            copy_stream(input, output)?;
+            dir.create_file("logs")?
+        } else {
+            dir.append_file("logs")?
+        };
+        _ = writeln!(stream, "{}:{}:{}", lvl, self.called, msg);
+        Ok(())
     }
 }
 

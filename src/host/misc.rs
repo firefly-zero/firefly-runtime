@@ -26,7 +26,8 @@ pub(crate) fn log_debug(mut caller: C, ptr: u32, len: u32) {
         state.log_error(HostError::TextUtf8);
         return;
     };
-    state.device.log_debug("app", text);
+    state.device.log_debug("misc.log_debug", text);
+    _ = state.save_log("debug", text);
 }
 
 /// Write a error log message into console.
