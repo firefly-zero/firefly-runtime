@@ -4,7 +4,6 @@ use crate::canvas::Canvas;
 use crate::color::Rgb16;
 use crate::config::FullID;
 use crate::error::RuntimeStats;
-use crate::error_scene::ErrorScene;
 use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
 use crate::net::*;
@@ -36,8 +35,6 @@ pub(crate) struct State<'a> {
     pub menu: Menu,
 
     launcher: bool,
-
-    pub error: Option<ErrorScene>,
 
     /// Audio manager.
     pub audio: firefly_audio::Manager,
@@ -129,7 +126,6 @@ impl<'a> State<'a> {
             canvas: None,
             menu: Menu::new(),
             launcher,
-            error: None,
             audio: firefly_audio::Manager::new(),
             battery: maybe_battery.ok(),
             seed,
@@ -327,14 +323,7 @@ impl<'a> State<'a> {
     /// Update the state: read inputs, handle system commands.
     pub(crate) fn update(&mut self) -> Option<u8> {
         self.n_frames += 1;
-        if let Some(scene) = self.error.as_mut() {
-            let close = scene.update(&mut self.device);
-            if close {
-                self.error = None;
-            }
-        }
-
-        if self.error.is_none() {
+        {
             let mut input = self.device.read_input();
             if self.settings.rotate_screen
                 && let Some(input) = input.as_mut()
@@ -563,8 +552,6 @@ impl<'a> State<'a> {
             let res = conn.disconnect(&mut self.device);
             if let Err(err) = res {
                 self.device.log_error("netcode", &err);
-                let msg = alloc::format!("{err}");
-                self.error = Some(ErrorScene::new(msg));
             }
         }
     }

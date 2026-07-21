@@ -234,15 +234,6 @@ where
         let menu_was_active = state.menu.active();
         let menu_index = state.update();
 
-        if let Some(scene) = &mut state.error {
-            let res = scene.render(&mut self.display);
-            if res.is_err() {
-                return Err(Error::CannotDisplay);
-            }
-            return Ok(false);
-        }
-
-        // TODO: pause audio when opening menu
         let menu_is_active = state.menu.active();
         if menu_is_active {
             if self.n_frames.is_multiple_of(120)
