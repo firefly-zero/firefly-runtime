@@ -74,25 +74,7 @@ pub(crate) struct Menu {
     sys_items: heapless::Vec<MenuItem, 3>,
 
     selected: i32,
-
-    /// True if the menu should be currently shown.
-    active: bool,
-
-    /// True if the menu is currently rendered on the screen.
-    rendered: bool,
-
-    /// True if the cursor's new position is not rendered yet.
-    dirty: bool,
-
-    /// True if the menu button is currently pressed.
-    menu_pressed: bool,
-
-    /// True if the selection button (A) is currently pressed.
-    select_pressed: bool,
-
-    /// True if the menu button was released when the menu was open.
-    was_released: bool,
-
+    flags: u8,
     dpad: DPad4,
 }
 
@@ -104,12 +86,13 @@ impl Menu {
             items.push_unchecked(MenuItem::Restart);
             items.push_unchecked(MenuItem::Quit);
         }
-        Self {
+        let mut menu = Self {
             app_items: alloc::vec::Vec::new(),
             sys_items: items,
-            dirty: true,
             ..Default::default()
-        }
+        };
+        menu.set_dirty(true);
+        menu
     }
 
     /// Add a custom menu item.
@@ -127,7 +110,7 @@ impl Menu {
         let def = InputState::default();
         let input = input.as_ref().unwrap_or(&def);
         self.handle_menu_button(input.menu());
-        if !self.active {
+        if !self.active() {
             return None;
         }
         self.handle_pad(input);
@@ -137,25 +120,25 @@ impl Menu {
     fn handle_menu_button(&mut self, pressed: bool) {
         // Depending on if menu is open or not, handle the menu button in a way
         // that the button is always released when the app is running.
-        if self.active {
+        if self.active() {
             // When menu is open, close it on releasing the menu button.
-            if self.was_released && self.menu_pressed && !pressed {
-                self.active = false;
+            if self.was_released() && self.menu_pressed() && !pressed {
+                self.deactivate();
             }
             if !pressed {
-                self.was_released = true;
+                self.set_was_released(true);
             }
         } else {
             // When menu is closed, open it on pressing the menu button.
             #[allow(clippy::collapsible_else_if)]
-            if !self.menu_pressed && pressed {
-                self.active = true;
-                self.rendered = false;
-                self.dirty = true;
-                self.was_released = false;
+            if !self.menu_pressed() && pressed {
+                self.activate();
+                self.set_rendered(false);
+                self.set_dirty(true);
+                self.set_was_released(false);
             }
         }
-        self.menu_pressed = pressed;
+        self.set_menu_pressed(pressed);
     }
 
     fn handle_pad(&mut self, input: &InputState) {
@@ -166,27 +149,27 @@ impl Menu {
             DPad4::Up => {
                 if self.selected > 0 {
                     self.selected -= 1;
-                    self.dirty = true;
+                    self.set_dirty(true);
                 }
             }
             DPad4::Down => {
                 let n_items = self.app_items.len() + self.sys_items.len();
                 if self.selected < n_items as i32 - 1 {
                     self.selected += 1;
-                    self.dirty = true;
+                    self.set_dirty(true);
                 }
             }
             DPad4::Left => {
                 if self.selected > 0 {
                     self.selected = 0;
-                    self.dirty = true;
+                    self.set_dirty(true);
                 }
             }
             DPad4::Right => {
                 let n_items = self.app_items.len() + self.sys_items.len();
                 if self.selected < n_items as i32 - 1 {
                     self.selected = n_items as i32 - 1;
-                    self.dirty = true;
+                    self.set_dirty(true);
                 }
             }
             DPad4::None => {}
@@ -194,12 +177,12 @@ impl Menu {
     }
 
     fn handle_select(&mut self, pressed: bool) -> Option<&MenuItem> {
-        if self.select_pressed {
+        if self.select_pressed() {
             if !pressed {
-                self.select_pressed = false;
+                self.set_select_pressed(false);
                 let selected = self.selected as usize;
                 // Close menu and return control to the game
-                self.active = false;
+                self.deactivate();
                 if let Some(item) = self.app_items.get(selected) {
                     return Some(item);
                 }
@@ -207,26 +190,9 @@ impl Menu {
                 return self.sys_items.get(selected);
             }
         } else {
-            self.select_pressed = pressed;
+            self.set_select_pressed(pressed);
         }
         None
-    }
-
-    /// True if the menu should be currently shown.
-    ///
-    /// While it is true, the app is paused.
-    pub fn active(&self) -> bool {
-        self.active
-    }
-
-    /// Open the menu (if closed).
-    pub fn activate(&mut self) {
-        self.active = true;
-    }
-
-    /// Close the menu (if open).
-    pub fn deactivate(&mut self) {
-        self.active = false;
     }
 
     pub fn render<D, C, E>(
@@ -238,14 +204,14 @@ impl Menu {
         D: DrawTarget<Color = C, Error = E>,
         C: RgbColor + FromRGB,
     {
-        if self.rendered && !self.dirty {
+        if self.rendered() && !self.dirty() {
             return Ok(());
         }
-        if !self.rendered {
+        if !self.rendered() {
             self.draw_bg(display)?;
         }
-        self.rendered = true;
-        self.dirty = false;
+        self.set_rendered(true);
+        self.set_dirty(false);
 
         let mut black_style = MonoTextStyle::new(&FONT_6X9, C::PRIMARY);
         black_style.background_color = Some(C::BG);
@@ -468,5 +434,96 @@ impl Menu {
         }
 
         Ok(())
+    }
+}
+
+const MASK_ACTIVE: u8 = 0b1;
+const MASK_RENDERED: u8 = 0b10;
+const MASK_DIRTY: u8 = 0b100;
+const MASK_MENU_PRESSED: u8 = 0b_1000;
+const MASK_SELECT_PRESSED: u8 = 0b1_0000;
+const MASK_WAS_RELEASED: u8 = 0b10_0000;
+
+impl Menu {
+    /// True if the menu should be currently shown.
+    ///
+    /// While it is true, the app is paused.
+    pub fn active(&self) -> bool {
+        self.flags & MASK_ACTIVE != 0
+    }
+
+    /// Open the menu (if closed).
+    pub fn activate(&mut self) {
+        self.flags |= MASK_ACTIVE;
+    }
+
+    /// Close the menu (if open).
+    pub fn deactivate(&mut self) {
+        self.flags &= !MASK_ACTIVE;
+    }
+
+    /// True if the menu is currently rendered on the screen.
+    fn rendered(&self) -> bool {
+        self.flags & MASK_RENDERED != 0
+    }
+
+    fn set_rendered(&mut self, v: bool) {
+        if v {
+            self.flags |= MASK_RENDERED;
+        } else {
+            self.flags &= !MASK_RENDERED;
+        }
+    }
+
+    /// True if the cursor's new position is not rendered yet.
+    fn dirty(&self) -> bool {
+        self.flags & MASK_DIRTY != 0
+    }
+
+    fn set_dirty(&mut self, v: bool) {
+        if v {
+            self.flags |= MASK_DIRTY;
+        } else {
+            self.flags &= !MASK_DIRTY;
+        }
+    }
+
+    /// True if the menu button is currently pressed.
+    fn menu_pressed(&self) -> bool {
+        self.flags & MASK_MENU_PRESSED != 0
+    }
+
+    fn set_menu_pressed(&mut self, v: bool) {
+        if v {
+            self.flags |= MASK_MENU_PRESSED;
+        } else {
+            self.flags &= !MASK_MENU_PRESSED;
+        }
+    }
+
+    /// True if the selection button (A) is currently pressed.
+    fn select_pressed(&self) -> bool {
+        self.flags & MASK_SELECT_PRESSED != 0
+    }
+
+    fn set_select_pressed(&mut self, v: bool) {
+        if v {
+            self.flags |= MASK_SELECT_PRESSED;
+        } else {
+            self.flags &= !MASK_SELECT_PRESSED;
+        }
+    }
+
+    /// True if the menu button was released when the menu was open.
+    fn was_released(&self) -> bool {
+        self.flags & MASK_WAS_RELEASED != 0
+    }
+
+    fn set_was_released(&mut self, v: bool) {
+        if v {
+            self.flags |= MASK_WAS_RELEASED;
+        } else {
+            self.flags &= !MASK_WAS_RELEASED;
+        }
     }
 }
