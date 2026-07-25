@@ -33,9 +33,8 @@ impl MenuItem {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Default)]
+#[derive(Copy, Clone, PartialEq)]
 enum DPad4 {
-    #[default]
     None,
     Left,
     Right,
@@ -65,7 +64,6 @@ impl DPad4 {
     }
 }
 
-#[derive(Default)]
 pub(crate) struct Menu {
     /// Custom menu items.
     app_items: alloc::vec::Vec<MenuItem>,
@@ -89,7 +87,9 @@ impl Menu {
         let mut menu = Self {
             app_items: alloc::vec::Vec::new(),
             sys_items: items,
-            ..Default::default()
+            selected: 0,
+            flags: 0,
+            dpad: DPad4::None,
         };
         menu.set_dirty(true);
         menu
