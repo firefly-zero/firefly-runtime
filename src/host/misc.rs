@@ -88,6 +88,12 @@ pub(crate) fn get_random(mut caller: C) -> u32 {
     x
 }
 
+pub(crate) fn get_time(mut caller: C) -> u32 {
+    let state = caller.data_mut();
+    state.called = "misc.get_time";
+    state.since_start.us()
+}
+
 /// Get the name of the given peer device.
 ///
 /// The buffer must be at least 16 bytes. Returns how many bytes are written.

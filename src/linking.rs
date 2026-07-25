@@ -239,6 +239,7 @@ fn select_misc_external<'a>(
         "log_error" => Func::wrap(ctx, misc::log_error),
         "set_seed" => Func::wrap(ctx, misc::set_seed),
         "get_random" => Func::wrap(ctx, misc::get_random),
+        "get_time" => Func::wrap(ctx, misc::get_time),
         "get_name" => Func::wrap(ctx, misc::get_name),
         "get_settings" => Func::wrap(ctx, misc::get_settings),
         "restart" => Func::wrap(ctx, misc::restart),
@@ -390,6 +391,7 @@ fn select_misc_external_alias<'a>(
         "q" => Func::wrap(ctx, misc::quit),
         "r" => Func::wrap(ctx, misc::get_random),
         "s" => Func::wrap(ctx, misc::set_seed),
+        "t" => Func::wrap(ctx, misc::get_time),
         _ => return None,
     };
     Some(func)

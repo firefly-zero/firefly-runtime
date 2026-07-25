@@ -88,18 +88,32 @@ impl FrameSyncer {
     }
 
     /// Get the combined random seed of all peers.
+    ///
+    /// Returns 0 if RNG was not synced on this frame.
     pub fn get_seed(&self) -> u32 {
         let mut seed = 0;
         for peer in &self.peers {
             let state = peer.states.get_current();
-            if let Some(state) = state {
-                seed ^= state.rand;
+            if let Some(state) = state
+                && let Extra::Rand(rand) = state.extra
+            {
+                seed ^= rand;
             };
         }
-        if seed == 0 {
-            seed = 1;
-        }
         seed
+    }
+
+    pub fn get_now(&self) -> Option<u32> {
+        let mut min = u32::MAX;
+        for peer in &self.peers {
+            let state = peer.states.get_current();
+            if let Some(state) = state
+                && let Extra::Now(now) = state.extra
+            {
+                min = min.min(now);
+            };
+        }
+        if min == u32::MAX { None } else { Some(min) }
     }
 
     pub fn update(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {

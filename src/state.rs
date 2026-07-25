@@ -55,6 +55,9 @@ pub(crate) struct State<'a> {
     /// using true RNG.
     pub lock_seed: bool,
 
+    pub start: Instant,
+    pub since_start: Duration,
+
     /// Pointer to the app memory.
     ///
     /// Might be None if the app doesn't have guest memory defined.
@@ -82,6 +85,8 @@ pub(crate) struct State<'a> {
     /// The number of update frames.
     n_frames: u32,
     pub stash: alloc::vec::Vec<u8>,
+
+    /// If true, the stash was modified and should be preserved in FS on exit.
     pub stash_dirty: bool,
 
     pub net_handler: Cell<NetHandler>,
@@ -118,6 +123,7 @@ impl<'a> State<'a> {
         let mut device = device;
         let maybe_battery = Battery::new(&mut device);
         let settings = load_settings(&mut device).unwrap_or_default();
+        let now = device.now();
         Box::new(Self {
             device,
             rom_dir,
@@ -130,6 +136,8 @@ impl<'a> State<'a> {
             battery: maybe_battery.ok(),
             seed,
             lock_seed: false,
+            start: now,
+            since_start: Duration::from_us(0),
             memory: None,
             next: None,
             exit: false,
@@ -334,6 +342,12 @@ impl<'a> State<'a> {
         }
         self.update_net();
 
+        if matches!(self.net_handler.get_mut(), NetHandler::None) {
+            self.since_start = self.device.now() - self.start;
+        } else {
+            self.since_start += Duration::from_us(16666);
+        };
+
         // Get combined input for all peers.
         //
         // In offline mode, it's just the input.
@@ -378,6 +392,7 @@ impl<'a> State<'a> {
             }
         };
 
+        // TODO: when menu is open and closed, adjust self.start.
         if !self.launcher {
             let action = self.menu.handle_input(&input);
             if let Some(action) = action {
@@ -437,14 +452,22 @@ impl<'a> State<'a> {
         // * Don't sync seed if misc.get_random was never called.
         // * Don't sync seed too often to avoid poking true RNG too often.
         let sync_rand = !self.lock_seed && self.seed != 0 && syncer.frame % 60 == 21;
-        let rand = if sync_rand { self.device.random() } else { 0 };
+        let sync_now = syncer.frame % 60 == 31;
+        let extra = if sync_rand {
+            Extra::Rand(self.device.random())
+        } else if sync_now {
+            let since_start = self.device.now() - self.start;
+            Extra::Now(since_start.us())
+        } else {
+            Extra::None
+        };
 
         let input = self.input.clone().unwrap_or_default();
         let frame_state = FrameState {
             // No need to set frame number here,
             // it will be set by FrameSyncer.advance.
             frame: 0,
-            rand,
+            extra,
             input: Input {
                 pad: input.pad.map(Into::into),
                 buttons: input.buttons,
@@ -482,6 +505,8 @@ impl<'a> State<'a> {
             if seed != 0 {
                 self.seed = seed;
             }
+        } else if sync_now && let Some(now) = syncer.get_now() {
+            self.since_start = Duration::from_us(now);
         }
         NetHandler::FrameSyncer(syncer)
     }
