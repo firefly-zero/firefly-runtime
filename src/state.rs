@@ -126,9 +126,9 @@ impl<'a> State<'a> {
         }
 
         let start = device.now().us();
-        let (seed, now) = match &net_handler {
-            NetHandler::FrameSyncer(syncer) => (syncer.shared_seed, 0),
-            _ => (0, start),
+        let seed = match &net_handler {
+            NetHandler::FrameSyncer(syncer) => syncer.shared_seed,
+            _ => 0,
         };
         let mut device = device;
         let maybe_battery = Battery::new(&mut device);
@@ -146,7 +146,7 @@ impl<'a> State<'a> {
             seed,
             lock_seed: false,
             start,
-            now: u64::from(now),
+            now: 0,
             memory: None,
             next: None,
             exit: false,
@@ -358,20 +358,39 @@ impl<'a> State<'a> {
             self.now += 16_666;
         };
 
-        // Get combined input for all peers.
-        //
-        // In offline mode, it's just the input.
-        // For multi-player game, it is the combined input of all player,
-        // unless in launcher (Connector or Connection).
-        // We use it to ensure that all players open the app menu simultaneously.
-        let input = match self.net_handler.get_mut() {
-            // single-player
+        let input = self.get_input();
+
+        // TODO: when menu is open and closed, adjust self.start.
+        if !self.launcher {
+            let action = self.menu.handle_input(&input);
+            if let Some(action) = action {
+                match action {
+                    MenuItem::Custom(index, _) => return Some(*index),
+                    MenuItem::ScreenShot => self.take_screenshot(),
+                    MenuItem::Restart => self.set_next(Some(self.id.clone())),
+                    MenuItem::Quit => self.set_next(None),
+                };
+            };
+        }
+        None
+    }
+
+    /// Get combined input for all peers.
+    ///
+    /// In offline mode, it's just the input.
+    /// For multiplayer game, it is the combined input of all player,
+    /// unless in launcher (Connector or Connection).
+    /// We use it to ensure that all players open the app menu simultaneously.
+    fn get_input(&mut self) -> Option<InputState> {
+        match self.net_handler.get_mut() {
+            // Singleplayer.
             NetHandler::None => self.input.clone(),
-            // shouldn't be reachable
-            NetHandler::Connector(_) => return None,
-            // in launcher
+            // Shouldn't be reachable.
+            NetHandler::Connector(_) => None,
+            // In launcher.
+            // Just like in singleplayer, every device handles its own input.
             NetHandler::Connection(_) => self.input.clone(),
-            // in game
+            // In multiplayer game.
             NetHandler::FrameSyncer(syncer) => {
                 // TODO: if menu is open, we need to adjust sync timeout
                 // for the frame syncer.
@@ -400,23 +419,16 @@ impl<'a> State<'a> {
                     }
                 }
             }
-        };
-
-        // TODO: when menu is open and closed, adjust self.start.
-        if !self.launcher {
-            let action = self.menu.handle_input(&input);
-            if let Some(action) = action {
-                match action {
-                    MenuItem::Custom(index, _) => return Some(*index),
-                    MenuItem::ScreenShot => self.take_screenshot(),
-                    MenuItem::Restart => self.set_next(Some(self.id.clone())),
-                    MenuItem::Quit => self.set_next(None),
-                };
-            };
         }
-        None
     }
 
+    /// Convert the current time from u32 to u64.
+    ///
+    /// The [`Instant`] is stored as u32. It makes time operations faster
+    /// and [`FrameState`] network packet smaller. However, it wraps every 1h+
+    /// which is not enough for apps: quite often people will play games for longer
+    /// in a single session. So we want to detect when the time wraps
+    /// based on the previous time value.
     pub fn convert_now(&self, now: u32) -> u64 {
         let should_wrap = now < 0x4000_0000 && self.now as u32 > 0xB000_0000;
         let mut result = self.now & 0xffff_ffff_0000_0000;
@@ -467,9 +479,8 @@ impl<'a> State<'a> {
     }
 
     fn update_syncer(&mut self, mut syncer: Box<FrameSyncer>) -> NetHandler {
-        // * Don't sync seed if it is locked by the app (misc.set_seed was called).
-        // * Don't sync seed if misc.get_random was never called.
-        // * Don't sync seed too often to avoid poking true RNG too often.
+        // Don't sync seed if it is locked by the app (misc.set_seed was called)
+        // or if misc.get_random was never called.
         let sync_rand = !self.lock_seed && self.seed != 0;
         let extra = match syncer.frame % 60 {
             SEND_RAND if sync_rand => Extra::Rand(self.device.random()),
@@ -515,6 +526,7 @@ impl<'a> State<'a> {
             }
         }
 
+        // Read and apply extras from other peers 2 frames after we send them.
         match syncer.frame % 60 + 2 {
             SEND_RAND => {
                 let seed = syncer.get_seed();

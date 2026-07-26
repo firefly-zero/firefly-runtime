@@ -8,6 +8,8 @@ use firefly_hal::{Device, Network};
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
 
 /// Write a debug log message into console.
+///
+/// See [`log_error`] for some extra info.
 pub(crate) fn log_debug(mut caller: C, ptr: u32, len: u32) {
     let state = caller.data_mut();
     state.called = "misc.log_debug";
@@ -30,7 +32,16 @@ pub(crate) fn log_debug(mut caller: C, ptr: u32, len: u32) {
     _ = state.save_log("debug", text);
 }
 
-/// Write a error log message into console.
+/// Write an error log message into console.
+///
+/// In emulator, sends the message into stdout.
+/// On the device, writes the message into the app-specific log file
+/// (`data/AUTHOR/APP/logs`) and streams it over USB.
+/// The file can be viewed manually (by connecting the microSD card to the computer)
+/// or using the `sys.logs` system apps (by launching it from app launcher).
+///
+/// Since it opens the file on every write, consider the function slow.
+/// Avoid unnecessary logging in the final app build.
 pub(crate) fn log_error(mut caller: C, ptr: u32, len: u32) {
     let state = caller.data_mut();
     state.called = "misc.log_error";
@@ -53,6 +64,10 @@ pub(crate) fn log_error(mut caller: C, ptr: u32, len: u32) {
 }
 
 /// Set random numbers generator seed.
+///
+/// If called, the runtime stops using true RNG
+/// and all new random values are generated algorithmically instead.
+/// Useful for testing.
 pub(crate) fn set_seed(mut caller: C, seed: u32) {
     let state = caller.data_mut();
     state.called = "misc.set_seed";
@@ -88,22 +103,29 @@ pub(crate) fn get_random(mut caller: C) -> u32 {
     x
 }
 
+/// Get the time (in microseconds) since the app startup.
+///
+/// Returns the same time if requested twice in the same update cycle.
+/// Monotonic: the current time is always greater than
+/// the time requested on the previous update cycle.
 pub(crate) fn get_time(mut caller: C) -> u64 {
     let state = caller.data_mut();
     state.called = "misc.get_time";
 
+    // When offline and the current time was not calculated on this frame,
+    // re-calculate the time. This guarantees that the time is always the same
+    // if requested multiple times during a single update/render.
     let is_online = matches!(state.net_handler.get_mut(), NetHandler::FrameSyncer(_));
-    if is_online {
-        return state.now;
+    if !is_online {
+        let is_dirty = state.now & (1 << 63) != 0;
+        if is_dirty {
+            state.now &= !(1 << 63);
+            let now = state.device.now().us().wrapping_sub(state.start);
+            state.now = state.convert_now(now)
+        }
     }
 
-    let is_dirty = state.now & (1 << 63) != 0;
-    if is_dirty {
-        state.now &= !(1 << 63);
-        let now = state.device.now().us();
-        state.now = state.convert_now(now)
-    }
-    state.now - u64::from(state.start)
+    state.now
 }
 
 /// Get the name of the given peer device.
@@ -257,6 +279,10 @@ fn pack_settings(theme: u32, flags: u8, lang: [u8; 2]) -> u64 {
 }
 
 /// Stop the currently running app and run the default launcher instead.
+///
+/// It doesn't immediately stop the app. First the runtime will finish
+/// the current `update` run, then it will run `render` (guaranteed),
+/// and only after that it will run `before_exit` and exit.
 pub(crate) fn quit(mut caller: C) {
     let state = caller.data_mut();
     state.called = "misc.quit";
