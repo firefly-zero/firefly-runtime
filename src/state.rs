@@ -55,8 +55,8 @@ pub(crate) struct State<'a> {
     /// using true RNG.
     pub lock_seed: bool,
 
-    pub start: Instant,
-    pub since_start: Duration,
+    pub start: u32,
+    pub now: u64,
 
     /// Pointer to the app memory.
     ///
@@ -123,7 +123,7 @@ impl<'a> State<'a> {
         let mut device = device;
         let maybe_battery = Battery::new(&mut device);
         let settings = load_settings(&mut device).unwrap_or_default();
-        let now = device.now();
+        let now = device.now().us();
         Box::new(Self {
             device,
             rom_dir,
@@ -137,7 +137,7 @@ impl<'a> State<'a> {
             seed,
             lock_seed: false,
             start: now,
-            since_start: Duration::from_us(0),
+            now: u64::from(now),
             memory: None,
             next: None,
             exit: false,
@@ -343,9 +343,9 @@ impl<'a> State<'a> {
         self.update_net();
 
         if matches!(self.net_handler.get_mut(), NetHandler::None) {
-            self.since_start = self.device.now() - self.start;
+            self.now = self.get_now();
         } else {
-            self.since_start += Duration::from_us(16666);
+            self.now += 16_666;
         };
 
         // Get combined input for all peers.
@@ -407,6 +407,19 @@ impl<'a> State<'a> {
         None
     }
 
+    fn get_now(&self) -> u64 {
+        self.convert_now(self.device.now().us())
+    }
+
+    fn convert_now(&self, now: u32) -> u64 {
+        let should_wrap = now < 0x4000_0000 && self.now as u32 > 0xB000_0000;
+        let mut result = self.now & 0xffff_ffff_0000_0000;
+        if should_wrap {
+            result += 0x1_0000_0000;
+        }
+        result | u64::from(now)
+    }
+
     fn update_net(&mut self) {
         let handler = self.net_handler.replace(NetHandler::None);
         let handler = match handler {
@@ -456,8 +469,8 @@ impl<'a> State<'a> {
         let extra = if sync_rand {
             Extra::Rand(self.device.random())
         } else if sync_now {
-            let since_start = self.device.now() - self.start;
-            Extra::Now(since_start.us())
+            let since_start = self.device.now().us() - self.start;
+            Extra::Now(since_start)
         } else {
             Extra::None
         };
@@ -506,7 +519,7 @@ impl<'a> State<'a> {
                 self.seed = seed;
             }
         } else if sync_now && let Some(now) = syncer.get_now() {
-            self.since_start = Duration::from_us(now);
+            self.now = self.convert_now(now);
         }
         NetHandler::FrameSyncer(syncer)
     }

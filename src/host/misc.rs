@@ -88,10 +88,10 @@ pub(crate) fn get_random(mut caller: C) -> u32 {
     x
 }
 
-pub(crate) fn get_time(mut caller: C) -> u32 {
+pub(crate) fn get_time(mut caller: C) -> u64 {
     let state = caller.data_mut();
     state.called = "misc.get_time";
-    state.since_start.us()
+    state.now - u64::from(state.start)
 }
 
 /// Get the name of the given peer device.
