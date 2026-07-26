@@ -100,7 +100,7 @@ impl Connection {
     ///
     /// Can be called from menu in launcher if connected to multiplayer.
     pub fn disconnect(self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
-        self.broadcast(device, Req::Disconnect.into())?;
+        self.broadcast(device, Message::Disconnect)?;
         device.net_stop()?;
         Ok(())
     }
@@ -115,14 +115,14 @@ impl Connection {
         let seed = self.get_seed(device);
         let intro = make_intro(device, &app, seed)?;
         // TODO: reduce the amount of `.clone()` in this function.
-        let resp = Resp::Start(Start {
+        let resp = Message::Start(Start {
             id: app.clone(),
             badges: intro.badges.clone(),
             scores: intro.scores.clone(),
             stash: intro.stash.clone().into(),
             seed: intro.seed,
         });
-        self.broadcast(device, resp.into())?;
+        self.broadcast(device, resp)?;
         self.app = Some(app);
         self.started_at = Some(device.now());
         let me = self.get_me_mut();
@@ -203,7 +203,7 @@ impl Connection {
             return Ok(());
         }
         self.last_sync = Some(now);
-        self.broadcast(device, Req::Start.into())?;
+        self.broadcast(device, Message::ReqStart)?;
         Ok(())
     }
 
@@ -222,14 +222,14 @@ impl Connection {
         self.last_ready = Some(now);
         let me = self.get_me();
         let intro = me.app.as_ref().unwrap();
-        let resp = Resp::Start(Start {
+        let resp = Message::Start(Start {
             id: app.clone(),
             badges: intro.badges.clone(),
             scores: intro.scores.clone(),
             stash: intro.stash.clone().into_boxed_slice(),
             seed: intro.seed,
         });
-        self.broadcast(device, resp.into())?;
+        self.broadcast(device, resp)?;
         Ok(())
     }
 
@@ -262,20 +262,9 @@ impl Connection {
         }
         let msg = Message::decode(&raw)?;
         match msg {
-            Message::Req(req) => self.handle_req(device, addr, req),
-            Message::Resp(resp) => self.handle_resp(device, addr, resp),
-        }
-    }
-
-    fn handle_req(
-        &mut self,
-        device: &mut DeviceImpl,
-        addr: Addr,
-        req: Req,
-    ) -> Result<(), NetcodeError> {
-        match req {
-            Req::Start => self.handle_start_req(device, addr)?,
-            Req::Disconnect => self.handle_disconnect(addr)?,
+            Message::ReqStart => self.handle_start_req(device, addr)?,
+            Message::Disconnect => self.handle_disconnect(addr)?,
+            Message::Start(intro) => self.handle_start_resp(device, intro, addr)?,
             _ => {}
         }
         Ok(())
@@ -300,7 +289,7 @@ impl Connection {
             stash: intro.stash.clone().into_boxed_slice(),
             seed: intro.seed,
         };
-        let resp = Message::Resp(Resp::Start(resp));
+        let resp = Message::Start(resp);
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = resp.encode(&mut buf)?;
         device.net_send(addr, raw)?;
@@ -321,18 +310,6 @@ impl Connection {
         }
 
         Err(NetcodeError::Disconnected(name))
-    }
-
-    fn handle_resp(
-        &mut self,
-        device: &mut DeviceImpl,
-        addr: Addr,
-        resp: Resp,
-    ) -> Result<(), NetcodeError> {
-        if let Resp::Start(intro) = resp {
-            self.handle_start_resp(device, intro, addr)?;
-        }
-        Ok(())
     }
 
     /// Handle a start response.

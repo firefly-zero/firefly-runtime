@@ -101,28 +101,10 @@ impl Connector {
     ) -> Result<(), NetcodeError> {
         let msg = Message::decode(&raw)?;
         match msg {
-            Message::Req(req) => self.handle_req(device, addr, req),
-            Message::Resp(resp) => self.handle_resp(addr, resp),
-        }
-    }
-
-    fn handle_req(
-        &mut self,
-        device: &mut DeviceImpl,
-        addr: Addr,
-        req: Req,
-    ) -> Result<(), NetcodeError> {
-        match req {
-            Req::Hello => self.handle_hello(device, addr),
-            Req::Intro => self.send_intro(device, addr),
-            Req::Disconnect => self.handle_disconnect(addr),
-            _ => Ok(()),
-        }
-    }
-
-    fn handle_resp(&mut self, addr: Addr, resp: Resp) -> Result<(), NetcodeError> {
-        match resp {
-            Resp::Intro(intro) => self.handle_intro(addr, intro),
+            Message::Hello => self.handle_hello(device, addr),
+            Message::ReqIntro => self.send_intro(device, addr),
+            Message::Disconnect => self.handle_disconnect(addr),
+            Message::Intro(intro) => self.handle_intro(addr, intro),
             _ => Ok(()),
         }
     }
@@ -183,7 +165,7 @@ impl Connector {
 
     fn send_intro(&self, device: &mut DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
         let intro = self.me.clone();
-        let msg = Message::Resp(Resp::Intro(intro));
+        let msg = Message::Intro(intro);
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
         device.net_send(addr, raw)?;
@@ -195,7 +177,7 @@ impl Connector {
         device: &mut DeviceImpl,
         i: usize,
     ) -> Result<(), NetcodeError> {
-        let msg = Message::Req(Req::Disconnect);
+        let msg = Message::Disconnect;
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
         let addr = &self.peer_addrs[i];

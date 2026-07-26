@@ -6,20 +6,25 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub(crate) enum Message {
-    Req(Req),
-    Resp(Resp),
-}
+    Hello,
+    /// Ask the device to re-send their intro.
+    ReqIntro,
+    /// Ask the device if it already started an app.
+    ReqStart,
+    /// Request the state for the given frame.
+    ReqState(u32),
+    /// Tell other devices that this device is going to disconnect.
+    Disconnect,
 
-impl From<Resp> for Message {
-    fn from(v: Resp) -> Self {
-        Self::Resp(v)
-    }
-}
-
-impl From<Req> for Message {
-    fn from(v: Req) -> Self {
-        Self::Req(v)
-    }
+    Intro(Intro),
+    /// Launch an app.
+    Start(Start),
+    /// The app state sync, sent every frame when running an app.
+    State(FrameState),
+    /// Tell other devices that this device's user has accepted the peers' list.
+    ///
+    /// Inlcudes the number of peers.
+    Ready(u8),
 }
 
 impl Message {
@@ -29,7 +34,7 @@ impl Message {
             return Err(NetcodeError::EmptyBufferIn);
         }
         if s == b"HELLO" {
-            return Ok(Self::Req(Req::Hello));
+            return Ok(Self::Hello);
         }
         let res = postcard::from_bytes(s);
         match res {
@@ -51,34 +56,6 @@ impl Message {
             Err(err) => Err(NetcodeError::Serialize(err)),
         }
     }
-}
-
-/// A network request: a message that the device sends unprompted.
-#[derive(Serialize, Deserialize)]
-pub(crate) enum Req {
-    Hello,
-    /// Ask the device to re-send their intro.
-    Intro,
-    /// Ask the device if it is already started an app.
-    Start,
-    /// Request the state for the given frame.
-    State(u32),
-    /// Tell other devices that this device is going to disconnect.
-    Disconnect,
-}
-
-/// A response to a request from another device.
-#[derive(Serialize, Deserialize)]
-pub(crate) enum Resp {
-    Intro(Intro),
-    /// Launch an app.
-    Start(Start),
-    /// The app state sync, sent every frame when running an app.
-    State(FrameState),
-    /// Tell other devices that this device's user has accepted the peers' list.
-    ///
-    /// Inlcudes the number of peers.
-    Ready(u8),
 }
 
 #[derive(Serialize, Deserialize, Clone)]

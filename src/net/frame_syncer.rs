@@ -180,7 +180,7 @@ impl FrameSyncer {
     }
 
     fn broadcast_state(&mut self, device: &mut DeviceImpl, state: FrameState) {
-        let msg = Message::Resp(Resp::State(state));
+        let msg = Message::State(state);
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = match msg.encode(&mut buf) {
             Ok(raw) => raw,
@@ -223,7 +223,7 @@ impl FrameSyncer {
         }
         device.log_debug("netcode", "requesting sync");
         self.last_sync = Some(now);
-        let msg = Message::Req(Req::State(self.frame));
+        let msg = Message::ReqState(self.frame);
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
         for peer in &self.peers {
@@ -249,23 +249,20 @@ impl FrameSyncer {
         }
         let msg = Message::decode(&raw)?;
         match msg {
-            Message::Req(req) => self.handle_req(device, addr, req),
-            Message::Resp(resp) => self.handle_resp(addr, resp),
-        }
-    }
-
-    fn handle_req(
-        &self,
-        device: &mut DeviceImpl,
-        addr: Addr,
-        req: Req,
-    ) -> Result<(), NetcodeError> {
-        // A peer requested a state for a specific frame.
-        // Send them the state if available.
-        // If not, send nothing, let them timeout.
-        match req {
-            Req::State(frame) => self.handle_state_req(device, addr, frame)?,
-            Req::Start => self.handle_start_req(device, addr)?,
+            // A peer requested a state for a specific frame.
+            // Send them the state if available.
+            // If not, send nothing, let them timeout.
+            Message::ReqState(frame) => self.handle_state_req(device, addr, frame)?,
+            Message::ReqStart => self.handle_start_req(device, addr)?,
+            // A peer reported their state for a frame.
+            // Store it in the ring of states.
+            Message::State(state) => {
+                for peer in self.peers.iter_mut() {
+                    if peer.addr == Some(addr) {
+                        peer.states.insert(state.frame, state);
+                    }
+                }
+            }
             _ => return Err(NetcodeError::UnexpectedRequest),
         }
         Ok(())
@@ -280,7 +277,7 @@ impl FrameSyncer {
             stash: me.stash.clone().into_boxed_slice(),
             seed: self.device_seed,
         };
-        let resp = Message::Resp(Resp::Start(resp));
+        let resp = Message::Start(resp);
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = resp.encode(&mut buf)?;
         device.net_send(addr, raw)?;
@@ -296,24 +293,11 @@ impl FrameSyncer {
         let me = self.get_me();
         let state = me.states.get(frame);
         if let Some(state) = state {
-            let msg = Message::Resp(Resp::State(state));
+            let msg = Message::State(state);
             let mut buf = alloc::vec![0u8; MSG_SIZE];
             let raw = msg.encode(&mut buf)?;
             device.net_send(addr, raw)?;
         };
-        Ok(())
-    }
-
-    fn handle_resp(&mut self, addr: Addr, resp: Resp) -> Result<(), NetcodeError> {
-        // A peer reported their state for a frame.
-        // Store it in the ring of states.
-        if let Resp::State(state) = resp {
-            for peer in self.peers.iter_mut() {
-                if peer.addr == Some(addr) {
-                    peer.states.insert(state.frame, state);
-                }
-            }
-        }
         Ok(())
     }
 
