@@ -91,7 +91,12 @@ pub(crate) fn get_random(mut caller: C) -> u32 {
 pub(crate) fn get_time(mut caller: C) -> u64 {
     let state = caller.data_mut();
     state.called = "misc.get_time";
-    state.now - u64::from(state.start)
+    let is_singleplayer = matches!(state.net_handler.get_mut(), NetHandler::None);
+    if is_singleplayer {
+        state.get_now() - u64::from(state.start)
+    } else {
+        state.now
+    }
 }
 
 /// Get the name of the given peer device.

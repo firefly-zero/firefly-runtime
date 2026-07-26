@@ -343,7 +343,8 @@ impl<'a> State<'a> {
         self.update_net();
 
         if matches!(self.net_handler.get_mut(), NetHandler::None) {
-            self.now = self.get_now();
+            // Mark now as dirty.
+            self.now |= 1 << 63;
         } else {
             self.now += 16_666;
         };
@@ -407,8 +408,12 @@ impl<'a> State<'a> {
         None
     }
 
-    fn get_now(&self) -> u64 {
-        self.convert_now(self.device.now().us())
+    pub(crate) fn get_now(&mut self) -> u64 {
+        if self.now & (1 << 63) != 0 {
+            self.now &= !(1 << 63);
+            self.now = self.convert_now(self.device.now().us())
+        }
+        self.now
     }
 
     fn convert_now(&self, now: u32) -> u64 {
