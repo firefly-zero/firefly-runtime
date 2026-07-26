@@ -104,15 +104,16 @@ impl FrameSyncer {
     }
 
     pub fn get_now(&self) -> Option<u32> {
+        let mut min = u32::MAX;
         for peer in &self.peers {
             let state = peer.states.get_current();
             if let Some(state) = state
                 && let Extra::Now(now) = state.extra
             {
-                return Some(now);
+                min = min.min(now);
             };
         }
-        None
+        if min == u32::MAX { None } else { Some(min) }
     }
 
     pub fn update(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {

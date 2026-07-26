@@ -17,6 +17,12 @@ use embedded_io::Write;
 use firefly_hal::*;
 use firefly_types::Encode;
 
+/// Send hardware random seed in multiplayer on Nth frame every second.
+const SEND_RAND: u32 = 21;
+
+/// Send hardware time in multiplayer on Nth frame every second.
+const SEND_TIME: u32 = 31;
+
 #[allow(private_interfaces)]
 pub enum NetHandler {
     None,
@@ -51,11 +57,14 @@ pub(crate) struct State<'a> {
     /// The current state of the randomization function.
     pub seed: u32,
 
-    /// If true, the current seed is set by the app and must not be randomized
-    /// using true RNG.
+    /// If true, the current seed is set by the app
+    /// and must not be randomized using true RNG.
     pub lock_seed: bool,
 
+    /// System time when the app was started (in microseconds).
     pub start: u32,
+
+    /// The time passed since the app startup.
     pub now: u64,
 
     /// Pointer to the app memory.
@@ -116,9 +125,10 @@ impl<'a> State<'a> {
             }
         }
 
+        let start = device.now().us();
         let (seed, now) = match &net_handler {
             NetHandler::FrameSyncer(syncer) => (syncer.shared_seed, 0),
-            _ => (0, device.now().us()),
+            _ => (0, start),
         };
         let mut device = device;
         let maybe_battery = Battery::new(&mut device);
@@ -135,7 +145,7 @@ impl<'a> State<'a> {
             battery: maybe_battery.ok(),
             seed,
             lock_seed: false,
-            start: now,
+            start,
             now: u64::from(now),
             memory: None,
             next: None,
@@ -460,15 +470,11 @@ impl<'a> State<'a> {
         // * Don't sync seed if it is locked by the app (misc.set_seed was called).
         // * Don't sync seed if misc.get_random was never called.
         // * Don't sync seed too often to avoid poking true RNG too often.
-        let sync_rand = !self.lock_seed && self.seed != 0 && syncer.frame % 60 == 21;
-        let sync_now = syncer.frame % 60 == 31;
-        let extra = if sync_rand {
-            Extra::Rand(self.device.random())
-        } else if sync_now {
-            let since_start = self.device.now().us() - self.start;
-            Extra::Now(since_start)
-        } else {
-            Extra::None
+        let sync_rand = !self.lock_seed && self.seed != 0;
+        let extra = match syncer.frame % 60 {
+            SEND_RAND if sync_rand => Extra::Rand(self.device.random()),
+            SEND_TIME => Extra::Now(self.device.now().us() - self.start),
+            _ => Extra::None,
         };
 
         let input = self.input.clone().unwrap_or_default();
@@ -509,13 +515,19 @@ impl<'a> State<'a> {
             }
         }
 
-        if sync_rand {
-            let seed = syncer.get_seed();
-            if seed != 0 {
-                self.seed = seed;
+        match syncer.frame % 60 + 2 {
+            SEND_RAND => {
+                let seed = syncer.get_seed();
+                if seed != 0 {
+                    self.seed = seed;
+                }
             }
-        } else if sync_now && let Some(now) = syncer.get_now() {
-            self.now = self.convert_now(now);
+            SEND_TIME => {
+                if let Some(now) = syncer.get_now() {
+                    self.now = self.convert_now(now);
+                }
+            }
+            _ => {}
         }
         NetHandler::FrameSyncer(syncer)
     }
