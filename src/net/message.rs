@@ -114,7 +114,9 @@ pub(crate) enum Action {
     /// Restart the currently running app.
     Restart,
     /// Exit the currently running app.
-    Exit,
+    Quit,
+    /// The sending device took a screenshot. Other device simply close the menu.
+    Screenshot,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

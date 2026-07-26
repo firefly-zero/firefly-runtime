@@ -225,7 +225,7 @@ impl<'a> State<'a> {
                 let action = match app {
                     Some(id) if id == self.id => Action::Restart,
                     Some(_) => panic!("cannot launch another app in multiplayer"),
-                    None => Action::Exit,
+                    None => Action::Quit,
                 };
                 self.action = Some(action);
             }
@@ -482,7 +482,7 @@ impl<'a> State<'a> {
         // Don't sync seed if it is locked by the app (misc.set_seed was called)
         // or if misc.get_random was never called.
         let sync_rand = !self.lock_seed && self.seed != 0;
-        let extra = if let Some(action) = self.action {
+        let extra = if let Some(action) = self.action.take() {
             Extra::Action(action)
         } else {
             match syncer.frame % 60 {
@@ -515,17 +515,16 @@ impl<'a> State<'a> {
         }
 
         if let Some(action) = syncer.get_action() {
+            self.menu.deactivate();
             match action {
                 Action::Restart => {
                     self.next = Some(self.id.clone());
                     self.exit = true;
-                    self.menu.deactivate();
                 }
-                Action::Exit => {
-                    self.exit = true;
-                    self.menu.deactivate();
+                Action::Quit => {
                     return NetHandler::Connection(syncer.into_connection());
                 }
+                Action::Screenshot => {}
             }
         }
 
@@ -549,6 +548,10 @@ impl<'a> State<'a> {
 
     /// Save the current frame buffer into a PNG file.
     pub fn take_screenshot(&mut self) {
+        if matches!(self.net_handler.get_mut(), NetHandler::FrameSyncer(_)) {
+            self.action = Some(Action::Screenshot);
+        }
+
         let dir_path = &["data", self.id.author(), self.id.app(), "shots"];
         let mut dir = match self.device.open_dir(dir_path) {
             Ok(dir) => dir,
