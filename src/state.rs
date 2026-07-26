@@ -116,14 +116,13 @@ impl<'a> State<'a> {
             }
         }
 
-        let seed = match &net_handler {
-            NetHandler::FrameSyncer(syncer) => syncer.shared_seed,
-            _ => 0,
+        let (seed, now) = match &net_handler {
+            NetHandler::FrameSyncer(syncer) => (syncer.shared_seed, 0),
+            _ => (0, device.now().us()),
         };
         let mut device = device;
         let maybe_battery = Battery::new(&mut device);
         let settings = load_settings(&mut device).unwrap_or_default();
-        let now = device.now().us();
         Box::new(Self {
             device,
             rom_dir,
@@ -408,15 +407,7 @@ impl<'a> State<'a> {
         None
     }
 
-    pub(crate) fn get_now(&mut self) -> u64 {
-        if self.now & (1 << 63) != 0 {
-            self.now &= !(1 << 63);
-            self.now = self.convert_now(self.device.now().us())
-        }
-        self.now
-    }
-
-    fn convert_now(&self, now: u32) -> u64 {
+    pub fn convert_now(&self, now: u32) -> u64 {
         let should_wrap = now < 0x4000_0000 && self.now as u32 > 0xB000_0000;
         let mut result = self.now & 0xffff_ffff_0000_0000;
         if should_wrap {
