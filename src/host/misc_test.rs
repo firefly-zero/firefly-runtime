@@ -26,6 +26,18 @@ fn test_log_error_smoke() {
 }
 
 #[test]
+fn test_get_settings() {
+    let mut store = make_store();
+
+    let func = wasmi::Func::wrap(&mut store, get_settings);
+    let mut outputs = wrap_input(&[0]);
+    let inputs = wrap_input(&[1]);
+    func.call(&mut store, &inputs, &mut outputs).unwrap();
+
+    assert_eq!(outputs.len(), 1);
+}
+
+#[test]
 fn test_set_seed() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, set_seed);
@@ -54,6 +66,40 @@ fn test_get_random() {
     assert_eq!(outputs[0].i32(), Some(expected));
     let state = store.data();
     assert_eq!(state.seed, expected as u32)
+}
+
+#[test]
+fn test_get_time() {
+    let mut store = make_store();
+    let output1 = {
+        let func = wasmi::Func::wrap(&mut store, get_time);
+        let mut outputs = wrap_input(&[0]);
+        func.call(&mut store, &[], &mut outputs).unwrap();
+        assert_eq!(outputs.len(), 1);
+        outputs[0].i64().unwrap()
+    };
+    assert!(output1 >= 0);
+    assert!(output1 < 1000 * 1000);
+
+    let output2 = {
+        let func = wasmi::Func::wrap(&mut store, get_time);
+        let mut outputs = wrap_input(&[0]);
+        func.call(&mut store, &[], &mut outputs).unwrap();
+        assert_eq!(outputs.len(), 1);
+        outputs[0].i64().unwrap()
+    };
+    assert_eq!(output1, output2);
+
+    let state = store.data_mut();
+    state.update();
+    let output3 = {
+        let func = wasmi::Func::wrap(&mut store, get_time);
+        let mut outputs = wrap_input(&[0]);
+        func.call(&mut store, &[], &mut outputs).unwrap();
+        assert_eq!(outputs.len(), 1);
+        outputs[0].i64().unwrap()
+    };
+    assert!(output3 > output2);
 }
 
 #[test]
