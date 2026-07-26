@@ -99,7 +99,7 @@ pub(crate) struct State<'a> {
     pub stash_dirty: bool,
 
     pub net_handler: Cell<NetHandler>,
-    action: Action,
+    action: Option<Action>,
 }
 
 impl<'a> State<'a> {
@@ -158,7 +158,7 @@ impl<'a> State<'a> {
             n_frames: 0,
             stash: alloc::vec::Vec::new(),
             stash_dirty: false,
-            action: Action::None,
+            action: None,
         })
     }
 
@@ -227,7 +227,7 @@ impl<'a> State<'a> {
                     Some(_) => panic!("cannot launch another app in multiplayer"),
                     None => Action::Exit,
                 };
-                self.action = action;
+                self.action = Some(action);
             }
             NetHandler::Connection(c) => {
                 let Some(app) = app else { return };
@@ -482,10 +482,14 @@ impl<'a> State<'a> {
         // Don't sync seed if it is locked by the app (misc.set_seed was called)
         // or if misc.get_random was never called.
         let sync_rand = !self.lock_seed && self.seed != 0;
-        let extra = match syncer.frame % 60 {
-            SEND_RAND if sync_rand => Extra::Rand(self.device.random()),
-            SEND_TIME => Extra::Now(self.device.now().us() - self.start),
-            _ => Extra::None,
+        let extra = if let Some(action) = self.action {
+            Extra::Action(action)
+        } else {
+            match syncer.frame % 60 {
+                SEND_RAND if sync_rand => Extra::Rand(self.device.random()),
+                SEND_TIME => Extra::Now(self.device.now().us() - self.start),
+                _ => Extra::None,
+            }
         };
 
         let input = self.input.clone().unwrap_or_default();
@@ -498,7 +502,6 @@ impl<'a> State<'a> {
                 pad: input.pad.map(Into::into),
                 buttons: input.buttons,
             },
-            action: self.action,
         };
 
         syncer.advance(&mut self.device, frame_state);
@@ -511,18 +514,18 @@ impl<'a> State<'a> {
             }
         }
 
-        let action = syncer.get_action();
-        match action {
-            Action::None => (),
-            Action::Restart => {
-                self.next = Some(self.id.clone());
-                self.exit = true;
-                self.menu.deactivate();
-            }
-            Action::Exit => {
-                self.exit = true;
-                self.menu.deactivate();
-                return NetHandler::Connection(syncer.into_connection());
+        if let Some(action) = syncer.get_action() {
+            match action {
+                Action::Restart => {
+                    self.next = Some(self.id.clone());
+                    self.exit = true;
+                    self.menu.deactivate();
+                }
+                Action::Exit => {
+                    self.exit = true;
+                    self.menu.deactivate();
+                    return NetHandler::Connection(syncer.into_connection());
+                }
             }
         }
 

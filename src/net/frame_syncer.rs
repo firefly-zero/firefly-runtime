@@ -133,18 +133,17 @@ impl FrameSyncer {
         Ok(())
     }
 
-    pub fn get_action(&self) -> Action {
-        let mut action = Action::None;
+    pub fn get_action(&self) -> Option<Action> {
         for peer in &self.peers {
             let Some(state) = peer.states.get_current() else {
                 // We don't do the action until all peers are ready.
-                return Action::None;
+                break;
             };
-            if state.action != Action::None {
-                action = state.action;
+            if let Extra::Action(action) = state.extra {
+                return Some(action);
             }
         }
-        action
+        None
     }
 
     /// Go to the next frame and set that frame's state.
