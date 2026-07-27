@@ -192,12 +192,6 @@ impl Menu {
         if self.select_pressed() {
             if !pressed {
                 self.set_select_pressed(false);
-                if !self.actor() {
-                    self.set_actor(true);
-                    self.set_rendered(false);
-                    self.set_dirty(true);
-                    return None;
-                }
                 let selected = self.selected as usize;
                 if !self.multiplayer() {
                     self.deactivate();
@@ -235,17 +229,15 @@ impl Menu {
         }
         self.set_rendered(true);
         self.set_dirty(false);
+        self.draw_items(display)?;
+        self.draw_cursor(display, C::PRIMARY, self.selected)?;
 
         if self.actor() {
-            self.draw_items(display)?;
-            self.draw_cursor(display, C::PRIMARY, self.selected)?;
-        } else {
-            let mut black_style = MonoTextStyle::new(&FONT_6X9, C::PRIMARY);
-            black_style.background_color = Some(C::BG);
-            let text = "     PAUSED\n\nby another player";
-            let text_width = 17;
-            let point = Point::new((240 - text_width * 6) / 2, 67);
-            let text = Text::new(text, point, black_style);
+            let mut style = MonoTextStyle::new(&FONT_6X9, C::MUTED);
+            style.background_color = Some(C::BG);
+            let text = "(paused by another player)";
+            let point = Point::new(OFFSET + 6, 132);
+            let text = Text::new(text, point, style);
             text.draw(display)?;
         }
 
