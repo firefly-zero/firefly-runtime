@@ -113,6 +113,9 @@ impl Menu {
         if !self.active() {
             return None;
         }
+        if !self.actor() {
+            return None;
+        }
         self.handle_pad(input);
         self.handle_select(input.s() || input.e())
     }
@@ -220,6 +223,15 @@ impl Menu {
 
         let mut black_style = MonoTextStyle::new(&FONT_6X9, C::PRIMARY);
         black_style.background_color = Some(C::BG);
+
+        if !self.actor() {
+            let text = "     PAUSED\n\nby another player";
+            let text_width = 17;
+            let point = Point::new((240 - text_width * 6) / 2, 67);
+            let text = Text::new(text, point, black_style);
+            text.draw(display)?;
+            return Ok(());
+        }
 
         // Draw the list of custom items.
         let offset_x = OFFSET + 6;
@@ -449,6 +461,7 @@ const MASK_MENU_PRESSED: u8 = 0b_1000;
 const MASK_SELECT_PRESSED: u8 = 0b1_0000;
 const MASK_WAS_RELEASED: u8 = 0b10_0000;
 const MASK_MULTIPLAYER: u8 = 0b100_0000;
+const MASK_ACTOR: u8 = 0b1000_0000;
 
 impl Menu {
     /// True if the menu should be currently shown.
@@ -540,5 +553,20 @@ impl Menu {
 
     pub fn activate_multiplayer(&mut self) {
         self.flags |= MASK_MULTIPLAYER;
+    }
+
+    /// True if the current device is the one that opened the menu.
+    fn actor(&self) -> bool {
+        !self.multiplayer() || (self.flags & MASK_ACTOR != 0)
+    }
+
+    pub fn set_actor(&mut self, v: bool) {
+        if self.multiplayer() && !self.active() {
+            if v {
+                self.flags |= MASK_ACTOR;
+            } else {
+                self.flags &= !MASK_ACTOR;
+            }
+        }
     }
 }
