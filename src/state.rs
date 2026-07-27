@@ -35,6 +35,7 @@ pub(crate) struct State<'a> {
     /// Access to peripherals.
     pub device: DeviceImpl<'a>,
 
+    /// Cached directory descriptor for `roms/AUTHOR/APP` to make reads from ROM faster.
     pub rom_dir: DirImpl,
 
     /// The app menu manager.
@@ -99,6 +100,10 @@ pub(crate) struct State<'a> {
     pub stash_dirty: bool,
 
     pub net_handler: Cell<NetHandler>,
+
+    /// The selected menu item in multiplayer.
+    ///
+    /// Used to postpone menu item selection to run it on all devices at the same time.
     action: Option<Action>,
 }
 
@@ -184,6 +189,11 @@ impl<'a> State<'a> {
             Ok(raw) => raw,
             Err(err) => return Err(Error::ReadFile("stats", err.into())),
         };
+        // TODO: Since file writes are not atomic, running multiple emulators
+        // on the same vFS might cause this error when restarting an app.
+        if raw.is_empty() {
+            return Err(Error::FileEmpty("stats"));
+        }
         let stats = match firefly_types::Stats::decode(&raw) {
             Ok(stats) => stats,
             Err(err) => return Err(Error::DecodeStats(err)),
@@ -400,9 +410,11 @@ impl<'a> State<'a> {
                 // for the frame syncer.
                 match &self.input {
                     Some(input) => {
-                        // In frame syncer, use shared input for the menu button
-                        // (if one player presses it, press it for everyone)
-                        // and local input for all other buttons.
+                        // Pass shared menu button into Menu as a 6th button.
+                        // We want to open Menu for everyone at the same time
+                        // (this is why Menu needs the shared menu button)
+                        // but handle all inputs locally. When a peer selects
+                        // a Menu item, it will be synced to all peers using Action.
                         let mut input = input.clone();
                         if syncer.get_combined_input().menu() {
                             input.buttons |= 0b0010_0000;

@@ -442,7 +442,7 @@ pub(crate) fn make_intro(
     let stats = match Stats::decode(&raw) {
         Ok(stats) => stats,
         Err(_) => {
-            return Err(NetcodeError::StatsError("cannot decode stats"));
+            return Err(NetcodeError::StatsError("cannot decode stats for intro"));
         }
     };
 

@@ -232,7 +232,7 @@ impl Menu {
         self.draw_items(display)?;
         self.draw_cursor(display, C::PRIMARY, self.selected)?;
 
-        if self.actor() {
+        if !self.actor() {
             let mut style = MonoTextStyle::new(&FONT_6X9, C::MUTED);
             style.background_color = Some(C::BG);
             let text = "(paused by another player)";
