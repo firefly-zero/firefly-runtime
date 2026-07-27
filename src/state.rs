@@ -133,13 +133,17 @@ impl<'a> State<'a> {
         let mut device = device;
         let maybe_battery = Battery::new(&mut device);
         let settings = load_settings(&mut device).unwrap_or_default();
+        let mut menu = Menu::new();
+        if matches!(net_handler, NetHandler::FrameSyncer(_)) {
+            menu.activate_multiplayer();
+        }
         Box::new(Self {
             device,
             rom_dir,
             id,
             frame: FrameBuffer::new(),
             canvas: None,
-            menu: Menu::new(),
+            menu,
             launcher,
             audio: firefly_audio::Manager::new(),
             battery: maybe_battery.ok(),

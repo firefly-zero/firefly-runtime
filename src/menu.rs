@@ -122,10 +122,10 @@ impl Menu {
         // that the button is always released when the app is running.
         if self.active() {
             // When menu is open, close it on releasing the menu button.
-            if self.was_released() && self.menu_pressed() && !pressed {
-                self.deactivate();
-            }
             if !pressed {
+                if self.was_released() && self.menu_pressed() {
+                    self.deactivate();
+                }
                 self.set_was_released(true);
             }
         } else {
@@ -153,7 +153,7 @@ impl Menu {
                 }
             }
             DPad4::Down => {
-                let n_items = self.app_items.len() + self.sys_items.len();
+                let n_items = self.n_items();
                 if self.selected < n_items as i32 - 1 {
                     self.selected += 1;
                     self.set_dirty(true);
@@ -166,7 +166,7 @@ impl Menu {
                 }
             }
             DPad4::Right => {
-                let n_items = self.app_items.len() + self.sys_items.len();
+                let n_items = self.n_items();
                 if self.selected < n_items as i32 - 1 {
                     self.selected = n_items as i32 - 1;
                     self.set_dirty(true);
@@ -181,8 +181,9 @@ impl Menu {
             if !pressed {
                 self.set_select_pressed(false);
                 let selected = self.selected as usize;
-                // Close menu and return control to the game
-                self.deactivate();
+                if !self.multiplayer() {
+                    self.deactivate();
+                }
                 if let Some(item) = self.app_items.get(selected) {
                     return Some(item);
                 }
@@ -193,6 +194,10 @@ impl Menu {
             self.set_select_pressed(pressed);
         }
         None
+    }
+
+    fn n_items(&self) -> usize {
+        self.app_items.len() + self.sys_items.len()
     }
 
     pub fn render<D, C, E>(
@@ -443,6 +448,7 @@ const MASK_DIRTY: u8 = 0b100;
 const MASK_MENU_PRESSED: u8 = 0b_1000;
 const MASK_SELECT_PRESSED: u8 = 0b1_0000;
 const MASK_WAS_RELEASED: u8 = 0b10_0000;
+const MASK_MULTIPLAYER: u8 = 0b100_0000;
 
 impl Menu {
     /// True if the menu should be currently shown.
@@ -525,5 +531,14 @@ impl Menu {
         } else {
             self.flags &= !MASK_WAS_RELEASED;
         }
+    }
+
+    /// True if the app is now in an active multiplayer mode.
+    fn multiplayer(&self) -> bool {
+        self.flags & MASK_MULTIPLAYER != 0
+    }
+
+    pub fn activate_multiplayer(&mut self) {
+        self.flags |= MASK_MULTIPLAYER;
     }
 }
