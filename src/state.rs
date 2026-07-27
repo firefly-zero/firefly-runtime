@@ -526,6 +526,7 @@ impl<'a> State<'a> {
                     self.exit = true;
                 }
                 Action::Quit => {
+                    self.exit = true;
                     return NetHandler::Connection(syncer.into_connection());
                 }
                 Action::Screenshot => {}
