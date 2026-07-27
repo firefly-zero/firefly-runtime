@@ -405,10 +405,9 @@ impl<'a> State<'a> {
                         // and local input for all other buttons.
                         let mut input = input.clone();
                         if syncer.get_combined_input().menu() {
-                            self.menu.set_actor(input.menu());
-                            input.buttons |= 0b10000;
+                            input.buttons |= 0b10_0000;
                         } else {
-                            input.buttons &= !0b10000;
+                            input.buttons &= !0b10_0000;
                         };
                         Some(input)
                     }

@@ -109,7 +109,7 @@ impl Menu {
     pub fn handle_input(&mut self, input: &Option<InputState>) -> Option<&MenuItem> {
         let def = InputState::default();
         let input = input.as_ref().unwrap_or(&def);
-        self.handle_menu_button(input.menu());
+        self.handle_menu_button(input.buttons);
         if !self.active() {
             return None;
         }
@@ -120,7 +120,13 @@ impl Menu {
         self.handle_select(input.s() || input.e())
     }
 
-    fn handle_menu_button(&mut self, pressed: bool) {
+    fn handle_menu_button(&mut self, buttons: u8) {
+        let pressed_me = buttons & 0b1_0000 != 0;
+        let pressed = if self.multiplayer() {
+            buttons & 0b10_0000 != 0
+        } else {
+            pressed_me
+        };
         // Depending on if menu is open or not, handle the menu button in a way
         // that the button is always released when the app is running.
         if self.active() {
@@ -135,13 +141,19 @@ impl Menu {
             // When menu is closed, open it on pressing the menu button.
             #[allow(clippy::collapsible_else_if)]
             if !self.menu_pressed() && pressed {
+                self.set_actor(pressed_me);
                 self.activate();
-                self.set_rendered(false);
-                self.set_dirty(true);
                 self.set_was_released(false);
             }
         }
         self.set_menu_pressed(pressed);
+    }
+
+    /// Open the menu.
+    pub fn activate(&mut self) {
+        self.flags |= MASK_ACTIVE;
+        self.set_rendered(false);
+        self.set_dirty(true);
     }
 
     fn handle_pad(&mut self, input: &InputState) {
@@ -481,11 +493,6 @@ impl Menu {
         self.flags & MASK_ACTIVE != 0
     }
 
-    /// Open the menu (if closed).
-    pub fn activate(&mut self) {
-        self.flags |= MASK_ACTIVE;
-    }
-
     /// Close the menu (if open).
     pub fn deactivate(&mut self) {
         self.flags &= !MASK_ACTIVE;
@@ -570,7 +577,7 @@ impl Menu {
         !self.multiplayer() || (self.flags & MASK_ACTOR != 0)
     }
 
-    pub fn set_actor(&mut self, v: bool) {
+    fn set_actor(&mut self, v: bool) {
         if self.multiplayer() && !self.active() {
             if v {
                 self.flags |= MASK_ACTOR;
