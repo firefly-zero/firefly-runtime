@@ -113,9 +113,6 @@ impl Menu {
         if !self.active() {
             return None;
         }
-        if !self.actor() {
-            return None;
-        }
         self.handle_pad(input);
         self.handle_select(input.s() || input.e())
     }
@@ -195,6 +192,12 @@ impl Menu {
         if self.select_pressed() {
             if !pressed {
                 self.set_select_pressed(false);
+                if !self.actor() {
+                    self.set_actor(true);
+                    self.set_rendered(false);
+                    self.set_dirty(true);
+                    return None;
+                }
                 let selected = self.selected as usize;
                 if !self.multiplayer() {
                     self.deactivate();
@@ -578,12 +581,10 @@ impl Menu {
     }
 
     fn set_actor(&mut self, v: bool) {
-        if self.multiplayer() && !self.active() {
-            if v {
-                self.flags |= MASK_ACTOR;
-            } else {
-                self.flags &= !MASK_ACTOR;
-            }
+        if v {
+            self.flags |= MASK_ACTOR;
+        } else {
+            self.flags &= !MASK_ACTOR;
         }
     }
 }
