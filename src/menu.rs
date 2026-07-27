@@ -221,53 +221,19 @@ impl Menu {
         self.set_rendered(true);
         self.set_dirty(false);
 
-        let mut black_style = MonoTextStyle::new(&FONT_6X9, C::PRIMARY);
-        black_style.background_color = Some(C::BG);
-
-        if !self.actor() {
+        if self.actor() {
+            self.draw_items(display)?;
+            self.draw_cursor(display, C::PRIMARY, self.selected)?;
+        } else {
+            let mut black_style = MonoTextStyle::new(&FONT_6X9, C::PRIMARY);
+            black_style.background_color = Some(C::BG);
             let text = "     PAUSED\n\nby another player";
             let text_width = 17;
             let point = Point::new((240 - text_width * 6) / 2, 67);
             let text = Text::new(text, point, black_style);
             text.draw(display)?;
-            return Ok(());
         }
 
-        // Draw the list of custom items.
-        let offset_x = OFFSET + 6;
-        let mut offset_y = OFFSET + 9;
-        for (item, i) in self.app_items.iter().zip(0..) {
-            if i != self.selected {
-                self.draw_cursor(display, C::BG, i)?;
-            };
-            let point = Point::new(offset_x, offset_y + i * LINE_HEIGHT);
-            let text = Text::new(item.as_str(), point, black_style);
-            text.draw(display)?;
-        }
-
-        // Draw the list of system items.
-        let n_custom = self.app_items.len() as i32;
-        if n_custom != 0 {
-            offset_y += 4;
-        }
-        for (item, i) in self.sys_items.iter().zip(n_custom..) {
-            if i != self.selected {
-                self.draw_cursor(display, C::BG, i)?;
-            };
-            let point = Point::new(offset_x, offset_y + i * LINE_HEIGHT);
-            let text = Text::new(item.as_str(), point, black_style);
-            text.draw(display)?;
-        }
-
-        // Draw the separator line.
-        if n_custom != 0 {
-            let top_left = Point::new(OFFSET, n_custom * LINE_HEIGHT + 4 + OFFSET);
-            let size = Size::new(240 - OFFSET as u32 * 2, 1);
-            let area = Rectangle::new(top_left, size);
-            display.fill_solid(&area, C::PRIMARY)?;
-        }
-
-        self.draw_cursor(display, C::PRIMARY, self.selected)?;
         self.draw_battery(display, battery)
     }
 
@@ -310,6 +276,50 @@ impl Menu {
         let area = Rectangle::new(top_left, size);
         display.fill_solid(&area, C::PRIMARY)?;
 
+        Ok(())
+    }
+
+    pub fn draw_items<D, C, E>(&self, display: &mut D) -> Result<(), E>
+    where
+        D: DrawTarget<Color = C, Error = E>,
+        C: RgbColor + FromRGB,
+    {
+        let mut black_style = MonoTextStyle::new(&FONT_6X9, C::PRIMARY);
+        black_style.background_color = Some(C::BG);
+
+        // Draw the list of custom items.
+        let offset_x = OFFSET + 6;
+        let mut offset_y = OFFSET + 9;
+        for (item, i) in self.app_items.iter().zip(0..) {
+            if i != self.selected {
+                self.draw_cursor(display, C::BG, i)?;
+            };
+            let point = Point::new(offset_x, offset_y + i * LINE_HEIGHT);
+            let text = Text::new(item.as_str(), point, black_style);
+            text.draw(display)?;
+        }
+
+        // Draw the list of system items.
+        let n_custom = self.app_items.len() as i32;
+        if n_custom != 0 {
+            offset_y += 4;
+        }
+        for (item, i) in self.sys_items.iter().zip(n_custom..) {
+            if i != self.selected {
+                self.draw_cursor(display, C::BG, i)?;
+            };
+            let point = Point::new(offset_x, offset_y + i * LINE_HEIGHT);
+            let text = Text::new(item.as_str(), point, black_style);
+            text.draw(display)?;
+        }
+
+        // Draw the separator line.
+        if n_custom != 0 {
+            let top_left = Point::new(OFFSET, n_custom * LINE_HEIGHT + 4 + OFFSET);
+            let size = Size::new(240 - OFFSET as u32 * 2, 1);
+            let area = Rectangle::new(top_left, size);
+            display.fill_solid(&area, C::PRIMARY)?;
+        }
         Ok(())
     }
 
