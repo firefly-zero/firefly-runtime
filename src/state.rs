@@ -485,10 +485,10 @@ impl<'a> State<'a> {
     fn update_syncer(&mut self, mut syncer: Box<FrameSyncer>) -> NetHandler {
         // Don't sync seed if it is locked by the app (misc.set_seed was called)
         // or if misc.get_random was never called.
-        let sync_rand = !self.lock_seed && self.seed != 0;
         let extra = if let Some(action) = self.action.take() {
             Extra::Action(action)
         } else {
+            let sync_rand = !self.lock_seed && self.seed != 0;
             match syncer.frame % 60 {
                 SEND_RAND if sync_rand => Extra::Rand(self.device.random()),
                 SEND_TIME => Extra::Now(self.device.now().us() - self.start),
@@ -522,6 +522,11 @@ impl<'a> State<'a> {
             self.menu.deactivate();
             match action {
                 Action::Restart => {
+                    // Set new seed on restart.
+                    // Without it, the app will have the same seed
+                    // every time it is restarted because the shared_seed
+                    // is set from Connection which we don't use on restart.
+                    syncer.shared_seed = self.seed;
                     self.next = Some(self.id.clone());
                     self.exit = true;
                 }
