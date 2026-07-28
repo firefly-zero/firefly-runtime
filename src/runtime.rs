@@ -365,7 +365,17 @@ where
         state.save_stash();
         state.update_app_stats();
         state.save_app_stats();
+
         let net_handler = state.net_handler.replace(NetHandler::None);
+        // If exiting from an app back into the launcher,
+        // go back from FrameSyncer to Connection.
+        let net_handler = match net_handler {
+            NetHandler::FrameSyncer(syncer) if state.next.is_none() => {
+                NetHandler::Connection(syncer.into_connection())
+            }
+            net_handler => net_handler,
+        };
+
         let config = RuntimeConfig {
             id: state.next,
             device: state.device,

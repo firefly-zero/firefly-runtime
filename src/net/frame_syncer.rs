@@ -133,19 +133,6 @@ impl FrameSyncer {
         Ok(())
     }
 
-    pub fn get_action(&self) -> Option<Action> {
-        for peer in &self.peers {
-            let Some(state) = peer.states.get_current() else {
-                // We don't do the action until all peers are ready.
-                break;
-            };
-            if let Extra::Action(action) = state.extra {
-                return Some(action);
-            }
-        }
-        None
-    }
-
     /// Go to the next frame and set that frame's state.
     ///
     /// It will also broadcast the new frame state to all connected peers.

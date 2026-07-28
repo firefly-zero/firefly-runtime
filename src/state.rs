@@ -100,11 +100,6 @@ pub(crate) struct State<'a> {
     pub stash_dirty: bool,
 
     pub net_handler: Cell<NetHandler>,
-
-    /// The selected menu item in multiplayer.
-    ///
-    /// Used to postpone menu item selection to run it on all devices at the same time.
-    action: Option<Action>,
 }
 
 impl<'a> State<'a> {
@@ -139,8 +134,8 @@ impl<'a> State<'a> {
         let maybe_battery = Battery::new(&mut device);
         let settings = load_settings(&mut device).unwrap_or_default();
         let mut menu = Menu::new();
-        if matches!(net_handler, NetHandler::FrameSyncer(_)) {
-            menu.activate_multiplayer();
+        if !matches!(net_handler, NetHandler::FrameSyncer(_)) {
+            menu.set_actor(true);
         }
         Box::new(Self {
             device,
@@ -167,7 +162,6 @@ impl<'a> State<'a> {
             n_frames: 0,
             stash: alloc::vec::Vec::new(),
             stash_dirty: false,
-            action: None,
         })
     }
 
@@ -235,19 +229,32 @@ impl<'a> State<'a> {
                 self.next = app;
                 self.exit = true;
             }
-            NetHandler::FrameSyncer(_) => {
-                let action = match app {
-                    Some(id) if id == self.id => Action::Restart,
+            NetHandler::FrameSyncer(syncer) => {
+                match app {
+                    Some(id) if id == self.id => {
+                        // Set new seed on restart.
+                        // Without it, the app will have the same seed
+                        // every time it is restarted because the shared_seed
+                        // is set from Connection which we don't use on restart.
+                        syncer.shared_seed = self.seed;
+                        self.next = Some(id);
+                        self.exit = true;
+                    }
                     Some(_) => panic!("cannot launch another app in multiplayer"),
-                    None => Action::Quit,
+                    None => {
+                        self.next = app;
+                        self.exit = true;
+                        // self.net_handler
+                        //     .replace(NetHandler::Connection(syncer.into_connection()));
+                    }
                 };
-                self.action = Some(action);
             }
             NetHandler::Connection(c) => {
-                let Some(app) = app else { return };
-                let res = c.set_app(&mut self.device, app);
-                if let Err(err) = res {
-                    self.device.log_error("netcode", err);
+                if let Some(app) = app {
+                    let res = c.set_app(&mut self.device, app);
+                    if let Err(err) = res {
+                        self.device.log_error("netcode", err);
+                    }
                 }
             }
         };
@@ -375,7 +382,6 @@ impl<'a> State<'a> {
 
         // TODO: when menu is open and closed, adjust self.start.
         if !self.launcher {
-            // self.menu.handle_input(&input)
             let action = if let NetHandler::FrameSyncer(syncer) = self.net_handler.get_mut() {
                 self.menu.handle_net_input(syncer)
             } else {
@@ -452,15 +458,11 @@ impl<'a> State<'a> {
     fn update_syncer(&mut self, mut syncer: Box<FrameSyncer>) -> NetHandler {
         // Don't sync seed if it is locked by the app (misc.set_seed was called)
         // or if misc.get_random was never called.
-        let extra = if let Some(action) = self.action.take() {
-            Extra::Action(action)
-        } else {
-            let sync_rand = !self.lock_seed && self.seed != 0;
-            match syncer.frame % 60 {
-                SEND_RAND if sync_rand => Extra::Rand(self.device.random()),
-                SEND_TIME => Extra::Now(self.device.now().us() - self.start),
-                _ => Extra::None,
-            }
+        let sync_rand = !self.lock_seed && self.seed != 0;
+        let extra = match syncer.frame % 60 {
+            SEND_RAND if sync_rand => Extra::Rand(self.device.random()),
+            SEND_TIME => Extra::Now(self.device.now().us() - self.start),
+            _ => Extra::None,
         };
 
         let input = self.input.clone().unwrap_or_default();
@@ -485,26 +487,6 @@ impl<'a> State<'a> {
             }
         }
 
-        if let Some(action) = syncer.get_action() {
-            self.menu.deactivate();
-            match action {
-                Action::Restart => {
-                    // Set new seed on restart.
-                    // Without it, the app will have the same seed
-                    // every time it is restarted because the shared_seed
-                    // is set from Connection which we don't use on restart.
-                    syncer.shared_seed = self.seed;
-                    self.next = Some(self.id.clone());
-                    self.exit = true;
-                }
-                Action::Quit => {
-                    self.exit = true;
-                    return NetHandler::Connection(syncer.into_connection());
-                }
-                Action::Screenshot => {}
-            }
-        }
-
         // Read and apply extras from other peers 2 frames after we send them.
         match syncer.frame % 60 + 2 {
             SEND_RAND => {
@@ -525,10 +507,6 @@ impl<'a> State<'a> {
 
     /// Save the current frame buffer into a PNG file.
     pub fn take_screenshot(&mut self) {
-        if matches!(self.net_handler.get_mut(), NetHandler::FrameSyncer(_)) {
-            self.action = Some(Action::Screenshot);
-        }
-
         let dir_path = &["data", self.id.author(), self.id.app(), "shots"];
         let mut dir = match self.device.open_dir(dir_path) {
             Ok(dir) => dir,

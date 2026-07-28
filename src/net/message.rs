@@ -102,21 +102,8 @@ pub(crate) enum Extra {
     Rand(u32),
     /// The current hardware time in microseconds.
     Now(u32),
-    /// A system action that all devices should do instead of rendering the frame.
-    Action(Action),
     None,
     // TODO: RandKey.
-}
-
-/// A system action that all devices should do instead of rendering the frame.
-#[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
-pub(crate) enum Action {
-    /// Restart the currently running app.
-    Restart,
-    /// Exit the currently running app.
-    Quit,
-    /// The sending device took a screenshot. Other device simply close the menu.
-    Screenshot,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

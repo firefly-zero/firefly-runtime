@@ -1,6 +1,6 @@
 use crate::battery::Battery;
 use crate::color::FromRGB;
-use crate::net::{FSPeer, FrameSyncer};
+use crate::net::FrameSyncer;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mono_font::MonoTextStyle;
@@ -215,9 +215,7 @@ impl Menu {
             if !pressed {
                 self.set_select_pressed(false);
                 let selected = self.selected as usize;
-                if !self.multiplayer() {
-                    self.deactivate();
-                }
+                self.deactivate();
                 if let Some(item) = self.app_items.get(selected) {
                     return Some(item);
                 }
@@ -499,8 +497,7 @@ const MASK_DIRTY: u8 = 0b100;
 const MASK_MENU_PRESSED: u8 = 0b_1000;
 const MASK_SELECT_PRESSED: u8 = 0b1_0000;
 const MASK_WAS_RELEASED: u8 = 0b10_0000;
-const MASK_MULTIPLAYER: u8 = 0b100_0000;
-const MASK_ACTOR: u8 = 0b1000_0000;
+const MASK_ACTOR: u8 = 0b100_0000;
 
 impl Menu {
     /// True if the menu should be currently shown.
@@ -580,21 +577,12 @@ impl Menu {
         }
     }
 
-    /// True if the app is now in an active multiplayer mode.
-    fn multiplayer(&self) -> bool {
-        self.flags & MASK_MULTIPLAYER != 0
-    }
-
-    pub fn activate_multiplayer(&mut self) {
-        self.flags |= MASK_MULTIPLAYER;
-    }
-
     /// True if the current device is the one that opened the menu.
     fn actor(&self) -> bool {
-        !self.multiplayer() || (self.flags & MASK_ACTOR != 0)
+        self.flags & MASK_ACTOR != 0
     }
 
-    fn set_actor(&mut self, v: bool) {
+    pub fn set_actor(&mut self, v: bool) {
         if v {
             self.flags |= MASK_ACTOR;
         } else {
