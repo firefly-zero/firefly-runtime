@@ -257,16 +257,12 @@ impl Menu {
         }
         self.set_rendered(true);
         self.set_dirty(false);
-        self.draw_items(display)?;
-        self.draw_cursor(display, C::PRIMARY, self.selected)?;
 
-        if !self.actor() {
-            let mut style = MonoTextStyle::new(&FONT_6X9, C::MUTED);
-            style.background_color = Some(C::BG);
-            let text = "(paused by another player)";
-            let point = Point::new(OFFSET + 6, 132);
-            let text = Text::new(text, point, style);
-            text.draw(display)?;
+        if self.actor() {
+            self.draw_items(display)?;
+            self.draw_cursor(display, C::PRIMARY, self.selected)?;
+        } else {
+            self.draw_paused(display)?;
         }
 
         self.draw_battery(display, battery)
@@ -310,6 +306,28 @@ impl Menu {
         let size = Size::new(2, height);
         let area = Rectangle::new(top_left, size);
         display.fill_solid(&area, C::PRIMARY)?;
+
+        Ok(())
+    }
+
+    pub fn draw_paused<D, C, E>(&self, display: &mut D) -> Result<(), E>
+    where
+        D: DrawTarget<Color = C, Error = E>,
+        C: RgbColor + FromRGB,
+    {
+        let mut style = MonoTextStyle::new(&FONT_6X9, C::ACCENT);
+        style.background_color = Some(C::BG);
+        let text = "PAUSED";
+        let point = Point::new((240 - 6 * 6) / 2, 75);
+        let text = Text::new(text, point, style);
+        text.draw(display)?;
+
+        let mut style = MonoTextStyle::new(&FONT_6X9, C::MUTED);
+        style.background_color = Some(C::BG);
+        let text = "by another player";
+        let point = Point::new((240 - 17 * 6) / 2, 85);
+        let text = Text::new(text, point, style);
+        text.draw(display)?;
 
         Ok(())
     }
