@@ -73,6 +73,7 @@ pub(crate) struct Menu {
     sys_items: heapless::Vec<MenuItem, 3>,
 
     selected: i32,
+    actor_idx: u8,
     flags: u8,
     dpad: DPad4,
 }
@@ -89,6 +90,7 @@ impl Menu {
             app_items: alloc::vec::Vec::new(),
             sys_items: items,
             selected: 0,
+            actor_idx: 0,
             flags: 0,
             dpad: DPad4::None,
         };
@@ -121,7 +123,8 @@ impl Menu {
     pub fn handle_net_input(&mut self, syncer: &FrameSyncer) -> Option<&MenuItem> {
         let mut menu_pressed = false;
         let mut actor = false;
-        for peer in &syncer.peers {
+        let mut actor_idx = 0;
+        for (peer, i) in syncer.peers.iter().zip(0..) {
             let Some(state) = peer.states.get_current() else {
                 continue;
             };
@@ -129,6 +132,8 @@ impl Menu {
             if peer_menu {
                 menu_pressed = true;
                 actor = peer.addr.is_none();
+                actor_idx = i;
+                break;
             }
         }
 
@@ -139,9 +144,12 @@ impl Menu {
         }
         if !was_active {
             self.set_actor(actor);
+            self.actor_idx = actor_idx;
         }
 
-        let input = syncer.get_combined_input();
+        let peer = syncer.peers.get(usize::from(self.actor_idx))?;
+        let state = peer.states.get_current()?;
+        let input: InputState = state.input.into();
         self.handle_pad(&input);
         self.handle_select(input.s() || input.e())
     }
