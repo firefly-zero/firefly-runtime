@@ -231,7 +231,7 @@ impl<'a> State<'a> {
             }
             NetHandler::FrameSyncer(syncer) => {
                 if let Some(id) = &app {
-                    if id == &self.id {
+                    if id != &self.id {
                         panic!("cannot launch another app in multiplayer")
                     }
                     // Set new seed on restart.
