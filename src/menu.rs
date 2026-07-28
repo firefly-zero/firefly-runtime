@@ -1,5 +1,6 @@
 use crate::battery::Battery;
 use crate::color::FromRGB;
+use crate::net::{FSPeer, FrameSyncer};
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::{Point, Size};
 use embedded_graphics::mono_font::MonoTextStyle;
@@ -109,7 +110,7 @@ impl Menu {
     pub fn handle_input(&mut self, input: &Option<InputState>) -> Option<&MenuItem> {
         let def = InputState::default();
         let input = input.as_ref().unwrap_or(&def);
-        self.handle_menu_button(input.buttons);
+        self.handle_menu_button(input.menu());
         if !self.active() {
             return None;
         }
@@ -117,33 +118,54 @@ impl Menu {
         self.handle_select(input.s() || input.e())
     }
 
-    fn handle_menu_button(&mut self, buttons: u8) {
-        let pressed_me = buttons & 0b1_0000 != 0;
-        let pressed = if self.multiplayer() {
-            buttons & 0b10_0000 != 0
-        } else {
-            pressed_me
-        };
-        // Depending on if menu is open or not, handle the menu button in a way
-        // that the button is always released when the app is running.
+    pub fn handle_net_input(&mut self, syncer: &FrameSyncer) -> Option<&MenuItem> {
+        let mut menu_pressed = false;
+        let mut actor = false;
+        for peer in &syncer.peers {
+            let Some(state) = peer.states.get_current() else {
+                continue;
+            };
+            let peer_menu = state.input.buttons & 0b1_0000 != 0;
+            if peer_menu {
+                menu_pressed = true;
+                actor = peer.addr.is_none();
+            }
+        }
+
+        let was_active = self.active();
+        self.handle_menu_button(menu_pressed);
+        if !self.active() {
+            return None;
+        }
+        if !was_active {
+            self.set_actor(actor);
+        }
+
+        let input = syncer.get_combined_input();
+        self.handle_pad(&input);
+        self.handle_select(input.s() || input.e())
+    }
+
+    fn handle_menu_button(&mut self, pressed: bool) {
+        let was_pressed = self.menu_pressed();
+        self.set_menu_pressed(pressed);
+
+        // When menu is open, close it on releasing the menu button.
         if self.active() {
-            // When menu is open, close it on releasing the menu button.
             if !pressed {
-                if self.was_released() && self.menu_pressed() {
+                if self.was_released() && was_pressed {
                     self.deactivate();
                 }
                 self.set_was_released(true);
             }
-        } else {
-            // When menu is closed, open it on pressing the menu button.
-            #[allow(clippy::collapsible_else_if)]
-            if !self.menu_pressed() && pressed {
-                self.set_actor(pressed_me);
-                self.activate();
-                self.set_was_released(false);
-            }
+            return;
         }
-        self.set_menu_pressed(pressed);
+
+        // When menu is closed, open it on pressing the menu button.
+        if !was_pressed && pressed {
+            self.activate();
+            self.set_was_released(false);
+        }
     }
 
     /// Open the menu.

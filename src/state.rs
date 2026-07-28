@@ -365,18 +365,22 @@ impl<'a> State<'a> {
         }
         self.update_net();
 
-        if matches!(self.net_handler.get_mut(), NetHandler::None) {
+        let offline = matches!(self.net_handler.get_mut(), NetHandler::None);
+        if offline {
             // Mark now as dirty.
             self.now |= 1 << 63;
         } else {
             self.now += 16_666;
         };
 
-        let input = self.get_input();
-
         // TODO: when menu is open and closed, adjust self.start.
         if !self.launcher {
-            let action = self.menu.handle_input(&input);
+            // self.menu.handle_input(&input)
+            let action = if let NetHandler::FrameSyncer(syncer) = self.net_handler.get_mut() {
+                self.menu.handle_net_input(syncer)
+            } else {
+                self.menu.handle_input(&self.input)
+            };
             if let Some(action) = action {
                 match action {
                     MenuItem::Custom(index, _) => return Some(*index),
@@ -387,55 +391,6 @@ impl<'a> State<'a> {
             };
         }
         None
-    }
-
-    /// Get combined input for all peers.
-    ///
-    /// In offline mode, it's just the input.
-    /// For multiplayer game, it is the combined input of all player,
-    /// unless in launcher (Connector or Connection).
-    /// We use it to ensure that all players open the app menu simultaneously.
-    fn get_input(&mut self) -> Option<InputState> {
-        match self.net_handler.get_mut() {
-            // Singleplayer.
-            NetHandler::None => self.input.clone(),
-            // Shouldn't be reachable.
-            NetHandler::Connector(_) => None,
-            // In launcher.
-            // Just like in singleplayer, every device handles its own input.
-            NetHandler::Connection(_) => self.input.clone(),
-            // In multiplayer game.
-            NetHandler::FrameSyncer(syncer) => {
-                // TODO: if menu is open, we need to adjust sync timeout
-                // for the frame syncer.
-                match &self.input {
-                    Some(input) => {
-                        // Pass shared menu button into Menu as a 6th button.
-                        // We want to open Menu for everyone at the same time
-                        // (this is why Menu needs the shared menu button)
-                        // but handle all inputs locally. When a peer selects
-                        // a Menu item, it will be synced to all peers using Action.
-                        let mut input = input.clone();
-                        if syncer.get_combined_input().menu() {
-                            input.buttons |= 0b0010_0000;
-                        } else {
-                            input.buttons &= 0b1101_1111;
-                        };
-                        Some(input)
-                    }
-                    None => {
-                        if syncer.get_combined_input().menu() {
-                            Some(InputState {
-                                pad: None,
-                                buttons: 0b10000,
-                            })
-                        } else {
-                            None
-                        }
-                    }
-                }
-            }
-        }
     }
 
     /// Convert the current time from u32 to u64.
