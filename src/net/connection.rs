@@ -100,7 +100,7 @@ impl Connection {
     ///
     /// Can be called from menu in launcher if connected to multiplayer.
     pub fn disconnect(self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
-        self.broadcast(device, Message::Disconnect)?;
+        self.broadcast(device, &Message::Disconnect)?;
         device.net_stop()?;
         Ok(())
     }
@@ -114,15 +114,26 @@ impl Connection {
         };
         let seed = self.get_seed(device);
         let intro = make_intro(device, &app, seed)?;
-        // TODO: reduce the amount of `.clone()` in this function.
         let resp = Message::Start(Start {
             id: app.clone(),
-            badges: intro.badges.clone(),
-            scores: intro.scores.clone(),
-            stash: intro.stash.clone().into(),
+            badges: intro.badges,
+            scores: intro.scores,
+            stash: intro.stash.into(),
             seed: intro.seed,
         });
-        self.broadcast(device, resp)?;
+        self.broadcast(device, &resp)?;
+
+        // Get back ownership of intro.
+        let Message::Start(start) = resp else {
+            unreachable!()
+        };
+        let intro = AppIntro {
+            badges: start.badges,
+            scores: start.scores,
+            stash: start.stash.into(),
+            seed: start.seed,
+        };
+
         self.app = Some(app);
         self.started_at = Some(device.now());
         let me = self.get_me_mut();
@@ -203,7 +214,7 @@ impl Connection {
             return Ok(());
         }
         self.last_sync = Some(now);
-        self.broadcast(device, Message::ReqStart)?;
+        self.broadcast(device, &Message::ReqStart)?;
         Ok(())
     }
 
@@ -222,6 +233,7 @@ impl Connection {
         self.last_ready = Some(now);
         let me = self.get_me();
         let intro = me.app.as_ref().unwrap();
+        // TODO: reduce the number of .clone() calls.
         let resp = Message::Start(Start {
             id: app.clone(),
             badges: intro.badges.clone(),
@@ -229,7 +241,7 @@ impl Connection {
             stash: intro.stash.clone().into_boxed_slice(),
             seed: intro.seed,
         });
-        self.broadcast(device, resp)?;
+        self.broadcast(device, &resp)?;
         Ok(())
     }
 
@@ -336,7 +348,7 @@ impl Connection {
     }
 
     /// Send the message to all connected peers.
-    fn broadcast(&self, device: &mut DeviceImpl, msg: Message) -> Result<(), NetcodeError> {
+    fn broadcast(&self, device: &mut DeviceImpl, msg: &Message) -> Result<(), NetcodeError> {
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
         for peer in &self.peers {

@@ -230,28 +230,22 @@ impl<'a> State<'a> {
                 self.exit = true;
             }
             NetHandler::FrameSyncer(syncer) => {
-                match app {
-                    Some(id) if id == self.id => {
-                        // Set new seed on restart.
-                        // Without it, the app will have the same seed
-                        // every time it is restarted because the shared_seed
-                        // is set from Connection which we don't use on restart.
-                        syncer.shared_seed = self.seed;
-                        self.next = Some(id);
-                        self.exit = true;
+                if let Some(id) = &app {
+                    if id == &self.id {
+                        panic!("cannot launch another app in multiplayer")
                     }
-                    Some(_) => panic!("cannot launch another app in multiplayer"),
-                    None => {
-                        self.next = app;
-                        self.exit = true;
-                        // self.net_handler
-                        //     .replace(NetHandler::Connection(syncer.into_connection()));
-                    }
-                };
+                    // Set new seed on restart.
+                    // Without it, the app will have the same seed
+                    // every time it is restarted because the shared_seed
+                    // is set from Connection which we don't use on restart.
+                    syncer.shared_seed = self.seed;
+                }
+                self.next = app;
+                self.exit = true;
             }
-            NetHandler::Connection(c) => {
+            NetHandler::Connection(conn) => {
                 if let Some(app) = app {
-                    let res = c.set_app(&mut self.device, app);
+                    let res = conn.set_app(&mut self.device, app);
                     if let Err(err) = res {
                         self.device.log_error("netcode", err);
                     }
