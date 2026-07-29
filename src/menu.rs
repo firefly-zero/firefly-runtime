@@ -72,9 +72,18 @@ pub(crate) struct Menu {
     /// System menu items.
     sys_items: heapless::Vec<MenuItem, 3>,
 
+    /// For how many frames the menu was open.
+    pub frames: u32,
+
+    /// The currently focused menu item.
     selected: i32,
+
+    /// The index of the peer (in [`FrameSyncer::peers`]) that activated the menu.
     actor_idx: u8,
+
+    /// Packed boolean flags.
     flags: u8,
+
     dpad: DPad4,
 }
 
@@ -89,6 +98,7 @@ impl Menu {
         let mut menu = Self {
             app_items: alloc::vec::Vec::new(),
             sys_items: items,
+            frames: 0,
             selected: 0,
             actor_idx: 0,
             flags: 0,
@@ -116,6 +126,7 @@ impl Menu {
         if !self.active() {
             return None;
         }
+        self.frames += 1;
         self.handle_pad(input);
         self.handle_select(input.s() || input.e())
     }

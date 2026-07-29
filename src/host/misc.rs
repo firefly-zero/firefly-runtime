@@ -106,8 +106,11 @@ pub(crate) fn get_random(mut caller: C) -> u32 {
 /// Get the time (in microseconds) since the app startup.
 ///
 /// Returns the same time if requested twice in the same update cycle.
+///
 /// Monotonic: the current time is always greater than
 /// the time requested on the previous update cycle.
+///
+/// When menu is open, the timer is paused.
 pub(crate) fn get_time(mut caller: C) -> u64 {
     let state = caller.data_mut();
     state.called = "misc.get_time";
@@ -125,7 +128,12 @@ pub(crate) fn get_time(mut caller: C) -> u64 {
         }
     }
 
-    state.now
+    // Since menu never lags, we have reliable frame rate adjustment,
+    // and the runtime always runs on the same hardware,
+    // it should be safe enough to assume the delay of each menu frame.
+    const FRAME_DELAY: f32 = 1_000_000.0 / 60.0;
+    let menu_time = (FRAME_DELAY * state.menu.frames as f32) as u64;
+    state.now - menu_time
 }
 
 /// Get the name of the given peer device.
