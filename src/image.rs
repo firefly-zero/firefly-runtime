@@ -15,9 +15,9 @@ pub struct ParsedImage<'a> {
 impl ParsedImage<'_> {
     pub fn render(&self, point: Point, frame: &mut FrameBuffer) {
         if let Some(sub) = self.sub {
-            self.draw_sub_fast(point, sub, frame);
+            self.draw_sub(point, sub, frame);
         } else {
-            self.draw_fast(point, frame);
+            self.draw(point, frame);
         }
     }
 
@@ -25,7 +25,7 @@ impl ParsedImage<'_> {
     ///
     /// Avoids going through embedded-graphics machinery and instead
     /// iterates over image bytes directly.
-    fn draw_fast(&self, point: Point, frame: &mut FrameBuffer) {
+    fn draw(&self, point: Point, frame: &mut FrameBuffer) {
         let mut p = point;
         let mut image = self.bytes;
 
@@ -75,15 +75,14 @@ impl ParsedImage<'_> {
 
         // A faster implementation for when
         // no transparency is used and the image is aligned.
+        // This is quite common for splash screens, backgrounds, etc.
         if self.transp > 15 && is_aligned && p.x >= 0 {
             let line_bytes = (right_x - left_x) as usize / PPB;
             let mut target = &mut frame.data[..];
             let target_offset = (p.y as usize * WIDTH + p.x as usize) / PPB;
             target = &mut target[target_offset..];
             while !image.is_empty() {
-                for (i, byte) in image[..line_bytes].iter().enumerate() {
-                    target[i] = *byte;
-                }
+                target[..line_bytes].copy_from_slice(&image[..line_bytes]);
                 if target.len() < WIDTH / PPB {
                     break;
                 }
@@ -91,6 +90,7 @@ impl ParsedImage<'_> {
                 image = &image[self.width as usize / PPB..]
             }
             frame.dirty = true;
+            return;
         }
 
         let mut i = 0;
@@ -114,7 +114,7 @@ impl ParsedImage<'_> {
         frame.dirty = true;
     }
 
-    fn draw_sub_fast(&self, point: Point, sub: Rectangle, frame: &mut FrameBuffer) {
+    fn draw_sub(&self, point: Point, sub: Rectangle, frame: &mut FrameBuffer) {
         let mut p = point;
         let mut top = sub.top_left.y;
         let mut left = sub.top_left.x;
