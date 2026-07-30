@@ -82,7 +82,7 @@ impl ParsedImage<'_> {
             target = &mut target[target_offset..];
             while !image.is_empty() {
                 for (i, byte) in image[..line_bytes].iter().enumerate() {
-                    target[i] = byte.rotate_right(4);
+                    target[i] = *byte;
                 }
                 if target.len() < WIDTH / PPB {
                     break;

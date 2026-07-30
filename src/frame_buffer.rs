@@ -15,8 +15,16 @@ const PPB: usize = 8 / BPP;
 /// Bytes needed to store all pixels.
 const BUFFER_SIZE: usize = WIDTH * HEIGHT / PPB;
 
-// https://lospec.com/palette-list/sweetie-16
-// https://github.com/nesbox/TIC-80/wiki/Palette
+/// The default color palette.
+///
+/// This is [SWEETIE-16] color palette, also used in [TIC-80] fantasy console.
+///
+/// Note that while the palette is defined as RGB888 (24 bits),
+/// we store colors as RGB565 (16 bits). Which means that colors that we actually display
+/// (both on device and in emulator) are slightly different from the palette.
+///
+/// [SWEETIE-16]: https://lospec.com/palette-list/sweetie-16
+/// [TIC-80]: https://github.com/nesbox/TIC-80/wiki/Palette
 const DEFAULT_PALETTE: [Rgb16; 16] = [
     Rgb16::from_rgb(0x1a, 0x1c, 0x2c), // #1a1c2c, black
     Rgb16::from_rgb(0x5d, 0x27, 0x5d), // #5d275d, purple
@@ -48,6 +56,7 @@ pub struct FrameBuffer {
     pub(crate) data: Box<[u8; BUFFER_SIZE]>,
     /// The color palette. Maps 16-color packed pixels to RGB colors.
     pub(crate) palette: [Rgb16; 16],
+    /// True if any pixels were changed since the frame buffer was last rendered.
     pub(crate) dirty: bool,
 }
 
@@ -62,9 +71,9 @@ impl FrameBuffer {
 
     pub fn iter_pairs(&self) -> impl Iterator<Item = (Rgb16, Rgb16)> + use<'_> {
         self.data.iter().map(|b| {
-            let right = self.palette[usize::from(b & 0xf)];
             let left = self.palette[usize::from(b >> 4) & 0xf];
-            (right, left)
+            let right = self.palette[usize::from(b & 0xf)];
+            (left, right)
         })
     }
 
@@ -116,7 +125,7 @@ impl FrameBuffer {
     fn draw_vline1(&mut self, x: usize, top_y: usize, bottom_y: usize, c: Gray4) {
         let color = c.into_storage();
         debug_assert!(color < 16);
-        let shift = if x.is_multiple_of(2) { 0 } else { 4 };
+        let shift = if x.is_multiple_of(2) { 4 } else { 0 };
         let mask = !(0b1111 << shift);
         let start_i = (top_y * WIDTH + x) / PPB;
         let end_i = (bottom_y * WIDTH + x) / PPB;
@@ -208,11 +217,11 @@ impl DrawTarget for FrameBuffer {
     where
         I: IntoIterator<Item = Self::Color>,
     {
-        self.draw_iter(
-            area.points()
-                .zip(colors)
-                .map(|(pos, color)| Pixel(pos, color)),
-        )
+        let pixels = area
+            .points()
+            .zip(colors)
+            .map(|(pos, color)| Pixel(pos, color));
+        self.draw_iter(pixels)
     }
 }
 
@@ -233,7 +242,8 @@ impl FrameBuffer {
             index: 0,
             color: PhantomData,
         };
-        let area = Rectangle::new(Point::zero(), Size::new(WIDTH as u32, HEIGHT as u32));
+        let size = Size::new(WIDTH as u32, HEIGHT as u32);
+        let area = Rectangle::new(Point::zero(), size);
         target.fill_contiguous(&area, colors)
     }
 
@@ -250,7 +260,7 @@ impl FrameBuffer {
         }
         let pixel_index = y * WIDTH + x;
         let byte_index = pixel_index / PPB;
-        let shift = if pixel_index.is_multiple_of(2) { 0 } else { 4 };
+        let shift = if pixel_index.is_multiple_of(2) { 4 } else { 0 };
         let mask = !(0b1111 << shift);
         // Safety: if y within WIDTH and HEIGHT (which we checked),
         // the byte_index is is within the buffer.
@@ -279,7 +289,7 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let byte_index = self.index / PPB;
         let byte = self.data.get(byte_index)?;
-        let shift = self.index % PPB;
+        let shift = (self.index + 1) % PPB;
         let luma = (byte >> (shift * BPP)) & 0b1111;
         debug_assert!(luma < 16);
         self.index += 1;

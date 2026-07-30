@@ -691,7 +691,7 @@ fn get_fb_char(frame: &FrameBuffer, point: Point) -> char {
     let pixel_index = y * WIDTH + x;
     let byte_index = pixel_index / PPB;
     let byte = frame.data[byte_index];
-    let luma = if x.is_multiple_of(2) { byte } else { byte >> 4 };
+    let luma = if x.is_multiple_of(2) { byte >> 4 } else { byte };
     let luma = (luma & 0xf) as usize;
     CHARS.chars().nth(luma).unwrap()
 }

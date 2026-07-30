@@ -131,8 +131,7 @@ pub(crate) fn get_time(mut caller: C) -> u64 {
     // Since menu never lags, we have reliable frame rate adjustment,
     // and the runtime always runs on the same hardware,
     // it should be safe enough to assume the delay of each menu frame.
-    const FRAME_DELAY: f32 = 1_000_000.0 / 60.0;
-    let menu_time = (FRAME_DELAY * state.menu.frames as f32) as u64;
+    let menu_time = state.menu.frames as u64 * 1_000_000 / 60;
     state.now - menu_time
 }
 
