@@ -60,7 +60,8 @@ pub(crate) fn log_error(mut caller: C, ptr: u32, len: u32) {
         state.log_error(HostError::TextUtf8);
         return;
     };
-    state.device.log_error("app", text);
+    state.device.log_error("misc.log_error", text);
+    _ = state.save_log("error", text);
 }
 
 /// Set random numbers generator seed.
@@ -338,7 +339,7 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
         for i in to_remove {
             let res = connector.send_disconnect_to(&mut state.device, i);
             if let Err(err) = res {
-                state.device.log_error("netcode", err);
+                state.log_error(err);
             }
             connector.peer_infos.remove(i);
         }
@@ -355,13 +356,13 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
         state.net_handler.replace(NetHandler::None);
         let res = state.device.net_stop();
         if let Err(err) = res {
-            state.device.log_error("netcode", err);
+            state.log_error(err);
         }
         return;
     }
 
     if let Err(err) = connector.validate() {
-        state.device.log_error("netcode", err);
+        state.log_error(err);
     }
     state.set_next(None);
     let connection = connector.finalize(&mut state.device);

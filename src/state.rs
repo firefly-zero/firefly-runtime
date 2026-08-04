@@ -576,18 +576,19 @@ impl<'a> State<'a> {
     }
 
     pub fn save_log<D: Display>(&mut self, lvl: &'static str, msg: D) -> Result<(), FSError> {
+        const FILE_NAME: &str = "logs";
         let dir_path = &["data", self.id.author(), self.id.app()];
         let mut dir = self.device.open_dir(dir_path)?;
-        let size = dir.get_file_size("logs").unwrap_or_default();
+        let size = dir.get_file_size(FILE_NAME).unwrap_or_default();
         let mut stream = if size == 0 {
-            dir.create_file("logs")?
-        } else if size > 512 * 1024 {
+            dir.create_file(FILE_NAME)?
+        } else if size > 50 * 1024 {
             let output = dir.create_file("old-logs")?;
-            let input = dir.open_file("logs")?;
+            let input = dir.open_file(FILE_NAME)?;
             copy_stream(input, output)?;
-            dir.create_file("logs")?
+            dir.create_file(FILE_NAME)?
         } else {
-            dir.append_file("logs")?
+            dir.append_file(FILE_NAME)?
         };
         _ = writeln!(stream, "{}:{}:{}", lvl, self.called, msg);
         Ok(())

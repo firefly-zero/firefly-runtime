@@ -1,7 +1,6 @@
 use crate::error::HostError;
 use crate::state::State;
 use alloc::boxed::Box;
-use firefly_hal::Device;
 
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
 
@@ -13,7 +12,7 @@ pub(crate) fn environ_sizes_get(mut caller: C, offset0: i32, offset1: i32) -> i3
     let state = caller.data_mut();
     state.called = "wasi_snapshot_preview1.environ_sizes_get";
     let Some(memory) = state.memory else {
-        state.device.log_error("fs", HostError::MemoryNotFound);
+        state.log_error(HostError::MemoryNotFound);
         return 1;
     };
     let data = memory.data_mut(&mut caller);
