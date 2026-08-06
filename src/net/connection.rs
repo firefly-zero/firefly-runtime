@@ -1,5 +1,6 @@
 use super::*;
 use crate::FullID;
+use crate::state::log_net_error;
 use crate::utils::{read_all, read_into, write_all};
 use alloc::boxed::Box;
 use embedded_io::{Read, Write};
@@ -84,7 +85,7 @@ impl Connection {
         }
         let res = self.update_inner(device);
         if let Err(err) = res {
-            device.log_error("netcode", &err);
+            log_net_error(device, err);
         }
         let all_ready = self.peers.iter().all(|p| p.ready());
         if all_ready {

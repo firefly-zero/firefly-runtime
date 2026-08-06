@@ -1,6 +1,7 @@
 use super::ring::RingBuf;
 use super::*;
 use crate::config::FullID;
+use crate::state::log_net_error;
 use alloc::boxed::Box;
 use firefly_hal::*;
 
@@ -128,7 +129,7 @@ impl FrameSyncer {
         }
         let res = self.update_inner(device);
         if let Err(err) = res {
-            device.log_error("netcode", err);
+            log_net_error(device, err);
         }
         Ok(())
     }
@@ -171,7 +172,7 @@ impl FrameSyncer {
         let raw = match msg.encode(&mut buf) {
             Ok(raw) => raw,
             Err(err) => {
-                device.log_error("netcode", err);
+                log_net_error(device, err);
                 return;
             }
         };
@@ -180,7 +181,7 @@ impl FrameSyncer {
             if let Some(addr) = peer.addr {
                 let res = device.net_send(addr, raw);
                 if let Err(err) = res {
-                    device.log_error("netcode", err);
+                    log_net_error(device, err);
                 }
             }
         }

@@ -582,6 +582,7 @@ impl<'a> State<'a> {
     }
 }
 
+/// Log an error/warning occurred in multiplayer-related code.
 pub fn log_net_error<D: Display>(device: &mut DeviceImpl, msg: D) {
     const CALLED: &str = "netcode";
     device.log_error(CALLED, &msg);
