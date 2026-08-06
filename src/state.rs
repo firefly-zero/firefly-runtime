@@ -120,7 +120,8 @@ impl<'a> State<'a> {
         if matches!(net_handler, NetHandler::Connector(_)) {
             let is_connector = id.author() == "sys" && id.app() == "connector";
             if !is_connector {
-                device.log_error("net", "connector state outside sys.connector");
+                let msg = "connector state outside sys.connector";
+                log_net_error(&mut device, msg);
                 net_handler = NetHandler::None;
             }
         }
@@ -247,7 +248,7 @@ impl<'a> State<'a> {
                 if let Some(app) = app {
                     let res = conn.set_app(&mut self.device, app);
                     if let Err(err) = res {
-                        self.device.log_error("netcode", err);
+                        log_net_error(&mut self.device, err);
                     }
                 }
             }
@@ -423,7 +424,7 @@ impl<'a> State<'a> {
     fn update_connector(&mut self, mut connector: Box<Connector>) -> NetHandler {
         let res = connector.update(&mut self.device);
         if let Err(err) = res {
-            self.device.log_error("netcode", err);
+            log_net_error(&mut self.device, err);
         }
         NetHandler::Connector(connector)
     }
@@ -440,7 +441,7 @@ impl<'a> State<'a> {
             }
             ConnectionStatus::Timeout => {
                 let msg = "timed out waiting for other devices to launch the app";
-                self.device.log_error("netcode", msg);
+                log_net_error(&mut self.device, msg);
                 self.set_next(None);
                 return NetHandler::None;
             }
@@ -475,7 +476,7 @@ impl<'a> State<'a> {
         while !syncer.ready() {
             let res = syncer.update(&mut self.device);
             if let Err(err) = res {
-                self.device.log_error("netcode", err);
+                log_net_error(&mut self.device, err);
                 self.set_next(None);
                 return NetHandler::None;
             }
@@ -535,7 +536,7 @@ impl<'a> State<'a> {
 
         let res = self.device.net_start();
         if let Err(err) = res {
-            self.device.log_error("netcode", err);
+            log_net_error(&mut self.device, err);
         }
         let name = self.device.get_name().unwrap_or(&self.settings.name);
         let name = heapless::String::from_str(name).unwrap_or_default();
@@ -564,7 +565,7 @@ impl<'a> State<'a> {
         if let NetHandler::Connection(conn) = net_handler {
             let res = conn.disconnect(&mut self.device);
             if let Err(err) = res {
-                self.device.log_error("netcode", &err);
+                log_net_error(&mut self.device, err);
             }
         }
     }
@@ -576,23 +577,40 @@ impl<'a> State<'a> {
     }
 
     pub fn save_log<D: Display>(&mut self, lvl: &'static str, msg: D) -> Result<(), FSError> {
-        const FILE_NAME: &str = "logs";
         let dir_path = &["data", self.id.author(), self.id.app()];
-        let mut dir = self.device.open_dir(dir_path)?;
-        let size = dir.get_file_size(FILE_NAME).unwrap_or_default();
-        let mut stream = if size == 0 {
-            dir.create_file(FILE_NAME)?
-        } else if size > 50 * 1024 {
-            let output = dir.create_file("old-logs")?;
-            let input = dir.open_file(FILE_NAME)?;
-            copy_stream(input, output)?;
-            dir.create_file(FILE_NAME)?
-        } else {
-            dir.append_file(FILE_NAME)?
-        };
-        _ = writeln!(stream, "{}:{}:{}", lvl, self.called, msg);
-        Ok(())
+        save_log(&mut self.device, dir_path, lvl, self.called, msg)
     }
+}
+
+pub fn log_net_error<D: Display>(device: &mut DeviceImpl, msg: D) {
+    const CALLED: &str = "netcode";
+    device.log_error(CALLED, &msg);
+    let dir_path = &["data", "sys", "connector"];
+    _ = save_log(device, dir_path, "error", CALLED, msg);
+}
+
+fn save_log<D: Display>(
+    device: &mut DeviceImpl,
+    dir_path: &[&str],
+    lvl: &'static str,
+    called: &str,
+    msg: D,
+) -> Result<(), FSError> {
+    const FILE_NAME: &str = "logs";
+    let mut dir = device.open_dir(dir_path)?;
+    let size = dir.get_file_size(FILE_NAME).unwrap_or_default();
+    let mut stream = if size == 0 {
+        dir.create_file(FILE_NAME)?
+    } else if size > 50 * 1024 {
+        let output = dir.create_file("old-logs")?;
+        let input = dir.open_file(FILE_NAME)?;
+        copy_stream(input, output)?;
+        dir.create_file(FILE_NAME)?
+    } else {
+        dir.append_file(FILE_NAME)?
+    };
+    _ = writeln!(stream, "{}:{}:{}", lvl, called, msg);
+    Ok(())
 }
 
 pub(crate) fn load_settings(device: &mut DeviceImpl) -> Option<firefly_types::Settings> {

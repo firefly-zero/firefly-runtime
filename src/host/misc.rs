@@ -60,8 +60,7 @@ pub(crate) fn log_error(mut caller: C, ptr: u32, len: u32) {
         state.log_error(HostError::TextUtf8);
         return;
     };
-    state.device.log_error("misc.log_error", text);
-    _ = state.save_log("error", text);
+    state.log_error(text);
 }
 
 /// Set random numbers generator seed.
