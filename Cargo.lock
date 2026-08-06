@@ -997,7 +997,7 @@ dependencies = [
 
 [[package]]
 name = "firefly-hal"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "cobs 0.5.1",
  "embedded-hal 1.0.0",
@@ -1025,7 +1025,7 @@ dependencies = [
 
 [[package]]
 name = "firefly-runtime"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "embedded-graphics",
  "embedded-io 0.6.1",
