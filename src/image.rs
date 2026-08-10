@@ -158,7 +158,7 @@ impl ParsedImage<'_> {
         if width > max_width {
             width = max_width;
         }
-        let oob_right = (p.y + width) - WIDTH as i32;
+        let oob_right = (p.x + width) - WIDTH as i32;
         if oob_right > 0 {
             width -= oob_right;
             if width <= 0 {
