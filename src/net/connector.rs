@@ -102,7 +102,6 @@ impl Connector {
         let msg = Message::decode(&raw)?;
         match msg {
             Message::Hello => self.handle_hello(device, addr),
-            Message::ReqIntro => self.send_intro(device, addr),
             Message::Disconnect => self.handle_disconnect(addr),
             Message::Intro(intro) => self.handle_intro(addr, intro),
             _ => Ok(()),

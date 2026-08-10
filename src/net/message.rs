@@ -7,8 +7,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub(crate) enum Message {
     Hello,
-    /// Ask the device to re-send their intro.
-    ReqIntro,
     /// Ask the device if it already started an app.
     ReqStart,
     /// Request the state for the given frame.
