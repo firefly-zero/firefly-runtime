@@ -364,7 +364,7 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
         state.log_error(err);
     }
     state.set_next(None);
-    let connection = connector.finalize(&mut state.device);
+    let connection = connector.into_connection(&mut state.device);
     state
         .net_handler
         .replace(NetHandler::Connection(connection));

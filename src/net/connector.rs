@@ -42,7 +42,7 @@ impl Connector {
         Ok(())
     }
 
-    pub fn finalize(self, device: &mut DeviceImpl) -> Box<Connection> {
+    pub fn into_connection(self, device: &mut DeviceImpl) -> Box<Connection> {
         let mut peers = heapless::Vec::<Peer, 8>::new();
         for peer in self.peer_infos {
             let peer = Peer {

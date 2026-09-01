@@ -12,7 +12,10 @@ use firefly_types::{DeviceInfo, Encode, validate_id};
 use heapless::String;
 use serde::{Deserialize, Serialize};
 
-/// Contains the basic information and resources needed to run an app.
+/// The basic information and resources needed to run an app.
+///
+/// Additionally, defines methods that can be runned by firefly-main or firefly-emulator
+/// outside the runtime lifecycle (after device is turned on or before it is powered off).
 pub struct RuntimeConfig<'a, D, C>
 where
     D: DrawTarget<Color = C> + OriginDimensions + FireflyDisplay,
@@ -52,6 +55,20 @@ where
             return;
         };
         _ = file.write_all(&raw);
+    }
+
+    /// Destroy the state stored in the config.
+    ///
+    /// Called before device shutdown. Sends disconnect message to all peers.
+    pub fn finalize(mut self) {
+        _ = self.display.clear(C::BLACK);
+        let connection = match self.net_handler {
+            NetHandler::None => return,
+            NetHandler::Connector(connector) => connector.into_connection(&mut self.device),
+            NetHandler::Connection(connection) => connection,
+            NetHandler::FrameSyncer(syncer) => syncer.into_connection(),
+        };
+        _ = connection.disconnect(&mut self.device);
     }
 }
 

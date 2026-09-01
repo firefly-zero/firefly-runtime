@@ -560,6 +560,7 @@ impl<'a> State<'a> {
         self.set_next(Some(id));
     }
 
+    /// Send diconnect message to all peers and go back into singleplayer mode.
     pub fn disconnect(&mut self) {
         let net_handler = self.net_handler.replace(NetHandler::None);
         if let NetHandler::Connection(conn) = net_handler {
