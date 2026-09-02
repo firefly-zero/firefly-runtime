@@ -18,7 +18,10 @@ micromath = "2.1.0"
 postcard = "1.0.8"
 serde = { version = "1.0.229", default-features = false, features = ["derive"] }
 tinyqr = "0.14.1"
-wasmi = { version = "2.0.0", default-features = false, features = ["validate"] }
+wasmi = { version = "2.0.0", default-features = false, features = [
+    "validate",
+    "simd",
+] }
 
 [patch.crates-io]
 firefly-hal = { path = "../firefly-hal" }
