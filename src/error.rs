@@ -51,7 +51,6 @@ impl fmt::Display for Error {
                     Read(_) => write!(f, "read: {err}"),
                     Wasm(_) => write!(f, "parse: {err}"),
                     Translation(_) => write!(f, "translation: {err}"),
-                    Limits(_) => write!(f, "limits: {err}"),
                     Ir(_) => write!(f, "IR: {err}"),
                     _ => write!(f, "unknown: {err}"),
                 }
