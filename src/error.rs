@@ -11,7 +11,7 @@ pub enum Error {
     NoLauncher,
     InvalidAuthorID(firefly_types::ValidationError),
     InvalidAppID(firefly_types::ValidationError),
-    CannotDisplay,
+    CannotDisplay(alloc::string::String),
     AuthorIDMismatch,
     AppIDMismatch,
 
@@ -62,7 +62,7 @@ impl fmt::Display for Error {
             Self::FuncCall(func, err, stats) => write!(f, "error calling {func}: {err}.\n{stats}"),
             Self::InvalidAuthorID(err) => write!(f, "invalid author ID: {err}"),
             Self::InvalidAppID(err) => write!(f, "invalid app ID: {err}"),
-            Self::CannotDisplay => write!(f, "failed to draw on the display"),
+            Self::CannotDisplay(s) => write!(f, "failed to draw on the display: {s}"),
             Self::ReadFile(name, err) => write!(f, "cannot read {name}: {err}"),
             Self::AuthorIDMismatch => write!(f, "author ID in meta and in path don't match"),
             Self::AppIDMismatch => write!(f, "app ID in meta and in path don't match"),

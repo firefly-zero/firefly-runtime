@@ -522,7 +522,7 @@ impl<'a> State<'a> {
                 return;
             }
         };
-        let res = write_shot(&mut file, &self.frame.palette, &*self.frame.data);
+        let res = write_shot(&mut file, &self.frame.palette, &self.frame.data[..]);
         if let Err(err) = res {
             let err: firefly_hal::FSError = err.into();
             self.device.log_error("shot", err);

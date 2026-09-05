@@ -259,6 +259,7 @@ impl Menu {
     where
         D: DrawTarget<Color = C, Error = E>,
         C: RgbColor + FromRGB,
+        E: core::fmt::Debug,
     {
         if self.rendered() && !self.dirty() {
             return Ok(());

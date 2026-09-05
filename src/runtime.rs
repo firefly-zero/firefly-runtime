@@ -26,10 +26,11 @@ const FUEL_RENDER: u64 = 10_000_000;
 const FUEL_BEFORE_EXIT: u64 = 10_000_000;
 const FUEL_CHEAT: u64 = 10_000_000;
 
-pub struct Runtime<'a, D, C>
+pub struct Runtime<'a, D, C, E>
 where
-    D: DrawTarget<Color = C> + FireflyDisplay + OriginDimensions,
+    D: DrawTarget<Color = C, Error = E> + FireflyDisplay + OriginDimensions,
     C: RgbColor + FromRGB,
+    E: core::fmt::Debug,
 {
     display: D,
     instance: wasmi::Instance,
@@ -55,10 +56,11 @@ where
     stats: Option<StatsTracker>,
 }
 
-impl<'a, D, C> Runtime<'a, D, C>
+impl<'a, D, C, E> Runtime<'a, D, C, E>
 where
-    D: DrawTarget<Color = C> + FireflyDisplay + OriginDimensions,
+    D: DrawTarget<Color = C, Error = E> + FireflyDisplay + OriginDimensions,
     C: RgbColor + FromRGB,
+    E: core::fmt::Debug,
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
     pub fn new(mut config: RuntimeConfig<'a, D, C>) -> Result<Self, Error> {
@@ -250,8 +252,8 @@ where
             // the frame buffer rendered by the app.
             // Performance isn't an issue for a simple text menu.
             let res = state.menu.render(&mut self.display, &mut state.battery);
-            if res.is_err() {
-                return Err(Error::CannotDisplay);
+            if let Err(err) = res {
+                return Err(Error::CannotDisplay(alloc::format!("{err:?}")));
             }
             self.delay();
             return Ok(false);
@@ -394,8 +396,8 @@ where
     fn flush_frame(&mut self) -> Result<(), Error> {
         let state = self.store.data_mut();
         let res = self.display.render_fb(&mut state.frame);
-        if res.is_err() {
-            return Err(Error::CannotDisplay);
+        if let Err(err) = res {
+            return Err(Error::CannotDisplay(alloc::format!("{err:?}")));
         }
         Ok(())
     }

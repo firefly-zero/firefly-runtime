@@ -45,7 +45,7 @@ const DEFAULT_PALETTE: [Rgb16; 16] = [
 ];
 
 pub trait FireflyDisplay {
-    type Error;
+    type Error: core::fmt::Debug;
     fn render_fb(&mut self, frame: &mut FrameBuffer) -> Result<(), Self::Error>;
     fn rotate(&mut self, rotate: bool);
     fn set_brightness(&mut self, brightness: u8);
