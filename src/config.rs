@@ -69,6 +69,10 @@ where
             NetHandler::FrameSyncer(syncer) => syncer.into_connection(),
         };
         _ = connection.disconnect(&mut self.device);
+        // Block the thread for a bit to make sure that the networking thread
+        // has enough time to send the "disconnect" message before
+        // we let the device to be shutdown.
+        self.device.delay(Duration::from_ms(40));
     }
 }
 
