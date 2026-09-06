@@ -70,6 +70,22 @@ impl Connector {
         })
     }
 
+    /// Send ready message to the given peer.
+    ///
+    /// Tells the peer that this device is ready to start the connection.
+    pub fn send_ready(
+        &self,
+        device: &mut DeviceImpl,
+        addr: Addr,
+        n_peers: u8,
+    ) -> Result<(), NetcodeError> {
+        let msg = Message::Ready(n_peers);
+        let mut buf = alloc::vec![0u8; MSG_SIZE];
+        let raw = msg.encode(&mut buf)?;
+        device.net_send(addr, raw)?;
+        Ok(())
+    }
+
     pub fn update(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         let now = device.now();
         self.advertise(device, now)?;

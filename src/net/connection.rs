@@ -309,6 +309,7 @@ impl Connection {
         Ok(())
     }
 
+    /// Handle disconnect message. Remove the peer from the list of peers.
     fn handle_disconnect(&mut self, addr: Addr) -> Result<(), NetcodeError> {
         let mut name = heapless::String::try_from("???").unwrap();
 
@@ -318,7 +319,7 @@ impl Connection {
             .enumerate()
             .find(|(_, peer)| peer.addr == Some(addr));
         if let Some((index, _)) = maybe_index {
-            let peer = self.peers.remove(index);
+            let peer = self.peers.swap_remove(index);
             name = peer.intro.name;
         }
 

@@ -305,6 +305,38 @@ pub(crate) fn restart(mut caller: C) {
     state.set_next(Some(state.id.clone()));
 }
 
+/// Undocumented function called from `sys.connector` on "confirm".
+///
+/// Tells other peers that we're ready to go into [`NetHandler::Connection`]
+/// state and wait for them to go into the same state.
+pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "misc.set_conn_ready";
+    let mut handler = state.net_handler.replace(NetHandler::None);
+    let NetHandler::Connector(connector) = &mut handler else {
+        state.net_handler.replace(handler);
+        state.log_error("can mark connection as ready only for connector");
+        return 0;
+    };
+
+    let n_peers = peer_map.count_ones();
+    let mut peer_map = peer_map;
+    for peer in &connector.peer_infos {
+        if peer_map & 1 == 0 {
+            let res = connector.send_ready(&mut state.device, peer.addr, n_peers as u8);
+            if let Err(err) = res {
+                state.net_handler.replace(handler);
+                state.log_error(err);
+                return 0;
+            }
+        }
+        peer_map >>= 1;
+    }
+
+    state.net_handler.replace(handler);
+    1
+}
+
 /// Undocumented function called from `sys.connector` in `before_exit`.
 ///
 /// Sets the mapping of the peers that the user accepted
@@ -320,7 +352,7 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
     let handler = state.net_handler.replace(NetHandler::None);
     let NetHandler::Connector(mut connector) = handler else {
         state.net_handler.replace(handler);
-        state.log_error("can set connection status only for connector");
+        state.log_error("can set connection peers only for connector");
         return;
     };
 
