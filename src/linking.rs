@@ -244,6 +244,7 @@ fn select_misc_external<'a>(
         "get_settings" => Func::wrap(ctx, misc::get_settings),
         "restart" => Func::wrap(ctx, misc::restart),
         "set_conn_ready" => Func::wrap(ctx, misc::set_conn_ready),
+        "get_conn_ready" => Func::wrap(ctx, misc::get_conn_ready),
         "set_peers" => Func::wrap(ctx, misc::set_peers),
         "quit" => Func::wrap(ctx, misc::quit),
         _ => return None,

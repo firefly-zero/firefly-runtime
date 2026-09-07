@@ -315,14 +315,14 @@ pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32) -> u32 {
     let mut handler = state.net_handler.replace(NetHandler::None);
     let NetHandler::Connector(connector) = &mut handler else {
         state.net_handler.replace(handler);
-        state.log_error("can mark connection as ready only for connector");
+        state.log_error("can mark connection as ready only from connector");
         return 0;
     };
 
     let n_peers = peer_map.count_ones();
     let mut peer_map = peer_map;
     for peer in &connector.peer_infos {
-        if peer_map & 1 == 0 {
+        if peer_map & 1 == 1 {
             let res = connector.send_ready(&mut state.device, peer.addr, n_peers as u8);
             if let Err(err) = res {
                 state.net_handler.replace(handler);
@@ -334,6 +334,35 @@ pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32) -> u32 {
     }
 
     state.net_handler.replace(handler);
+    1
+}
+
+pub(crate) fn get_conn_ready(mut caller: C, n_peers: u32, peer_map: u32) -> u32 {
+    let state = caller.data_mut();
+    state.called = "misc.get_conn_ready";
+    let mut handler = state.net_handler.replace(NetHandler::None);
+    let NetHandler::Connector(connector) = &mut handler else {
+        state.net_handler.replace(handler);
+        state.log_error("can read connection state only from connector");
+        return 2;
+    };
+
+    if n_peers != connector.peer_infos.len() as u32 {
+        return 3;
+    }
+    let expected_peers = peer_map.count_ones() as u8;
+    let mut peer_map = peer_map;
+    for peer in &connector.peer_infos {
+        if peer_map & 1 == 1 {
+            if peer.ready == 0 {
+                return 4;
+            }
+            if peer.ready != expected_peers {
+                return 5;
+            }
+        }
+        peer_map >>= 1;
+    }
     1
 }
 
@@ -352,7 +381,7 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
     let handler = state.net_handler.replace(NetHandler::None);
     let NetHandler::Connector(mut connector) = handler else {
         state.net_handler.replace(handler);
-        state.log_error("can set connection peers only for connector");
+        state.log_error("can set connection peers only from connector");
         return;
     };
 

@@ -9,6 +9,7 @@ const MSG_SIZE: usize = 64;
 pub(crate) struct PeerInfo {
     pub addr: Addr,
     pub intro: Intro,
+    pub ready: u8,
 }
 
 /// Connector establishes network connection between devices.
@@ -120,6 +121,7 @@ impl Connector {
             Message::Hello => self.handle_hello(device, addr),
             Message::Disconnect => self.handle_disconnect(addr),
             Message::Intro(intro) => self.handle_intro(addr, intro),
+            Message::Ready(n) => self.handle_ready(addr, n),
             _ => Ok(()),
         }
     }
@@ -145,10 +147,23 @@ impl Connector {
         if firefly_types::validate_id(&intro.name).is_err() {
             intro.name = "anonymous".try_into().unwrap();
         }
-        let info = PeerInfo { addr, intro };
+        let info = PeerInfo {
+            addr,
+            intro,
+            ready: 0,
+        };
         let res = self.peer_infos.push(info);
         if res.is_err() {
             return Err(NetcodeError::PeerListFull);
+        }
+        Ok(())
+    }
+
+    fn handle_ready(&mut self, addr: Addr, n: u8) -> Result<(), NetcodeError> {
+        for info in &mut self.peer_infos {
+            if info.addr == addr {
+                info.ready = n;
+            }
         }
         Ok(())
     }
