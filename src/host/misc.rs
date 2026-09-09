@@ -3,7 +3,7 @@ use crate::net::{FSPeer, Intro};
 use crate::state::{NetHandler, State};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use firefly_hal::{Device, Network};
+use firefly_hal::{Device, Duration, Network};
 
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
 
@@ -316,25 +316,38 @@ pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32) -> u32 {
     let NetHandler::Connector(connector) = &mut handler else {
         state.net_handler.replace(handler);
         state.log_error("can mark connection as ready only from connector");
-        return 0;
+        return 1;
     };
 
-    let n_peers = peer_map.count_ones();
+    // Return an error if some of the peers that we want to connect to
+    // already sent how many peers THEY want to connect to
+    // and if that's a different number.
+    let n_peers = peer_map.count_ones() as u8;
+    {
+        let mut peer_map_copy = peer_map;
+        for peer in &connector.peer_infos {
+            if peer_map_copy & 1 == 1 && peer.ready != 0 && peer.ready != n_peers {
+                return 2;
+            }
+            peer_map_copy >>= 1;
+        }
+    }
+
     let mut peer_map = peer_map;
     for peer in &connector.peer_infos {
         if peer_map & 1 == 1 {
-            let res = connector.send_ready(&mut state.device, peer.addr, n_peers as u8);
+            let res = connector.send_ready(&mut state.device, peer.addr, n_peers);
             if let Err(err) = res {
                 state.net_handler.replace(handler);
                 state.log_error(err);
-                return 0;
+                return 3;
             }
         }
         peer_map >>= 1;
     }
 
     state.net_handler.replace(handler);
-    1
+    0
 }
 
 pub(crate) fn get_conn_ready_map(mut caller: C) -> u32 {
@@ -408,7 +421,7 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
         // (which will make us disable networking below), wait a bit to make sure
         // the disconnect messages are delivered before we turn off wifi.
         if connector.peer_infos.is_empty() {
-            state.device.delay(firefly_hal::Duration::from_ms(50));
+            state.device.delay(Duration::from_ms(50));
         }
     }
 
