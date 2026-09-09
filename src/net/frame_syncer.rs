@@ -117,6 +117,11 @@ impl FrameSyncer {
         if min == u32::MAX { None } else { Some(min) }
     }
 
+    /// Read and handle new net messages.
+    ///
+    /// Most of the errors are caught and logged internally.
+    /// Only critical errors that cannot be retried
+    /// (another peer going offline) are propagated.
     pub fn update(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {
         let now = device.now();
         let timeout = if self.frame <= 2 {

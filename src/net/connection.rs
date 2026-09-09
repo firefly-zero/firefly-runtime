@@ -310,6 +310,11 @@ impl Connection {
     }
 
     /// Handle disconnect message. Remove the peer from the list of peers.
+    ///
+    /// We don't need to do anything else. Since connection is used only in launcher,
+    /// the launcher can keep track of the changes in the list of peers.
+    /// In particular, it shows a message about disconnected peer
+    /// and when the last peer diconnects, leaves multiplayer altogether.
     fn handle_disconnect(&mut self, addr: Addr) -> Result<(), NetcodeError> {
         let mut name = heapless::String::try_from("???").unwrap();
 

@@ -475,9 +475,14 @@ impl<'a> State<'a> {
         syncer.advance(&mut self.device, frame_state);
         while !syncer.ready() {
             let res = syncer.update(&mut self.device);
+            // If there is a critical error (another device going offline),
+            // disconnect from multiplayer (broadcasting disconnect message)
+            // and go back into launcher.
             if let Err(err) = res {
                 log_net_error(&mut self.device, err);
                 self.set_next(None);
+                let conn = syncer.into_connection();
+                _ = conn.disconnect(&mut self.device);
                 return NetHandler::None;
             }
         }
