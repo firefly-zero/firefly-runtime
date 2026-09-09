@@ -54,7 +54,7 @@ impl FrameSyncer {
     ///
     /// Used when the game exits back into launcher
     /// so that players can launch another app.
-    pub fn into_connection(self) -> Box<Connection> {
+    pub fn into_connection(self) -> Connection {
         let mut peers = Vec::with_capacity(self.peers.len());
         for peer in self.peers {
             let peer = Peer {
@@ -64,14 +64,14 @@ impl FrameSyncer {
             };
             peers.push(peer);
         }
-        Box::new(Connection {
+        Connection {
             app: None,
             seed: None,
             peers,
             last_sync: None,
             last_ready: None,
             started_at: None,
-        })
+        }
     }
 
     /// Get combined input of all peers.

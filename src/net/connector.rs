@@ -44,7 +44,7 @@ impl Connector {
         Ok(())
     }
 
-    pub fn into_connection(self, device: &mut DeviceImpl) -> Box<Connection> {
+    pub fn into_connection(self, device: &mut DeviceImpl) -> Connection {
         let mut peers = Vec::new();
         for peer in self.peer_infos {
             let peer = Peer {
@@ -62,14 +62,14 @@ impl Connector {
         peers.push(me);
         let local_addr = device.net_local_addr();
         peers.sort_by_key(|p| p.addr.unwrap_or(local_addr));
-        Box::new(Connection {
+        Connection {
             peers,
             app: None,
             last_sync: None,
             last_ready: None,
             seed: None,
             started_at: None,
-        })
+        }
     }
 
     /// Send ready message to the given peer.

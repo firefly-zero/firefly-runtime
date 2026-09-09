@@ -26,9 +26,9 @@ const SEND_TIME: u32 = 31;
 #[allow(private_interfaces)]
 pub enum NetHandler {
     None,
-    Connector(Box<Connector>),
-    Connection(Box<Connection>),
-    FrameSyncer(Box<FrameSyncer>),
+    Connector(Connector),
+    Connection(Connection),
+    FrameSyncer(FrameSyncer),
 }
 
 pub(crate) struct State<'a> {
@@ -421,7 +421,7 @@ impl<'a> State<'a> {
         self.net_handler.replace(handler);
     }
 
-    fn update_connector(&mut self, mut connector: Box<Connector>) -> NetHandler {
+    fn update_connector(&mut self, mut connector: Connector) -> NetHandler {
         let res = connector.update(&mut self.device);
         if let Err(err) = res {
             log_net_error(&mut self.device, err);
@@ -429,7 +429,7 @@ impl<'a> State<'a> {
         NetHandler::Connector(connector)
     }
 
-    fn update_connection(&mut self, mut connection: Box<Connection>) -> NetHandler {
+    fn update_connection(&mut self, mut connection: Connection) -> NetHandler {
         let status = connection.update(&mut self.device);
         match status {
             ConnectionStatus::Launching => {
@@ -450,7 +450,7 @@ impl<'a> State<'a> {
         NetHandler::Connection(connection)
     }
 
-    fn update_syncer(&mut self, mut syncer: Box<FrameSyncer>) -> NetHandler {
+    fn update_syncer(&mut self, mut syncer: FrameSyncer) -> NetHandler {
         // Don't sync seed if it is locked by the app (misc.set_seed was called)
         // or if misc.get_random was never called.
         let sync_rand = !self.lock_seed && self.seed != 0;
@@ -559,7 +559,7 @@ impl<'a> State<'a> {
             theme: s.theme,
             flags,
         };
-        let handler = NetHandler::Connector(Box::new(Connector::new(me)));
+        let handler = NetHandler::Connector(Connector::new(me));
         self.net_handler.set(handler);
         let id = FullID::from_str("sys", "connector").unwrap();
         self.set_next(Some(id));

@@ -158,7 +158,7 @@ impl Connection {
         }
     }
 
-    pub(crate) fn finalize(self, device: &mut DeviceImpl) -> Box<FrameSyncer> {
+    pub(crate) fn finalize(self, device: &mut DeviceImpl) -> FrameSyncer {
         let mut peers = Vec::with_capacity(self.peers.len());
         let mut seed = 0;
         for peer in self.peers {
@@ -183,7 +183,7 @@ impl Connection {
             peers.push(peer);
             seed ^= app.seed;
         }
-        Box::new(FrameSyncer {
+        FrameSyncer {
             peers,
             last_sync: None,
             frame: 0,
@@ -191,7 +191,7 @@ impl Connection {
             device_seed: self.seed.unwrap(),
             shared_seed: seed,
             app: self.app.unwrap(),
-        })
+        }
     }
 
     fn update_inner(&mut self, device: &mut DeviceImpl) -> Result<(), NetcodeError> {

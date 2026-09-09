@@ -14,11 +14,13 @@ pub(crate) enum Message {
     /// Tell other devices that this device is going to disconnect.
     Disconnect,
 
+    /// All important info about the device: name, version, settings, etc.
     Intro(Intro),
     /// Launch an app.
     Start(Start),
     /// The app state sync, sent every frame when running an app.
     State(FrameState),
+    // App(heapless::String<16>, heapless::String<16>),
     /// Tell other devices that this device's user has accepted the peers' list.
     ///
     /// Inlcudes the number of peers.
