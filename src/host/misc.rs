@@ -337,33 +337,23 @@ pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32) -> u32 {
     1
 }
 
-pub(crate) fn get_conn_ready(mut caller: C, n_peers: u32, peer_map: u32) -> u32 {
+pub(crate) fn get_conn_ready_map(mut caller: C) -> u32 {
     let state = caller.data_mut();
-    state.called = "misc.get_conn_ready";
+    state.called = "misc.get_ready_map";
     let mut handler = state.net_handler.replace(NetHandler::None);
     let NetHandler::Connector(connector) = &mut handler else {
         state.net_handler.replace(handler);
-        state.log_error("can read connection state only from connector");
+        state.log_error("can check connection readiness only from connector");
         return 2;
     };
-
-    if n_peers != connector.peer_infos.len() as u32 {
-        return 3;
-    }
-    let expected_peers = peer_map.count_ones() as u8;
-    let mut peer_map = peer_map;
+    let mut peer_map = 0;
     for peer in &connector.peer_infos {
-        if peer_map & 1 == 1 {
-            if peer.ready == 0 {
-                return 4;
-            }
-            if peer.ready != expected_peers {
-                return 5;
-            }
+        peer_map <<= 1;
+        if peer.ready == 0 {
+            peer_map |= 1
         }
-        peer_map >>= 1;
     }
-    1
+    peer_map
 }
 
 /// Undocumented function called from `sys.connector` in `before_exit`.

@@ -243,10 +243,13 @@ fn select_misc_external<'a>(
         "get_name" => Func::wrap(ctx, misc::get_name),
         "get_settings" => Func::wrap(ctx, misc::get_settings),
         "restart" => Func::wrap(ctx, misc::restart),
-        "set_conn_ready" => Func::wrap(ctx, misc::set_conn_ready),
-        "get_conn_ready" => Func::wrap(ctx, misc::get_conn_ready),
-        "set_peers" => Func::wrap(ctx, misc::set_peers),
         "quit" => Func::wrap(ctx, misc::quit),
+
+        // Connector functions.
+        "set_conn_ready" => Func::wrap(ctx, misc::set_conn_ready),
+        "get_conn_ready_map" => Func::wrap(ctx, misc::get_conn_ready_map),
+        "set_peers" => Func::wrap(ctx, misc::set_peers),
+
         _ => return None,
     };
     Some(func)
