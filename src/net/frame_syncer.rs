@@ -129,6 +129,9 @@ impl FrameSyncer {
         }
         let res = self.update_inner(device);
         if let Err(err) = res {
+            if matches!(err, NetcodeError::Disconnected(_)) {
+                return Err(err);
+            }
             log_net_error(device, err);
         }
         Ok(())
@@ -241,6 +244,7 @@ impl FrameSyncer {
             // If not, send nothing, let them timeout.
             Message::ReqState(frame) => self.handle_state_req(device, addr, frame)?,
             Message::ReqStart => self.handle_start_req(device, addr)?,
+            Message::Disconnect => self.handle_disconnect(addr)?,
             // A peer reported their state for a frame.
             // Store it in the ring of states.
             Message::State(state) => {
@@ -268,6 +272,16 @@ impl FrameSyncer {
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = resp.encode(&mut buf)?;
         device.net_send(addr, raw)?;
+        Ok(())
+    }
+
+    fn handle_disconnect(&self, addr: Addr) -> Result<(), NetcodeError> {
+        for peer in &self.peers {
+            if peer.addr == Some(addr) {
+                let name = peer.intro.name.clone();
+                return Err(NetcodeError::Disconnected(name));
+            }
+        }
         Ok(())
     }
 
