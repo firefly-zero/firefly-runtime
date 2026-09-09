@@ -339,20 +339,31 @@ pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32) -> u32 {
 
 pub(crate) fn get_conn_ready_map(mut caller: C) -> u32 {
     let state = caller.data_mut();
-    state.called = "misc.get_ready_map";
+    state.called = "misc.get_conn_ready_map";
     let mut handler = state.net_handler.replace(NetHandler::None);
     let NetHandler::Connector(connector) = &mut handler else {
         state.net_handler.replace(handler);
         state.log_error("can check connection readiness only from connector");
-        return 2;
+        return 0;
     };
-    let mut peer_map = 0;
+    let mut peer_map: u32 = 0;
+    let mut peer_count: u8 = 0;
     for peer in &connector.peer_infos {
         peer_map <<= 1;
-        if peer.ready == 0 {
-            peer_map |= 1
+        if peer.ready != 0 {
+            peer_map |= 1;
+            // Ensure that all peers have the same peer count.
+            if peer_count == 0 {
+                peer_count = peer.ready
+            } else if peer.ready != peer_count {
+                return u32::MAX;
+            }
         }
     }
+    if peer_map.count_ones() != u32::from(peer_count) {
+        return u32::MAX;
+    }
+    state.net_handler.replace(handler);
     peer_map
 }
 
