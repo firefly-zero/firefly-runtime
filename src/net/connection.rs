@@ -3,6 +3,7 @@ use crate::FullID;
 use crate::state::log_net_error;
 use crate::utils::{read_all, read_into, write_all};
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use embedded_io::{Read, Write};
 use firefly_hal::*;
 use firefly_types::{Encode, Stats};
@@ -11,7 +12,6 @@ use ring::RingBuf;
 const SYNC_EVERY: Duration = Duration::from_ms(100);
 const READY_EVERY: Duration = Duration::from_ms(100);
 const START_TIMEOUT: Duration = Duration::from_ms(10_000);
-const MAX_PEERS: usize = 8;
 const MSG_SIZE: usize = 64;
 
 pub(crate) struct Peer {
@@ -65,7 +65,7 @@ pub(crate) struct Connection {
     /// and the intro moves into [`Peer`] corresponding to the local device.
     pub app: Option<FullID>,
     pub seed: Option<u32>,
-    pub peers: heapless::Vec<Peer, MAX_PEERS>,
+    pub peers: Vec<Peer>,
     /// The last time when the device checked if other devices are ready to start.
     pub(super) last_sync: Option<Instant>,
     /// The last time when the device announced that it's ready to start the app.
@@ -159,7 +159,7 @@ impl Connection {
     }
 
     pub(crate) fn finalize(self, device: &mut DeviceImpl) -> Box<FrameSyncer> {
-        let mut peers = heapless::Vec::<FSPeer, 8>::new();
+        let mut peers = Vec::with_capacity(self.peers.len());
         let mut seed = 0;
         for peer in self.peers {
             let app = peer.app.unwrap();
@@ -180,7 +180,7 @@ impl Connection {
                 scores: app.scores,
                 stash: app.stash,
             };
-            peers.push(peer).ok().unwrap();
+            peers.push(peer);
             seed ^= app.seed;
         }
         Box::new(FrameSyncer {

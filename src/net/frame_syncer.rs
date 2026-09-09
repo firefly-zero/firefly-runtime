@@ -3,12 +3,12 @@ use super::*;
 use crate::config::FullID;
 use crate::state::log_net_error;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use firefly_hal::*;
 
 const SYNC_EVERY: Duration = Duration::from_s(2);
 const FRAME_TIMEOUT: Duration = Duration::from_s(5);
 const FIRST_TIMEOUT: Duration = Duration::from_s(10);
-const MAX_PEERS: usize = 8;
 const MSG_SIZE: usize = 64;
 
 pub(crate) struct FSPeer {
@@ -28,7 +28,7 @@ pub(crate) struct FSPeer {
 
 pub(crate) struct FrameSyncer {
     pub frame: u32,
-    pub peers: heapless::Vec<FSPeer, MAX_PEERS>,
+    pub peers: Vec<FSPeer>,
     /// The initial seed of the current device.
     pub device_seed: u32,
     /// The combined initial seed of all devices.
@@ -55,14 +55,14 @@ impl FrameSyncer {
     /// Used when the game exits back into launcher
     /// so that players can launch another app.
     pub fn into_connection(self) -> Box<Connection> {
-        let mut peers = heapless::Vec::<Peer, 8>::new();
+        let mut peers = Vec::with_capacity(self.peers.len());
         for peer in self.peers {
             let peer = Peer {
                 addr: peer.addr,
                 intro: peer.intro,
                 app: None,
             };
-            peers.push(peer).ok().unwrap();
+            peers.push(peer);
         }
         Box::new(Connection {
             app: None,

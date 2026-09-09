@@ -1,9 +1,10 @@
 use super::*;
 use alloc::boxed::Box;
+use alloc::vec::Vec;
 use firefly_hal::*;
 
 const ADVERTISE_EVERY: Duration = Duration::from_ms(100);
-const MAX_PEERS: usize = 7;
+const MAX_PEERS: usize = 8;
 const MSG_SIZE: usize = 64;
 
 pub(crate) struct PeerInfo {
@@ -20,8 +21,8 @@ pub(crate) struct PeerInfo {
 pub(crate) struct Connector {
     pub me: Intro,
     last_advertisement: Option<Instant>,
-    peer_addrs: heapless::Vec<Addr, MAX_PEERS>,
-    pub peer_infos: heapless::Vec<PeerInfo, MAX_PEERS>,
+    peer_addrs: Vec<Addr>,
+    pub peer_infos: Vec<PeerInfo>,
 }
 
 impl Connector {
@@ -29,8 +30,8 @@ impl Connector {
         Self {
             me,
             last_advertisement: None,
-            peer_addrs: heapless::Vec::new(),
-            peer_infos: heapless::Vec::new(),
+            peer_addrs: Vec::new(),
+            peer_infos: Vec::new(),
         }
     }
 
@@ -44,21 +45,21 @@ impl Connector {
     }
 
     pub fn into_connection(self, device: &mut DeviceImpl) -> Box<Connection> {
-        let mut peers = heapless::Vec::<Peer, 8>::new();
+        let mut peers = Vec::new();
         for peer in self.peer_infos {
             let peer = Peer {
                 addr: Some(peer.addr),
                 intro: peer.intro,
                 app: None,
             };
-            peers.push(peer).ok().unwrap();
+            peers.push(peer);
         }
         let me = Peer {
             addr: None,
             intro: self.me,
             app: None,
         };
-        peers.push(me).ok().unwrap();
+        peers.push(me);
         let local_addr = device.net_local_addr();
         peers.sort_by_key(|p| p.addr.unwrap_or(local_addr));
         Box::new(Connection {
@@ -128,8 +129,8 @@ impl Connector {
 
     fn handle_hello(&mut self, device: &mut DeviceImpl, addr: Addr) -> Result<(), NetcodeError> {
         if !self.peer_addrs.contains(&addr) {
-            let res = self.peer_addrs.push(addr);
-            if res.is_err() {
+            self.peer_addrs.push(addr);
+            if self.peer_addrs.len() > MAX_PEERS {
                 return Err(NetcodeError::PeerListFull);
             }
         }
@@ -152,10 +153,7 @@ impl Connector {
             intro,
             ready: 0,
         };
-        let res = self.peer_infos.push(info);
-        if res.is_err() {
-            return Err(NetcodeError::PeerListFull);
-        }
+        self.peer_infos.push(info);
         Ok(())
     }
 
