@@ -319,20 +319,15 @@ pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32) -> u32 {
         return 1;
     };
 
-    // Return an error if some of the peers that we want to connect to
-    // already sent how many peers THEY want to connect to
-    // and if that's a different number.
+    // We send Ready even if our list of peers doesn't match the list of peers
+    // that other devices have. That will trigger the peer mismatch error
+    // on all devices instead of just this device which is better
+    // since we don't know which device in particular has the wrong list.
+    //
+    // Typically it's the one with fewer peers but it's also possible
+    // that some of devices have a "rogue" device from another
+    // group of players nearby.
     let n_peers = peer_map.count_ones() as u8;
-    {
-        let mut peer_map_copy = peer_map;
-        for peer in &connector.peer_infos {
-            if peer_map_copy & 1 == 1 && peer.ready != 0 && peer.ready != n_peers {
-                return 2;
-            }
-            peer_map_copy >>= 1;
-        }
-    }
-
     let mut peer_map = peer_map;
     for peer in &connector.peer_infos {
         if peer_map & 1 == 1 {
