@@ -364,14 +364,15 @@ pub(crate) fn get_conn_ready_map(mut caller: C) -> u32 {
             if peer_count == 0 {
                 peer_count = peer.ready
             } else if peer.ready != peer_count {
+                state.net_handler.replace(handler);
                 return u32::MAX;
             }
         }
     }
+    state.net_handler.replace(handler);
     if peer_map.count_ones() != u32::from(peer_count) {
         return u32::MAX;
     }
-    state.net_handler.replace(handler);
     peer_map
 }
 
