@@ -20,7 +20,8 @@ pub(crate) enum Message {
     Start(Start),
     /// The app state sync, sent every frame when running an app.
     State(FrameState),
-    // App(heapless::String<16>, heapless::String<16>),
+    /// The device has the given app installed.
+    App([u8; 32]),
     /// Tell other devices that this device's user has accepted the peers' list.
     ///
     /// Inlcudes the hash of peer names.

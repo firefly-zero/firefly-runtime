@@ -58,7 +58,6 @@ pub(crate) fn get_ready_map(mut caller: C, peer_map: u32, hash: u32) -> u32 {
     let mut ready_map: u32 = 0;
     let mut peer_map = peer_map;
     for peer in &connector.peer_infos {
-        ready_map >>= 1;
         if peer_map & 1 == 1 && peer.ready != 0 {
             ready_map |= 1;
             // Ensure that all peers have the same peer list hash.
@@ -67,8 +66,10 @@ pub(crate) fn get_ready_map(mut caller: C, peer_map: u32, hash: u32) -> u32 {
                 return u32::MAX;
             }
         }
+        ready_map = ready_map.rotate_right(1);
         peer_map >>= 1;
     }
+    ready_map = ready_map.rotate_left(connector.peer_infos.len() as u32);
     state.net_handler.replace(handler);
     ready_map
 }
