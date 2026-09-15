@@ -309,7 +309,7 @@ pub(crate) fn restart(mut caller: C) {
 ///
 /// Tells other peers that we're ready to go into [`NetHandler::Connection`]
 /// state and wait for them to go into the same state.
-pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32) -> u32 {
+pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32, hash: u32) -> u32 {
     let state = caller.data_mut();
     state.called = "misc.set_conn_ready";
     let mut handler = state.net_handler.replace(NetHandler::None);
@@ -327,11 +327,10 @@ pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32) -> u32 {
     // Typically it's the one with fewer peers but it's also possible
     // that some of devices have a "rogue" device from another
     // group of players nearby.
-    let n_peers = peer_map.count_ones() as u8;
     let mut peer_map = peer_map;
     for peer in &connector.peer_infos {
         if peer_map & 1 == 1 {
-            let res = connector.send_ready(&mut state.device, peer.addr, n_peers);
+            let res = connector.send_ready(&mut state.device, peer.addr, hash);
             if let Err(err) = res {
                 state.net_handler.replace(handler);
                 state.log_error(err);
@@ -345,7 +344,7 @@ pub(crate) fn set_conn_ready(mut caller: C, peer_map: u32) -> u32 {
     0
 }
 
-pub(crate) fn get_conn_ready_map(mut caller: C) -> u32 {
+pub(crate) fn get_conn_ready_map(mut caller: C, hash: u32) -> u32 {
     let state = caller.data_mut();
     state.called = "misc.get_conn_ready_map";
     let mut handler = state.net_handler.replace(NetHandler::None);
@@ -355,24 +354,18 @@ pub(crate) fn get_conn_ready_map(mut caller: C) -> u32 {
         return 0;
     };
     let mut peer_map: u32 = 0;
-    let mut peer_count: u8 = 0;
     for peer in &connector.peer_infos {
         peer_map <<= 1;
         if peer.ready != 0 {
             peer_map |= 1;
-            // Ensure that all peers have the same peer count.
-            if peer_count == 0 {
-                peer_count = peer.ready
-            } else if peer.ready != peer_count {
+            // Ensure that all peers have the same peer list hash.
+            if peer.ready != hash {
                 state.net_handler.replace(handler);
                 return u32::MAX;
             }
         }
     }
     state.net_handler.replace(handler);
-    if peer_map.count_ones() != u32::from(peer_count) {
-        return u32::MAX;
-    }
     peer_map
 }
 

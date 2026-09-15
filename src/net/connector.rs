@@ -10,7 +10,7 @@ const MSG_SIZE: usize = 64;
 pub(crate) struct PeerInfo {
     pub addr: Addr,
     pub intro: Intro,
-    pub ready: u8,
+    pub ready: u32,
 }
 
 /// Connector establishes network connection between devices.
@@ -79,9 +79,9 @@ impl Connector {
         &self,
         device: &mut DeviceImpl,
         addr: Addr,
-        n_peers: u8,
+        hash: u32,
     ) -> Result<(), NetcodeError> {
-        let msg = Message::Ready(n_peers);
+        let msg = Message::Ready(hash);
         let mut buf = alloc::vec![0u8; MSG_SIZE];
         let raw = msg.encode(&mut buf)?;
         device.net_send(addr, raw)?;
@@ -122,7 +122,7 @@ impl Connector {
             Message::Hello => self.handle_hello(device, addr),
             Message::Disconnect => self.handle_disconnect(addr),
             Message::Intro(intro) => self.handle_intro(addr, intro),
-            Message::Ready(n) => self.handle_ready(addr, n),
+            Message::Ready(hash) => self.handle_ready(addr, hash),
             _ => Ok(()),
         }
     }
@@ -157,10 +157,10 @@ impl Connector {
         Ok(())
     }
 
-    fn handle_ready(&mut self, addr: Addr, n: u8) -> Result<(), NetcodeError> {
+    fn handle_ready(&mut self, addr: Addr, hash: u32) -> Result<(), NetcodeError> {
         for info in &mut self.peer_infos {
             if info.addr == addr {
-                info.ready = n;
+                info.ready = hash;
             }
         }
         Ok(())

@@ -23,8 +23,8 @@ pub(crate) enum Message {
     // App(heapless::String<16>, heapless::String<16>),
     /// Tell other devices that this device's user has accepted the peers' list.
     ///
-    /// Inlcudes the number of peers.
-    Ready(u8),
+    /// Inlcudes the hash of peer names.
+    Ready(u32),
 }
 
 impl Message {
