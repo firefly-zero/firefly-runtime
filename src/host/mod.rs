@@ -4,6 +4,7 @@
 //! to the apps in the runtime.
 
 pub(crate) mod audio;
+pub(crate) mod conn;
 pub(crate) mod fs;
 pub(crate) mod graphics;
 pub(crate) mod input;

@@ -50,6 +50,7 @@ pub(crate) fn populate_externals<'a>(
             "net" => select_net_external(ctx, fn_name),
             "stats" => select_stats_external(ctx, fn_name),
             "misc" => select_misc_external(ctx, fn_name),
+            "conn" => select_conn_external(ctx, fn_name),
             "sudo" => {
                 if !sudo {
                     return Err(LinkingError::SudoDisabled);
@@ -244,12 +245,19 @@ fn select_misc_external<'a>(
         "get_settings" => Func::wrap(ctx, misc::get_settings),
         "restart" => Func::wrap(ctx, misc::restart),
         "quit" => Func::wrap(ctx, misc::quit),
+        _ => return None,
+    };
+    Some(func)
+}
 
-        // Connector functions.
-        "set_conn_ready" => Func::wrap(ctx, misc::set_conn_ready),
-        "get_conn_ready_map" => Func::wrap(ctx, misc::get_conn_ready_map),
-        "set_peers" => Func::wrap(ctx, misc::set_peers),
-
+fn select_conn_external<'a>(
+    ctx: impl wasmi::AsContextMut<Data = Box<State<'a>>>,
+    fn_name: &str,
+) -> Option<wasmi::Func> {
+    let func = match fn_name {
+        "set_ready" => Func::wrap(ctx, conn::set_ready),
+        "get_ready_map" => Func::wrap(ctx, conn::get_ready_map),
+        "set_peers" => Func::wrap(ctx, conn::set_peers),
         _ => return None,
     };
     Some(func)
