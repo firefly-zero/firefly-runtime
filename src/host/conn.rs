@@ -13,7 +13,7 @@ type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
 /// state and wait for them to go into the same state.
 pub(crate) fn set_ready(mut caller: C, peer_map: u32, hash: u32) -> u32 {
     let state = caller.data_mut();
-    state.called = "misc.set_conn_ready";
+    state.called = "conn.set_ready";
     let mut handler = state.net_handler.replace(NetHandler::None);
     let NetHandler::Connector(connector) = &mut handler else {
         state.net_handler.replace(handler);
@@ -46,29 +46,31 @@ pub(crate) fn set_ready(mut caller: C, peer_map: u32, hash: u32) -> u32 {
     0
 }
 
-pub(crate) fn get_ready_map(mut caller: C, hash: u32) -> u32 {
+pub(crate) fn get_ready_map(mut caller: C, peer_map: u32, hash: u32) -> u32 {
     let state = caller.data_mut();
-    state.called = "misc.get_conn_ready_map";
+    state.called = "conn.get_ready_map";
     let mut handler = state.net_handler.replace(NetHandler::None);
     let NetHandler::Connector(connector) = &mut handler else {
         state.net_handler.replace(handler);
         state.log_error("can check connection readiness only from connector");
         return 0;
     };
-    let mut peer_map: u32 = 0;
+    let mut ready_map: u32 = 0;
+    let mut peer_map = peer_map;
     for peer in &connector.peer_infos {
-        peer_map <<= 1;
-        if peer.ready != 0 {
-            peer_map |= 1;
+        ready_map >>= 1;
+        if peer_map & 1 == 1 && peer.ready != 0 {
+            ready_map |= 1;
             // Ensure that all peers have the same peer list hash.
             if peer.ready != hash {
                 state.net_handler.replace(handler);
                 return u32::MAX;
             }
         }
+        peer_map >>= 1;
     }
     state.net_handler.replace(handler);
-    peer_map
+    ready_map
 }
 
 /// Undocumented function called from `sys.connector` in `before_exit`.
@@ -82,7 +84,7 @@ pub(crate) fn get_ready_map(mut caller: C, hash: u32) -> u32 {
 /// Curiously enough, `sys.connector` is not a `sudo` app.
 pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
     let state = caller.data_mut();
-    state.called = "misc.set_peers";
+    state.called = "conn.set_peers";
     let handler = state.net_handler.replace(NetHandler::None);
     let NetHandler::Connector(mut connector) = handler else {
         state.net_handler.replace(handler);
