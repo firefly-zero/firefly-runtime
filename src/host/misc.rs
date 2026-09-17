@@ -1,6 +1,6 @@
 use crate::error::HostError;
 use crate::net::{FSPeer, Intro};
-use crate::state::{NetHandler, State};
+use crate::state::{NetHandler, NextApp, State};
 use alloc::boxed::Box;
 use firefly_hal::Device;
 
@@ -293,7 +293,7 @@ pub(crate) fn quit(mut caller: C) {
     let state = caller.data_mut();
     state.called = "misc.quit";
     let state = caller.data_mut();
-    state.set_next(None);
+    state.set_next(NextApp::Launcher);
 }
 
 /// Stop the currently running app and start it again.
@@ -301,5 +301,5 @@ pub(crate) fn restart(mut caller: C) {
     let state = caller.data_mut();
     state.called = "misc.restart";
     let state = caller.data_mut();
-    state.set_next(Some(state.id.clone()));
+    state.set_next(NextApp::ID(state.id.clone()));
 }

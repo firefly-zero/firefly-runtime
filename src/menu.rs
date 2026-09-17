@@ -21,6 +21,7 @@ pub(crate) enum MenuItem {
     ScreenShot,
     Restart,
     Quit,
+    PowerOff,
 }
 
 impl MenuItem {
@@ -30,6 +31,7 @@ impl MenuItem {
             Self::ScreenShot => "take screenshot",
             Self::Restart => "restart app",
             Self::Quit => "exit app",
+            Self::PowerOff => "power off",
         }
     }
 }
@@ -78,6 +80,9 @@ pub(crate) struct Menu {
     /// The currently focused menu item.
     selected: i32,
 
+    /// For how long the menu button is pressed.
+    pressed_for: u8,
+
     /// The index of the peer (in [`FrameSyncer::peers`]) that activated the menu.
     actor_idx: u8,
 
@@ -100,6 +105,7 @@ impl Menu {
             sys_items: items,
             frames: 0,
             selected: 0,
+            pressed_for: 0,
             actor_idx: 0,
             flags: 0,
             dpad: DPad4::None,
@@ -125,6 +131,10 @@ impl Menu {
         self.handle_menu_button(input.menu());
         if !self.active() {
             return None;
+        }
+        if self.pressed_for >= 3 * 60 {
+            self.deactivate();
+            return Some(&MenuItem::PowerOff);
         }
         self.frames += 1;
         self.handle_pad(input);
@@ -166,8 +176,12 @@ impl Menu {
     }
 
     fn handle_menu_button(&mut self, pressed: bool) {
-        let was_pressed = self.menu_pressed();
-        self.set_menu_pressed(pressed);
+        let was_pressed = self.pressed_for != 0;
+        self.pressed_for = if pressed {
+            self.pressed_for.wrapping_add(1)
+        } else {
+            0
+        };
 
         // When menu is open, close it on releasing the menu button.
         if self.active() {
@@ -532,7 +546,6 @@ impl Menu {
 const MASK_ACTIVE: u8 = 0b1;
 const MASK_RENDERED: u8 = 0b10;
 const MASK_DIRTY: u8 = 0b100;
-const MASK_MENU_PRESSED: u8 = 0b_1000;
 const MASK_SELECT_PRESSED: u8 = 0b1_0000;
 const MASK_WAS_RELEASED: u8 = 0b10_0000;
 const MASK_ACTOR: u8 = 0b100_0000;
@@ -573,19 +586,6 @@ impl Menu {
             self.flags |= MASK_DIRTY;
         } else {
             self.flags &= !MASK_DIRTY;
-        }
-    }
-
-    /// True if the menu button is currently pressed.
-    fn menu_pressed(&self) -> bool {
-        self.flags & MASK_MENU_PRESSED != 0
-    }
-
-    fn set_menu_pressed(&mut self, v: bool) {
-        if v {
-            self.flags |= MASK_MENU_PRESSED;
-        } else {
-            self.flags &= !MASK_MENU_PRESSED;
         }
     }
 

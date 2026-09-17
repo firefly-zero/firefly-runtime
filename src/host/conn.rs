@@ -1,6 +1,6 @@
 //! Undocumented wasm module with functions for sys.connector.
 
-use crate::state::{NetHandler, State};
+use crate::state::{NetHandler, NextApp, State};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use firefly_hal::{Device, Duration, Network};
@@ -120,7 +120,7 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
     }
 
     if connector.peer_infos.is_empty() {
-        state.set_next(None);
+        state.set_next(NextApp::Launcher);
         state.net_handler.replace(NetHandler::None);
         let res = state.device.net_stop();
         if let Err(err) = res {
@@ -132,7 +132,7 @@ pub(crate) fn set_peers(mut caller: C, peer_map: u32) {
     if let Err(err) = connector.validate() {
         state.log_error(err);
     }
-    state.set_next(None);
+    state.set_next(NextApp::Launcher);
     let connection = connector.into_connection(&mut state.device);
     state
         .net_handler

@@ -1,5 +1,5 @@
 use crate::error::HostError;
-use crate::state::State;
+use crate::state::{NextApp, State};
 use crate::utils::read_into;
 use crate::{config::FullID, utils::write_all};
 use alloc::boxed::Box;
@@ -196,14 +196,14 @@ pub(crate) fn run_app(mut caller: C, author_ptr: u32, author_len: u32, app_ptr: 
         }
         if app_id == "disconnector" {
             state.disconnect();
-            state.set_next(None);
+            state.set_next(NextApp::Launcher);
             return;
         }
     }
     // Should be safe to unwrap, assuming that we correctly
     // validated the ID length earlier.
     let id = FullID::from_str(author_id, app_id).unwrap();
-    state.set_next(Some(id));
+    state.set_next(NextApp::ID(id));
 }
 
 /// Get the size in bytes of the given file.

@@ -3,7 +3,7 @@ use crate::config::{FullID, RuntimeConfig};
 use crate::error::Error;
 use crate::frame_buffer::FireflyDisplay;
 use crate::linking::populate_externals;
-use crate::state::{NetHandler, State};
+use crate::state::{NetHandler, NextApp, State};
 use crate::stats::StatsTracker;
 use crate::utils::read_all;
 use alloc::boxed::Box;
@@ -64,9 +64,9 @@ where
 {
     /// Create a new runtime with the wasm module loaded and instantiated.
     pub fn new(mut config: RuntimeConfig<'a, D, C>) -> Result<Self, Error> {
-        let id = match config.id {
-            Some(id) => id,
-            None => match detect_launcher(&mut config.device) {
+        let id = match config.next {
+            NextApp::ID(id) => id,
+            _ => match detect_launcher(&mut config.device) {
                 Some(id) => id,
                 None => return Err(Error::NoLauncher),
             },
@@ -306,7 +306,8 @@ where
         self.delay();
 
         let state = self.store.data();
-        let should_render = state.exit || self.n_frames.is_multiple_of(self.render_every);
+        let should_render =
+            state.next != NextApp::Continue || self.n_frames.is_multiple_of(self.render_every);
         // The frame number must be updated after calculating "should_render"
         // so that "render" is always called on the first "update" run
         // (when the app is just launched).
@@ -322,7 +323,7 @@ where
             }
         }
         let state = self.store.data();
-        Ok(state.exit)
+        Ok(state.next != NextApp::Continue)
     }
 
     // Delay the screen flushing to adjust the frame rate.
@@ -372,14 +373,14 @@ where
         // If exiting from an app back into the launcher,
         // go back from FrameSyncer to Connection.
         let net_handler = match net_handler {
-            NetHandler::FrameSyncer(syncer) if state.next.is_none() => {
+            NetHandler::FrameSyncer(syncer) if state.next == NextApp::Launcher => {
                 NetHandler::Connection(syncer.into_connection())
             }
             net_handler => net_handler,
         };
 
         let config = RuntimeConfig {
-            id: state.next,
+            next: state.next,
             device: state.device,
             display: self.display,
             net_handler,
@@ -498,8 +499,7 @@ where
             serial::Request::Launch((author, app)) => {
                 let state = self.store.data_mut();
                 let resp = if let Some(id) = FullID::from_str(&author, &app) {
-                    state.next = Some(id);
-                    state.exit = true;
+                    state.set_next(NextApp::ID(id));
                     serial::Response::Ok
                 } else {
                     serial::Response::Log("ERROR(runtime): app ID is too long".into())
@@ -508,7 +508,7 @@ where
             }
             serial::Request::Exit => {
                 let state = self.store.data_mut();
-                state.exit = true;
+                state.set_next(NextApp::Launcher);
                 let resp = serial::Response::Ok;
                 self.serial_send(resp)?;
             }

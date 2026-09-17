@@ -1,6 +1,6 @@
-use crate::FireflyDisplay;
 use crate::error::Error;
 use crate::state::NetHandler;
+use crate::{FireflyDisplay, NextApp};
 use crate::{color::FromRGB, state::load_settings};
 use core::fmt;
 use embedded_graphics::draw_target::DrawTarget;
@@ -21,7 +21,7 @@ where
     D: DrawTarget<Color = C> + OriginDimensions + FireflyDisplay,
     C: RgbColor + FromRGB,
 {
-    pub id: Option<FullID>,
+    pub next: NextApp,
     pub device: DeviceImpl<'a>,
     pub display: D,
     pub net_handler: NetHandler,

@@ -31,6 +31,19 @@ pub enum NetHandler {
     FrameSyncer(FrameSyncer),
 }
 
+/// What should be done with the app on the next cycle.
+#[derive(Eq, PartialEq)]
+pub enum NextApp {
+    /// Keep running the same app.
+    Continue,
+    /// Exit the app and open the launcher instead.
+    Launcher,
+    /// Launch the given app instead.
+    ID(FullID),
+    /// Turn off the device.
+    PowerOff,
+}
+
 pub(crate) struct State<'a> {
     /// Access to peripherals.
     pub device: DeviceImpl<'a>,
@@ -73,11 +86,8 @@ pub(crate) struct State<'a> {
     /// Might be None if the app doesn't have guest memory defined.
     pub memory: Option<wasmi::Memory>,
 
-    /// True if the app should be stopped.
-    pub exit: bool,
-
     /// The next app to run.
-    pub next: Option<FullID>,
+    pub next: NextApp,
 
     /// The last read touch pad and buttons input of the current device.
     pub input: Option<InputState>,
@@ -153,8 +163,7 @@ impl<'a> State<'a> {
             start,
             now: 0,
             memory: None,
-            next: None,
-            exit: false,
+            next: NextApp::Continue,
             input: None,
             called: "",
             net_handler: Cell::new(net_handler),
@@ -224,14 +233,13 @@ impl<'a> State<'a> {
     }
 
     /// Set ID of the next app to run and close the currently running one.
-    pub(crate) fn set_next(&mut self, app: Option<FullID>) {
+    pub(crate) fn set_next(&mut self, app: NextApp) {
         match self.net_handler.get_mut() {
             NetHandler::None | NetHandler::Connector(_) => {
                 self.next = app;
-                self.exit = true;
             }
             NetHandler::FrameSyncer(syncer) => {
-                if let Some(id) = &app {
+                if let NextApp::ID(id) = &app {
                     if id != &self.id {
                         panic!("cannot launch another app in multiplayer")
                     }
@@ -242,10 +250,9 @@ impl<'a> State<'a> {
                     syncer.shared_seed = self.seed;
                 }
                 self.next = app;
-                self.exit = true;
             }
             NetHandler::Connection(conn) => {
-                if let Some(app) = app {
+                if let NextApp::ID(app) = app {
                     let res = conn.set_app(&mut self.device, app);
                     if let Err(err) = res {
                         log_net_error(&mut self.device, err);
@@ -386,8 +393,9 @@ impl<'a> State<'a> {
                 match action {
                     MenuItem::Custom(index, _) => return Some(*index),
                     MenuItem::ScreenShot => self.take_screenshot(),
-                    MenuItem::Restart => self.set_next(Some(self.id.clone())),
-                    MenuItem::Quit => self.set_next(None),
+                    MenuItem::Restart => self.set_next(NextApp::ID(self.id.clone())),
+                    MenuItem::Quit => self.set_next(NextApp::Launcher),
+                    MenuItem::PowerOff => self.set_next(NextApp::PowerOff),
                 };
             };
         }
@@ -434,7 +442,7 @@ impl<'a> State<'a> {
         match status {
             ConnectionStatus::Launching => {
                 if let Some(app_id) = &connection.app {
-                    self.set_next(Some(app_id.clone()));
+                    self.set_next(NextApp::ID(app_id.clone()));
                     let syncer = connection.finalize(&mut self.device);
                     return NetHandler::FrameSyncer(syncer);
                 }
@@ -442,7 +450,7 @@ impl<'a> State<'a> {
             ConnectionStatus::Timeout => {
                 let msg = "timed out waiting for other devices to launch the app";
                 log_net_error(&mut self.device, msg);
-                self.set_next(None);
+                self.set_next(NextApp::Launcher);
                 return NetHandler::None;
             }
             _ => (),
@@ -480,7 +488,7 @@ impl<'a> State<'a> {
             // and go back into launcher.
             if let Err(err) = res {
                 log_net_error(&mut self.device, err);
-                self.set_next(None);
+                self.set_next(NextApp::Launcher);
                 let conn = syncer.into_connection();
                 _ = conn.disconnect(&mut self.device);
                 return NetHandler::None;
@@ -562,7 +570,7 @@ impl<'a> State<'a> {
         let handler = NetHandler::Connector(Connector::new(me));
         self.net_handler.set(handler);
         let id = FullID::from_str("sys", "connector").unwrap();
-        self.set_next(Some(id));
+        self.set_next(NextApp::ID(id));
     }
 
     /// Send diconnect message to all peers and go back into singleplayer mode.

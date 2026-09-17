@@ -1,5 +1,5 @@
 use crate::error::HostError;
-use crate::state::State;
+use crate::state::{NextApp, State};
 use alloc::boxed::Box;
 
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
@@ -59,7 +59,7 @@ pub(crate) fn fd_write(_fd: i32, _ciov_buf: i32, _ciov_buf_len: i32, _offset0: i
 pub(crate) fn proc_exit(mut caller: C, _rval: i32) {
     let state = caller.data_mut();
     state.called = "wasi_snapshot_preview1.proc_exit";
-    state.set_next(None);
+    state.set_next(NextApp::Launcher);
     // TODO: Apps expect that the guest code will stop execution after calling proc_exit.
     // Clang inserts "unreachable" right after that. Can we signal from here to wasmi
     // to stop execution?
