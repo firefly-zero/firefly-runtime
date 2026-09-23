@@ -192,6 +192,15 @@ impl Menu {
     }
 
     fn handle_menu_button(&mut self, menu_pressed: bool, back_pressed: bool) {
+        // When menu is closed, open it on pressing the menu button.
+        if !self.active() && menu_pressed {
+            self.activate();
+            self.set_was_released(false);
+            return;
+        }
+
+        // Track for how long the menu button is pressed.
+        // Used for shutting down the device on the long press.
         let was_pressed = self.pressed_for != 0;
         self.pressed_for = if back_pressed {
             1
@@ -201,21 +210,12 @@ impl Menu {
             0
         };
 
-        // When menu is open, close it on releasing the menu button.
-        if self.active() {
-            if !menu_pressed && !back_pressed {
-                if self.was_released() && was_pressed {
-                    self.deactivate();
-                }
-                self.set_was_released(true);
+        // When menu is open, close it on releasing the menu (or back) button.
+        if !menu_pressed && !back_pressed {
+            if self.was_released() && was_pressed {
+                self.deactivate();
             }
-            return;
-        }
-
-        // When menu is closed, open it on pressing the menu button.
-        if !was_pressed && menu_pressed {
-            self.activate();
-            self.set_was_released(false);
+            self.set_was_released(true);
         }
     }
 
