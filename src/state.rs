@@ -616,7 +616,7 @@ fn save_log<D: Display>(
     let size = dir.get_file_size(FILE_NAME).unwrap_or_default();
     let mut stream = if size == 0 {
         dir.create_file(FILE_NAME)?
-    } else if size > 50 * 1024 {
+    } else if size > 10 * 1024 {
         let output = dir.create_file("old-logs")?;
         let input = dir.open_file(FILE_NAME)?;
         copy_stream(input, output)?;
