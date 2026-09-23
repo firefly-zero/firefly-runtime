@@ -123,6 +123,7 @@ impl Menu {
         });
     }
 
+    /// Get the number of custom items in the menu.
     pub(crate) fn count_custom(&self) -> usize {
         self.app_items.len()
     }
@@ -133,14 +134,15 @@ impl Menu {
             .retain(|item| !matches!(item, MenuItem::Custom(i, _) if *i == index));
     }
 
+    /// Handle input in single-player mode.
     pub fn handle_input(&mut self, input: &Option<InputState>) -> Option<&MenuItem> {
         let def = InputState::default();
         let input = input.as_ref().unwrap_or(&def);
-        self.handle_menu_button(input.menu());
+        self.handle_menu_button(input.menu(), input.w());
         if !self.active() {
             return None;
         }
-        if self.pressed_for >= 3 * 60 {
+        if self.pressed_for >= 2 * 60 {
             self.deactivate();
             return Some(&MenuItem::PowerOff);
         }
@@ -149,14 +151,20 @@ impl Menu {
         self.handle_select(input.s() || input.e())
     }
 
+    /// Handle input in multiplayer mode.
     pub fn handle_net_input(&mut self, syncer: &FrameSyncer) -> Option<&MenuItem> {
         let mut menu_pressed = false;
+        let mut back_pressed = false;
         let mut actor = false;
         let mut actor_idx = 0;
         for (peer, i) in syncer.peers.iter().zip(0..) {
             let Some(state) = peer.states.get_current() else {
                 continue;
             };
+            let peer_back = state.input.buttons & 0b100 != 0;
+            if peer_back {
+                back_pressed = true;
+            }
             let peer_menu = state.input.buttons & 0b1_0000 != 0;
             if peer_menu {
                 menu_pressed = true;
@@ -167,7 +175,7 @@ impl Menu {
         }
 
         let was_active = self.active();
-        self.handle_menu_button(menu_pressed);
+        self.handle_menu_button(menu_pressed, back_pressed);
         if !self.active() {
             return None;
         }
@@ -183,9 +191,11 @@ impl Menu {
         self.handle_select(input.s() || input.e())
     }
 
-    fn handle_menu_button(&mut self, pressed: bool) {
+    fn handle_menu_button(&mut self, menu_pressed: bool, back_pressed: bool) {
         let was_pressed = self.pressed_for != 0;
-        self.pressed_for = if pressed {
+        self.pressed_for = if back_pressed {
+            1
+        } else if menu_pressed {
             self.pressed_for.wrapping_add(1)
         } else {
             0
@@ -193,7 +203,7 @@ impl Menu {
 
         // When menu is open, close it on releasing the menu button.
         if self.active() {
-            if !pressed {
+            if !menu_pressed && !back_pressed {
                 if self.was_released() && was_pressed {
                     self.deactivate();
                 }
@@ -203,7 +213,7 @@ impl Menu {
         }
 
         // When menu is closed, open it on pressing the menu button.
-        if !was_pressed && pressed {
+        if !was_pressed && menu_pressed {
             self.activate();
             self.set_was_released(false);
         }
