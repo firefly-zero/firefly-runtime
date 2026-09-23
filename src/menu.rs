@@ -117,6 +117,14 @@ impl Menu {
     /// Add a custom menu item.
     pub(crate) fn add(&mut self, index: u8, name: alloc::string::String) {
         self.app_items.push(MenuItem::Custom(index, name));
+        self.app_items.sort_by_key(|mi| match mi {
+            MenuItem::Custom(i, _) => *i,
+            _ => 0,
+        });
+    }
+
+    pub(crate) fn count_custom(&self) -> usize {
+        self.app_items.len()
     }
 
     /// Remove a custom menu item.

@@ -23,7 +23,10 @@ pub(crate) fn add_menu_item(mut caller: C, index: u32, name_ptr: u32, name_len: 
         state.log_error(HostError::MenuItemUtf8);
         return;
     };
-
+    if state.menu.count_custom() >= 4 {
+        state.log_error("menu already has 4 custom items, cannot add more");
+        return;
+    };
     state.menu.add(index as u8, name.to_string())
 }
 
