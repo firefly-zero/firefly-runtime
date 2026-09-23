@@ -1,7 +1,7 @@
 [package]
 name = "firefly-runtime"
 version = "0.13.0"
-rust-version = "1.91.0"
+rust-version = "1.98.1"
 edition = "2024"
 description = "The beating heart of Firefly Zero"
 license = "GPL-3.0"

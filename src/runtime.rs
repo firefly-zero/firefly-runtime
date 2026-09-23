@@ -554,19 +554,9 @@ where
 }
 
 fn detect_launcher(device: &mut DeviceImpl) -> Option<FullID> {
-    let mut dir = device.open_dir(&["sys"]).ok()?;
-    if let Some(id) = get_short_meta(&mut dir, "launcher") {
-        return Some(id);
+    if device.open_dir(&["roms", "sys", "launcher"]).is_ok() {
+        FullID::from_str("sys", "launcher")
+    } else {
+        None
     }
-    get_short_meta(&mut dir, "new-app")
-}
-
-fn get_short_meta(dir: &mut DirImpl, fname: &str) -> Option<FullID> {
-    let file = dir.open_file(fname).ok()?;
-    let bytes = read_all(file).ok()?;
-    let meta = ShortMeta::decode(&bytes[..]).ok()?;
-    let author = meta.author_id.try_into().ok()?;
-    let app = meta.app_id.try_into().ok()?;
-    let id = FullID::new(author, app);
-    Some(id)
 }
