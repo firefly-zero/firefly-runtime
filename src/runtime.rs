@@ -97,7 +97,7 @@ where
             return Err(Error::AppIDMismatch);
         }
         let sudo = meta.sudo;
-        let launcher = meta.launcher;
+        let launcher = meta.sudo && meta.launcher;
 
         let res = config.device.serial_start();
         if let Err(err) = res {

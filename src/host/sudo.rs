@@ -670,18 +670,6 @@ pub(crate) fn switch_io_partition(mut caller: C, part: u32) {
     }
 }
 
-pub(crate) fn send_app(mut caller: C, ptr: u32, len: u32) {
-    let state = caller.data_mut();
-    state.called = "sudo.send_app";
-    // ...
-}
-
-pub(crate) fn read_app(mut caller: C, peer: u32, ptr: u32, len: u32) {
-    let state = caller.data_mut();
-    state.called = "sudo.read_app";
-    // ...
-}
-
 fn get_id<'a>(ptr: u32, len: u32, data: &'a [u8], state: &mut State) -> Option<&'a str> {
     let app_ptr = ptr as usize;
     let app_len = len as usize;

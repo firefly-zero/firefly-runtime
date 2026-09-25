@@ -261,7 +261,7 @@ fn combine_intros(peers: &[FSPeer]) -> u64 {
     for peer in peers {
         flags |= peer.intro.flags;
         if peer.intro.lang != lang {
-            lang = [b'e', b'n'];
+            lang = *b"en";
         }
         if peer.intro.theme != theme {
             theme = default_theme;
