@@ -1136,7 +1136,9 @@ dependencies = [
 
 [[package]]
 name = "firefly-hal"
-version = "0.5.2"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7dab196a79d49c279ada0c3b710516b610d01902a16a2507905f5b4dd22bcf1d"
 dependencies = [
  "cobs 0.5.1",
  "embedded-hal 1.0.0",
@@ -1164,7 +1166,7 @@ dependencies = [
 
 [[package]]
 name = "firefly-runtime"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "embedded-graphics",
  "embedded-io 0.6.1",
