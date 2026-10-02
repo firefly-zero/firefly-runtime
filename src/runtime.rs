@@ -1,3 +1,4 @@
+use crate::audio;
 use crate::color::FromRGB;
 use crate::config::{FullID, RuntimeConfig};
 use crate::error::Error;
@@ -281,16 +282,11 @@ where
         };
 
         // TODO: continue execution even if an update fails.
-        let fuel_update = self.call_callback("update", self.update, FUEL_UPDATE)?;
+        let res = self.call_callback("update", self.update, FUEL_UPDATE);
+        audio::release_internal();
+        let fuel_update = res?;
         if let Some(stats) = &mut self.stats {
             stats.update_fuel.add(fuel_update);
-        }
-        {
-            let state = self.store.data_mut();
-            let audio_buf = state.device.get_audio_buffer();
-            if !audio_buf.is_empty() {
-                state.audio.write(audio_buf);
-            }
         }
 
         // Check if the app is lagging.

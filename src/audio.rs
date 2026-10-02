@@ -1,7 +1,11 @@
 #![expect(static_mut_refs)]
 use firefly_audio::Manager;
 
+/// Indicates if the audio manager is currently owned by the runtime.
+///
+/// While runtime locks the manager, it cannot be used by the audio thread.
 static mut INTERNAL: bool = true;
+
 static mut MANAGER: Option<Manager> = None;
 
 pub(crate) fn reset() {
@@ -11,12 +15,11 @@ pub(crate) fn reset() {
     });
 }
 
-pub(crate) fn exec_internal<F: FnOnce(&mut Manager) -> R, R>(f: F) -> R {
-    let mm = critical_section::with(|_cs| unsafe {
+pub(crate) fn get() -> &'static mut Manager {
+    critical_section::with(|_cs| unsafe {
         INTERNAL = true;
-        &mut MANAGER
-    });
-    f(mm.as_mut().unwrap())
+        MANAGER.as_mut().unwrap()
+    })
 }
 
 pub(crate) fn release_internal() {
