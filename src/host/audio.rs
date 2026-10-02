@@ -1,4 +1,5 @@
 use super::fs::get_file_name;
+use crate::audio;
 use crate::error::HostError;
 use crate::state::State;
 use alloc::boxed::Box;
@@ -213,30 +214,32 @@ pub(crate) fn add_clip(mut caller: C, parent_id: u32, low: f32, high: f32) -> u3
 }
 
 fn add_node(state: &mut State, parent_id: u32, proc: Box<dyn firefly_audio::Processor>) -> u32 {
-    match state.audio.add_node(parent_id, proc) {
+    audio::exec_internal(|manager| match manager.add_node(parent_id, proc) {
         Ok(id) => id,
         Err(err) => {
             state.log_error(HostError::AudioNode(err));
             0
         }
-    }
+    })
 }
 
 pub(crate) fn set_param(mut caller: C, node_id: u32, param: u32, val: f32) {
     let state = caller.data_mut();
     state.called = "audio.set_param";
-    let node = match state.audio.get_node(node_id) {
-        Ok(node) => node,
-        Err(err) => {
-            state.log_error(HostError::AudioNode(err));
+    audio::exec_internal(|manager| {
+        let node = match manager.get_node(node_id) {
+            Ok(node) => node,
+            Err(err) => {
+                state.log_error(HostError::AudioNode(err));
+                return;
+            }
+        };
+        if param > 4 {
+            state.log_error("param index is too high");
             return;
         }
-    };
-    if param > 4 {
-        state.log_error("param index is too high");
-        return;
-    }
-    node.set(param as u8, val);
+        node.set(param as u8, val);
+    });
 }
 
 /// Modulate a parameter of the given node using linear modulation.
@@ -324,46 +327,54 @@ fn modulate(
     low: f32,
     high: f32,
 ) {
-    let node = match state.audio.get_node(node_id) {
-        Ok(node) => node,
-        Err(err) => {
-            state.log_error(HostError::AudioNode(err));
+    audio::exec_internal(|manager| {
+        let node = match manager.get_node(node_id) {
+            Ok(node) => node,
+            Err(err) => {
+                state.log_error(HostError::AudioNode(err));
+                return;
+            }
+        };
+        if param > 4 {
+            state.log_error("param index is too high");
             return;
         }
-    };
-    if param > 4 {
-        state.log_error("param index is too high");
-        return;
-    }
-    node.modulate(param as u8, lfo, low, high);
+        node.modulate(param as u8, lfo, low, high);
+    });
 }
 
 /// Reset the given node.
 pub(crate) fn reset(mut caller: C, node_id: u32) {
     let state = caller.data_mut();
     state.called = "audio.reset";
-    match state.audio.get_node(node_id) {
-        Ok(node) => node.reset(),
-        Err(err) => state.log_error(HostError::AudioNode(err)),
-    };
+    audio::exec_internal(|manager| {
+        match manager.get_node(node_id) {
+            Ok(node) => node.reset(),
+            Err(err) => state.log_error(HostError::AudioNode(err)),
+        };
+    })
 }
 
 /// Reset the given node and all its child nodes.
 pub(crate) fn reset_all(mut caller: C, node_id: u32) {
     let state = caller.data_mut();
     state.called = "audio.reset_all";
-    match state.audio.get_node(node_id) {
-        Ok(node) => node.reset_all(),
-        Err(err) => state.log_error(HostError::AudioNode(err)),
-    };
+    audio::exec_internal(|manager| {
+        match manager.get_node(node_id) {
+            Ok(node) => node.reset_all(),
+            Err(err) => state.log_error(HostError::AudioNode(err)),
+        };
+    });
 }
 
 /// Remove all children from the node.
 pub(crate) fn clear(mut caller: C, node_id: u32) {
     let state = caller.data_mut();
     state.called = "audio.clear";
-    let res = state.audio.clear(node_id);
-    if let Err(err) = res {
-        state.log_error(HostError::AudioNode(err));
-    }
+    audio::exec_internal(|manager| {
+        let res = manager.clear(node_id);
+        if let Err(err) = res {
+            state.log_error(HostError::AudioNode(err));
+        }
+    });
 }

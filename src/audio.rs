@@ -1,27 +1,33 @@
 #![expect(static_mut_refs)]
 use firefly_audio::Manager;
 
+static mut INTERNAL: bool = true;
 static mut MANAGER: Option<Manager> = None;
 
-pub fn reset() {
-    set(Manager::new());
-}
-
-pub fn take() -> Manager {
-    loop {
-        let mm = critical_section::with(|_cs| unsafe { MANAGER.take() });
-        if let Some(m) = mm {
-            return m;
-        }
-    }
-}
-
-pub fn try_take() -> Option<Manager> {
-    critical_section::with(|_cs| unsafe { MANAGER.take() })
-}
-
-pub fn set(m: Manager) {
+pub(crate) fn reset() {
     critical_section::with(|_cs| unsafe {
-        MANAGER.replace(m);
+        MANAGER.replace(Manager::new());
+        INTERNAL = false;
+    });
+}
+
+pub(crate) fn exec_internal<F: FnOnce(&mut Manager) -> R, R>(f: F) -> R {
+    let mm = critical_section::with(|_cs| unsafe {
+        INTERNAL = true;
+        &mut MANAGER
+    });
+    f(mm.as_mut().unwrap())
+}
+
+pub(crate) fn release_internal() {
+    critical_section::with(|_cs| unsafe {
+        INTERNAL = false;
+    });
+}
+
+pub fn exec_external<F: FnOnce(&mut Manager)>(f: F) {
+    while critical_section::with(|_cs| unsafe { INTERNAL }) {}
+    critical_section::with(|_cs| unsafe {
+        f(MANAGER.as_mut().unwrap());
     });
 }

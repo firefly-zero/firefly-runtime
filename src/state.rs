@@ -1,4 +1,3 @@
-use crate::Error;
 use crate::battery::Battery;
 use crate::canvas::Canvas;
 use crate::color::Rgb16;
@@ -8,6 +7,7 @@ use crate::frame_buffer::FrameBuffer;
 use crate::menu::{Menu, MenuItem};
 use crate::net::*;
 use crate::utils::{copy_stream, read_all, read_all_into};
+use crate::{Error, audio};
 use alloc::boxed::Box;
 use core::cell::Cell;
 use core::fmt::Display;
@@ -55,9 +55,6 @@ pub(crate) struct State<'a> {
     pub menu: Menu,
 
     launcher: bool,
-
-    /// Audio manager.
-    pub audio: firefly_audio::Manager,
 
     /// The id of the currently running app.
     pub id: FullID,
@@ -137,6 +134,7 @@ impl<'a> State<'a> {
         }
 
         let start = device.now().us();
+        audio::reset();
         let seed = match &net_handler {
             NetHandler::FrameSyncer(syncer) => syncer.shared_seed,
             _ => 0,
@@ -156,7 +154,6 @@ impl<'a> State<'a> {
             canvas: None,
             menu,
             launcher,
-            audio: firefly_audio::Manager::new(),
             battery: maybe_battery.ok(),
             seed,
             lock_seed: false,
