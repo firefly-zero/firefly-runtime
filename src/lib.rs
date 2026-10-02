@@ -10,6 +10,7 @@
 
 extern crate alloc;
 
+pub mod audio;
 mod battery;
 mod canvas;
 mod color;

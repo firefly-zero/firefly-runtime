@@ -9,6 +9,7 @@ repository = "https://github.com/firefly-zero/firefly-runtime"
 
 [dependencies]
 embedded-graphics = "0.8.2"
+critical-section = "1.2.0"
 embedded-io = "0.6.1"
 firefly-audio = "0.3.0"
 firefly-hal = "0.5.2"
@@ -20,5 +21,6 @@ serde = { version = "1.0.229", default-features = false, features = ["derive"] }
 tinyqr = "0.14.1"
 wasmi = { version = "1.1.0", default-features = false, features = ["simd"] }
 
-# [patch.crates-io]
-# firefly-hal = { path = "../firefly-hal" }
+[patch.crates-io]
+firefly-hal = { path = "../firefly-hal" }
+firefly-audio = { path = "../firefly-audio" }
