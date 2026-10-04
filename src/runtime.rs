@@ -283,7 +283,7 @@ where
 
         // TODO: continue execution even if an update fails.
         let res = self.call_callback("update", self.update, FUEL_UPDATE);
-        audio::release_internal();
+        audio::release();
         let fuel_update = res?;
         if let Some(stats) = &mut self.stats {
             stats.update_fuel.add(fuel_update);
