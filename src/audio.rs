@@ -9,9 +9,10 @@ static mut INTERNAL: bool = true;
 static mut MANAGER: Option<Manager> = None;
 
 /// Init a new clean audio manager.
-pub(crate) fn reset() {
+pub(crate) fn reset(volume: u8) {
+    let volume = volume as f32 / 255.;
     critical_section::with(|_cs| unsafe {
-        MANAGER.replace(Manager::new());
+        MANAGER.replace(Manager::new(volume));
         INTERNAL = false;
     });
 }

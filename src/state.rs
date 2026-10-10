@@ -134,7 +134,6 @@ impl<'a> State<'a> {
         }
 
         let start = device.now().us();
-        audio::reset();
         let seed = match &net_handler {
             NetHandler::FrameSyncer(syncer) => syncer.shared_seed,
             _ => 0,
@@ -142,6 +141,12 @@ impl<'a> State<'a> {
         let mut device = device;
         let maybe_battery = Battery::new(&mut device);
         let settings = load_settings(&mut device).unwrap_or_default();
+        let volume = if device.has_headphones() {
+            settings.headphones_volume
+        } else {
+            settings.speakers_volume
+        };
+        audio::reset(volume);
         let mut menu = Menu::new();
         if !matches!(net_handler, NetHandler::FrameSyncer(_)) {
             menu.set_actor(true);

@@ -1,3 +1,4 @@
+use crate::audio;
 use crate::battery::Battery;
 use crate::color::FromRGB;
 use crate::net::FrameSyncer;
@@ -224,6 +225,9 @@ impl Menu {
         self.flags |= MASK_ACTIVE;
         self.set_rendered(false);
         self.set_dirty(true);
+        // Get audio manager to acquire the internal lock
+        // and pause audio playback.
+        _ = audio::get();
     }
 
     fn handle_pad(&mut self, input: &InputState) {
