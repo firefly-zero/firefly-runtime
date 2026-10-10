@@ -303,8 +303,6 @@ impl Menu {
         if !self.rendered() {
             self.draw_bg(display)?;
         }
-        self.set_rendered(true);
-        self.set_dirty(false);
 
         if self.actor() {
             self.draw_items(display)?;
@@ -312,8 +310,11 @@ impl Menu {
         } else {
             self.draw_paused(display)?;
         }
+        self.draw_battery(display, battery)?;
 
-        self.draw_battery(display, battery)
+        self.set_rendered(true);
+        self.set_dirty(false);
+        Ok(())
     }
 
     pub fn draw_bg<D, C, E>(&self, display: &mut D) -> Result<(), E>
@@ -498,7 +499,7 @@ impl Menu {
         let Some(battery) = battery else {
             return Ok(());
         };
-        if !battery.changed {
+        if !battery.changed && !self.dirty() {
             return Ok(());
         }
         battery.changed = false;
