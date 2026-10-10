@@ -394,6 +394,7 @@ impl<'a> State<'a> {
             if let Some(action) = action {
                 match action {
                     MenuItem::Custom(index, _) => return Some(*index),
+                    MenuItem::Volume => self.set_volume(),
                     MenuItem::ScreenShot => self.take_screenshot(),
                     MenuItem::Restart => self.set_next(NextApp::ID(self.id.clone())),
                     MenuItem::Quit => self.set_next(NextApp::Launcher),
@@ -402,6 +403,18 @@ impl<'a> State<'a> {
             };
         }
         None
+    }
+
+    fn set_volume(&mut self) {
+        let volume = if self.settings.speakers_volume > 250 {
+            0
+        } else {
+            self.settings.speakers_volume.saturating_add(64)
+        };
+        self.settings.speakers_volume = volume;
+        let audio_manager = audio::get();
+        audio_manager.set_volume(volume as f32 / 255.);
+        self.menu.activate();
     }
 
     /// Convert the current time from u32 to u64.

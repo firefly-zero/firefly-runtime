@@ -19,6 +19,7 @@ const OFFSET: i32 = 20;
 
 pub(crate) enum MenuItem {
     Custom(u8, alloc::string::String),
+    Volume,
     ScreenShot,
     Restart,
     Quit,
@@ -29,6 +30,7 @@ impl MenuItem {
     fn as_str(&self) -> &str {
         match self {
             Self::Custom(_, t) => t,
+            Self::Volume => "volume",
             Self::ScreenShot => "take screenshot",
             Self::Restart => "restart app",
             Self::Quit => "exit app",
@@ -73,7 +75,7 @@ pub(crate) struct Menu {
     app_items: alloc::vec::Vec<MenuItem>,
 
     /// System menu items.
-    sys_items: heapless::Vec<MenuItem, 3>,
+    sys_items: heapless::Vec<MenuItem, 4>,
 
     /// For how many frames the menu was open.
     pub frames: u32,
@@ -95,8 +97,9 @@ pub(crate) struct Menu {
 
 impl Menu {
     pub fn new() -> Self {
-        let mut items = heapless::Vec::<_, 3>::new();
+        let mut items = heapless::Vec::<_, 4>::new();
         unsafe {
+            items.push_unchecked(MenuItem::Volume);
             items.push_unchecked(MenuItem::ScreenShot);
             items.push_unchecked(MenuItem::Restart);
             items.push_unchecked(MenuItem::Quit);
@@ -291,6 +294,7 @@ impl Menu {
         &mut self,
         display: &mut D,
         battery: &mut Option<Battery>,
+        volume: u8,
     ) -> Result<(), E>
     where
         D: DrawTarget<Color = C, Error = E>,
@@ -307,6 +311,7 @@ impl Menu {
         if self.actor() {
             self.draw_items(display)?;
             self.draw_cursor(display, C::PRIMARY, self.selected)?;
+            self.draw_volume(display, volume)?;
         } else {
             self.draw_paused(display)?;
         }
@@ -480,6 +485,26 @@ impl Menu {
             display.fill_solid(&Rectangle::new(top_left, size), color)?;
         }
 
+        Ok(())
+    }
+
+    pub fn draw_volume<D, C, E>(&self, display: &mut D, volume: u8) -> Result<(), E>
+    where
+        D: DrawTarget<Color = C, Error = E>,
+        C: RgbColor + FromRGB,
+    {
+        let top_left = Point::new(194, 24);
+
+        let size = Size::new(16, 8);
+        display.fill_solid(&Rectangle::new(top_left, size), C::MUTED)?;
+
+        let ratio = match volume {
+            0 => 0,
+            255 => 16,
+            _ => volume / 16,
+        };
+        let size = Size::new(u32::from(ratio), 8);
+        display.fill_solid(&Rectangle::new(top_left, size), C::ACCENT)?;
         Ok(())
     }
 
