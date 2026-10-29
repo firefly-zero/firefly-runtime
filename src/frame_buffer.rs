@@ -268,6 +268,25 @@ impl FrameBuffer {
         debug_assert!(luma < 16);
         *byte = (luma << shift) | (*byte & mask);
     }
+
+    pub(crate) fn get_pixel(&self, point: Point) -> Option<u8> {
+        let x = point.x as usize;
+        let y = point.y as usize;
+        if y >= HEIGHT || x >= WIDTH {
+            return None; // the pixel is out of bounds
+        }
+        let pixel_index = y * WIDTH + x;
+        let byte_index = pixel_index / PPB;
+        // Safety: if y within WIDTH and HEIGHT (which we checked),
+        // the byte_index is is within the buffer.
+        let byte = unsafe { self.data.get_unchecked(byte_index) };
+        let c = if pixel_index.is_multiple_of(2) {
+            byte >> 4
+        } else {
+            byte & 0b1111
+        };
+        Some(c)
+    }
 }
 
 struct ColorIter<'a, C>

@@ -68,6 +68,25 @@ pub(crate) fn draw_point(mut caller: C, x: i32, y: i32, color: i32) {
     };
 }
 
+/// Get the pixel color at the given point.
+pub(crate) fn get_point(mut caller: C, x: i32, y: i32) -> i32 {
+    let state = caller.data_mut();
+    state.called = "graphics.get_point";
+    let point = Point::new(x, y);
+    let luma = if let Some(canvas) = &state.canvas {
+        let target = canvas.clone().as_target(&mut caller);
+        target.get_pixel(point)
+    } else {
+        state.frame.dirty = true;
+        state.frame.get_pixel(point)
+    };
+    if let Some(c) = luma {
+        i32::from(c + 1)
+    } else {
+        0
+    }
+}
+
 /// Draw a line between two points.
 pub(crate) fn draw_line(
     mut caller: C,
@@ -471,7 +490,7 @@ pub(crate) fn set_canvas(mut caller: C, ptr: u32, len: u32) {
         return;
     }
 
-    let width = u16::from_le_bytes([image_bytes[1], image_bytes[2]]) as u32;
+    let width = u16::from_le_bytes([image_bytes[1], image_bytes[2]]);
     let image_bytes = &image_bytes[HEADER as usize..];
     if !(image_bytes.len() * 2).is_multiple_of(width as usize) {
         state.log_error(HostError::InvalidWidth);

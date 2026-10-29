@@ -16,7 +16,7 @@ pub struct Canvas {
 }
 
 impl Canvas {
-    pub fn new(start: u32, size: u32, width: u32) -> Self {
+    pub fn new(start: u32, size: u32, width: u16) -> Self {
         Self {
             start: start as usize,
             end: (start + size) as usize,
@@ -91,5 +91,24 @@ impl CanvasBuffer<'_> {
         let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
         debug_assert!(luma < 16);
         *byte = (luma << shift) | (*byte & mask);
+    }
+
+    pub(crate) fn get_pixel(&self, point: Point) -> Option<u8> {
+        let x = point.x as usize;
+        let y = point.y as usize;
+        if y >= self.height || x >= self.width {
+            return None; // the pixel is out of bounds
+        }
+        let pixel_index = y * self.width + x;
+        let byte_index = pixel_index / PPB;
+        // Safety: if y within self.width and self.height (which we checked),
+        // the byte_index is is within the buffer.
+        let byte = unsafe { self.data.get_unchecked(byte_index) };
+        let c = if pixel_index.is_multiple_of(2) {
+            byte >> 4
+        } else {
+            byte & 0b1111
+        };
+        Some(c)
     }
 }

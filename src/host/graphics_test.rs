@@ -47,6 +47,53 @@ fn test_clear_screen() {
 }
 
 #[test]
+fn test_draw_point() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_point);
+
+    let inputs = wrap_input(&[2, 1, R]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "..R...", // y=1
+            "......", // y=2
+        ],
+    );
+}
+
+#[test]
+fn test_get_point() {
+    let mut store = make_store();
+    let get_func = wasmi::Func::wrap(&mut store, get_point);
+    let draw_func = wasmi::Func::wrap(&mut store, draw_point);
+
+    {
+        let inputs = wrap_input(&[2, 1]);
+        let mut outputs = wrap_input(&[0]);
+        get_func.call(&mut store, &inputs, &mut outputs).unwrap();
+        assert_eq!(outputs.len(), 1);
+        let res = outputs[0].i32().unwrap();
+        assert_eq!(res, 1);
+    }
+
+    let inputs = wrap_input(&[2, 1, R]);
+    draw_func.call(&mut store, &inputs, &mut []).unwrap();
+
+    {
+        let inputs = wrap_input(&[2, 1]);
+        let mut outputs = wrap_input(&[0]);
+        get_func.call(&mut store, &inputs, &mut outputs).unwrap();
+        assert_eq!(outputs.len(), 1);
+        let res = outputs[0].i32().unwrap();
+        assert_eq!(res, R);
+    }
+}
+
+#[test]
 fn test_draw_line() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_line);
