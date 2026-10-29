@@ -58,14 +58,13 @@ pub(crate) fn draw_point(mut caller: C, x: i32, y: i32, color: i32) {
         return;
     }
     let point = Point::new(x, y);
+    let luma = color as u8 - 1;
     if let Some(canvas) = &state.canvas {
-        let color = Gray4::new(color as u8 - 1);
-        let pixel = Pixel(point, color);
         let mut target = canvas.clone().as_target(&mut caller);
-        never_fails(pixel.draw(&mut target));
+        target.set_pixel(point, luma);
     } else {
         state.frame.dirty = true;
-        state.frame.set_pixel(point, color as u8 - 1);
+        state.frame.set_pixel(point, luma);
     };
 }
 

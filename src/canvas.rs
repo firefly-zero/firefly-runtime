@@ -67,15 +67,16 @@ impl DrawTarget for CanvasBuffer<'_> {
         I: IntoIterator<Item = Pixel<Self::Color>>,
     {
         for pixel in pixels {
-            self.set_pixel(pixel)
+            let Pixel(point, color) = pixel;
+            let luma = color.into_storage();
+            self.set_pixel(point, luma);
         }
         Ok(())
     }
 }
 
 impl CanvasBuffer<'_> {
-    fn set_pixel(&mut self, pixel: Pixel<Gray4>) {
-        let Pixel(point, color) = pixel;
+    pub(crate) fn set_pixel(&mut self, point: Point, luma: u8) {
         let x = point.x as usize;
         let y = point.y as usize;
         if y >= self.height || x >= self.width {
@@ -83,15 +84,12 @@ impl CanvasBuffer<'_> {
         }
         let pixel_index = y * self.width + x;
         let byte_index = pixel_index / PPB;
-        let shift = if pixel_index.is_multiple_of(2) { 0 } else { 4 };
+        let shift = if pixel_index.is_multiple_of(2) { 4 } else { 0 };
         let mask = !(0b1111 << shift);
-        let byte = self.data[byte_index];
-        let color = color.into_storage();
-        debug_assert!(color < 16);
-        let new_byte = (color << shift) | (byte & mask);
-        if new_byte == byte {
-            return;
-        }
-        self.data[byte_index] = new_byte
+        // Safety: if y within self.width and self.height (which we checked),
+        // the byte_index is is within the buffer.
+        let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
+        debug_assert!(luma < 16);
+        *byte = (luma << shift) | (*byte & mask);
     }
 }
