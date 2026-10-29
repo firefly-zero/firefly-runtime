@@ -493,7 +493,11 @@ impl Menu {
         D: DrawTarget<Color = C, Error = E>,
         C: RgbColor + FromRGB,
     {
-        let top_left = Point::new(194, 24);
+        let mut y = 24;
+        if !self.app_items.is_empty() {
+            y += self.app_items.len() as i32 * LINE_HEIGHT + 4;
+        }
+        let top_left = Point::new(194, y);
 
         let size = Size::new(16, 8);
         display.fill_solid(&Rectangle::new(top_left, size), C::MUTED)?;

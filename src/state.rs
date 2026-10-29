@@ -406,10 +406,11 @@ impl<'a> State<'a> {
     }
 
     fn set_volume(&mut self) {
-        let volume = if self.settings.speakers_volume > 250 {
+        let volume = self.settings.speakers_volume;
+        let volume = if volume > 250 {
             0
         } else {
-            self.settings.speakers_volume.saturating_add(64)
+            volume.saturating_add(64)
         };
         self.settings.speakers_volume = volume;
         let audio_manager = audio::get();
