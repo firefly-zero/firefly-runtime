@@ -137,6 +137,68 @@ impl FrameBuffer {
             *byte = (color << shift) | (*byte & mask);
         }
     }
+
+    /// Draw the framebuffer on an RGB screen.
+    pub fn draw<D, C, E>(&mut self, target: &mut D) -> Result<(), E>
+    where
+        C: RgbColor + FromRGB,
+        D: DrawTarget<Color = C, Error = E>,
+    {
+        if !self.dirty {
+            return Ok(());
+        }
+        self.dirty = false;
+        let colors = ColorIter {
+            data: &self.data,
+            palette: &self.palette,
+            index: 0,
+            color: PhantomData,
+        };
+        let size = Size::new(WIDTH as u32, HEIGHT as u32);
+        let area = Rectangle::new(Point::zero(), size);
+        target.fill_contiguous(&area, colors)
+    }
+
+    /// Set color of a single pixel at the given coordinates.
+    ///
+    /// Does NOT mark the buffer as dirty. This must be done by the caller.
+    pub(crate) fn set_pixel(&mut self, point: Point, luma: u8) {
+        // Negative values will be wrapped and filtered out
+        // because any wrapped value is bigger than WIDTH/HEIGHT.
+        let x = point.x as usize;
+        let y = point.y as usize;
+        if y >= HEIGHT || x >= WIDTH {
+            return; // the pixel is out of bounds
+        }
+        let pixel_index = y * WIDTH + x;
+        let byte_index = pixel_index / PPB;
+        let shift = if pixel_index.is_multiple_of(2) { 4 } else { 0 };
+        let mask = !(0b1111 << shift);
+        // Safety: if y within WIDTH and HEIGHT (which we checked),
+        // the byte_index is is within the buffer.
+        let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
+        debug_assert!(luma < 16);
+        *byte = (luma << shift) | (*byte & mask);
+    }
+
+    pub(crate) fn get_pixel(&self, point: Point) -> Option<u8> {
+        let x = point.x as usize;
+        let y = point.y as usize;
+        if y >= HEIGHT || x >= WIDTH {
+            return None; // the pixel is out of bounds
+        }
+        let pixel_index = y * WIDTH + x;
+        let byte_index = pixel_index / PPB;
+        // Safety: if y within WIDTH and HEIGHT (which we checked),
+        // the byte_index is is within the buffer.
+        let byte = unsafe { self.data.get_unchecked(byte_index) };
+        let c = if pixel_index.is_multiple_of(2) {
+            byte >> 4
+        } else {
+            byte & 0b1111
+        };
+        Some(c)
+    }
 }
 
 /// Required by the [DrawTarget] trait.
@@ -222,70 +284,6 @@ impl DrawTarget for FrameBuffer {
             .zip(colors)
             .map(|(pos, color)| Pixel(pos, color));
         self.draw_iter(pixels)
-    }
-}
-
-impl FrameBuffer {
-    /// Draw the framebuffer on an RGB screen.
-    pub fn draw<D, C, E>(&mut self, target: &mut D) -> Result<(), E>
-    where
-        C: RgbColor + FromRGB,
-        D: DrawTarget<Color = C, Error = E>,
-    {
-        if !self.dirty {
-            return Ok(());
-        }
-        self.dirty = false;
-        let colors = ColorIter {
-            data: &self.data,
-            palette: &self.palette,
-            index: 0,
-            color: PhantomData,
-        };
-        let size = Size::new(WIDTH as u32, HEIGHT as u32);
-        let area = Rectangle::new(Point::zero(), size);
-        target.fill_contiguous(&area, colors)
-    }
-
-    /// Set color of a single pixel at the given coordinates.
-    ///
-    /// Does NOT mark the buffer as dirty. This must be done by the caller.
-    pub(crate) fn set_pixel(&mut self, point: Point, luma: u8) {
-        // Negative values will be wrapped and filtered out
-        // because any wrapped value is bigger than WIDTH/HEIGHT.
-        let x = point.x as usize;
-        let y = point.y as usize;
-        if y >= HEIGHT || x >= WIDTH {
-            return; // the pixel is out of bounds
-        }
-        let pixel_index = y * WIDTH + x;
-        let byte_index = pixel_index / PPB;
-        let shift = if pixel_index.is_multiple_of(2) { 4 } else { 0 };
-        let mask = !(0b1111 << shift);
-        // Safety: if y within WIDTH and HEIGHT (which we checked),
-        // the byte_index is is within the buffer.
-        let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
-        debug_assert!(luma < 16);
-        *byte = (luma << shift) | (*byte & mask);
-    }
-
-    pub(crate) fn get_pixel(&self, point: Point) -> Option<u8> {
-        let x = point.x as usize;
-        let y = point.y as usize;
-        if y >= HEIGHT || x >= WIDTH {
-            return None; // the pixel is out of bounds
-        }
-        let pixel_index = y * WIDTH + x;
-        let byte_index = pixel_index / PPB;
-        // Safety: if y within WIDTH and HEIGHT (which we checked),
-        // the byte_index is is within the buffer.
-        let byte = unsafe { self.data.get_unchecked(byte_index) };
-        let c = if pixel_index.is_multiple_of(2) {
-            byte >> 4
-        } else {
-            byte & 0b1111
-        };
-        Some(c)
     }
 }
 

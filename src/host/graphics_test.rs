@@ -66,6 +66,25 @@ fn test_draw_point() {
 }
 
 #[test]
+fn test_draw_point_2() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_point);
+
+    let inputs = wrap_input(&[3, 1, R]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "...R..", // y=1
+            "......", // y=2
+        ],
+    );
+}
+
+#[test]
 fn test_get_point() {
     let mut store = make_store();
     let get_func = wasmi::Func::wrap(&mut store, get_point);

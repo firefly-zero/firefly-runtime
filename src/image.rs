@@ -5,6 +5,7 @@ use embedded_graphics::primitives::Rectangle;
 const BPP: usize = 4;
 const PPB: usize = 2;
 
+/// Image from guest memory represented as a source of blitting image onto a frame buffer.
 pub struct ParsedImage<'a> {
     pub bytes: &'a [u8],
     pub width: u32,
