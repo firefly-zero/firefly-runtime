@@ -92,6 +92,8 @@ fn select_graphics_external<'a>(
         "set_canvas" => Func::wrap(ctx, graphics::set_canvas),
         "unset_canvas" => Func::wrap(ctx, graphics::unset_canvas),
         "get_point" => Func::wrap(ctx, graphics::get_point),
+        "flip_x" => Func::wrap(ctx, graphics::flip_x),
+        "flip_y" => Func::wrap(ctx, graphics::flip_y),
 
         // Primitives (shapes).
         "draw_point" => Func::wrap(ctx, graphics::draw_point),

@@ -111,4 +111,30 @@ impl CanvasBuffer<'_> {
         };
         Some(c)
     }
+
+    pub(crate) fn flip_x(&mut self) {
+        let byte_w = self.width / 2;
+        for y in 0..self.height {
+            let line_offset = y * byte_w;
+            let next_line_offset = line_offset + byte_w;
+            for bx in 0..byte_w / 2 {
+                let left_idx = line_offset + bx;
+                let right_idx = next_line_offset - bx - 1;
+                let left = self.data[left_idx];
+                self.data[left_idx] = self.data[right_idx].rotate_left(4);
+                self.data[right_idx] = left.rotate_left(4);
+            }
+        }
+    }
+
+    pub(crate) fn flip_y(&mut self) {
+        let byte_w = self.width / 2;
+        for y in 0..self.height / 2 {
+            let top_offset = y * byte_w;
+            let bottom_offset = self.data.len() - top_offset - byte_w;
+            for bx in 0..byte_w {
+                self.data.swap(top_offset + bx, bottom_offset + bx);
+            }
+        }
+    }
 }

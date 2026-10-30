@@ -32,6 +32,28 @@ pub(crate) fn clear_screen(mut caller: C, color: i32) {
     never_fails(err);
 }
 
+pub(crate) fn flip_x(mut caller: C) {
+    let state = caller.data_mut();
+    state.called = "graphics.flip_x";
+    if let Some(canvas) = &state.canvas {
+        let mut target = canvas.clone().as_target(&mut caller);
+        target.flip_x();
+    } else {
+        state.frame.flip_x();
+    }
+}
+
+pub(crate) fn flip_y(mut caller: C) {
+    let state = caller.data_mut();
+    state.called = "graphics.flip_y";
+    if let Some(canvas) = &state.canvas {
+        let mut target = canvas.clone().as_target(&mut caller);
+        target.flip_y();
+    } else {
+        state.frame.flip_y();
+    }
+}
+
 /// Set the given palette color.
 pub(crate) fn set_color(mut caller: C, index: u32, r: u32, g: u32, b: u32) {
     let state = caller.data_mut();
