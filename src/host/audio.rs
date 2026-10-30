@@ -1,7 +1,6 @@
 use super::fs::get_file_name;
 use crate::audio;
 use crate::error::HostError;
-use crate::state::NetHandler;
 use crate::state::State;
 use alloc::boxed::Box;
 use firefly_audio::*;
@@ -100,34 +99,6 @@ pub(crate) fn add_mix(mut caller: C, parent_id: u32) -> u32 {
     state.called = "audio.add_mix";
     let proc = Mix::new();
     add_node(state, parent_id, Box::new(proc))
-}
-
-/// Add Peer meta-filter as a child for the given node.
-///
-/// Only plays audio if the peer matches the device.
-/// Useful for playing audio only on one device in multiplayer.
-pub(crate) fn add_peer(mut caller: C, parent_id: u32, peer_id: u32) -> u32 {
-    let state = caller.data_mut();
-    state.called = "audio.add_peer";
-    let me = get_me(state);
-    if peer_id == me {
-        add_node(state, parent_id, Box::new(Mix::new()))
-    } else {
-        add_node(state, parent_id, Box::new(Zero::new()))
-    }
-}
-
-fn get_me(state: &mut Box<State>) -> u32 {
-    let handler = state.net_handler.get_mut();
-    let NetHandler::FrameSyncer(syncer) = handler else {
-        return 0;
-    };
-    for (peer, i) in syncer.peers.iter().zip(0u32..) {
-        if peer.addr.is_none() {
-            return i;
-        }
-    }
-    unreachable!("list of peers has no local device")
 }
 
 /// Add AllForOne filter as a child for the given node.

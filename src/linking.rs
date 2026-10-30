@@ -141,7 +141,6 @@ fn select_audio_external<'a>(
         "add_mute" => Func::wrap(ctx, audio::add_mute),
         "add_pan" => Func::wrap(ctx, audio::add_pan),
         "add_pause" => Func::wrap(ctx, audio::add_pause),
-        "add_peer" => Func::wrap(ctx, audio::add_peer),
         "add_swap" => Func::wrap(ctx, audio::add_swap),
         "add_take_left" => Func::wrap(ctx, audio::add_take_left),
         "add_take_right" => Func::wrap(ctx, audio::add_take_right),
