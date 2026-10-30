@@ -201,11 +201,11 @@ impl FrameBuffer {
     }
 
     pub(crate) fn flip_x(&mut self) {
-        let byte_w = WIDTH / 2;
+        const BYTE_W: usize = WIDTH / 2;
         for y in 0..HEIGHT {
-            let line_offset = y * byte_w;
-            let next_line_offset = line_offset + byte_w;
-            for bx in 0..byte_w / 2 {
+            let line_offset = y * BYTE_W;
+            let next_line_offset = line_offset + BYTE_W;
+            for bx in 0..BYTE_W / 2 {
                 let left_idx = line_offset + bx;
                 let right_idx = next_line_offset - bx - 1;
                 let left = self.data[left_idx];
@@ -216,11 +216,11 @@ impl FrameBuffer {
     }
 
     pub(crate) fn flip_y(&mut self) {
-        let byte_w = WIDTH / 2;
+        const BYTE_W: usize = WIDTH / 2;
         for y in 0..HEIGHT / 2 {
-            let top_offset = y * byte_w;
-            let bottom_offset = BUFFER_SIZE - top_offset - byte_w;
-            for bx in 0..byte_w {
+            let top_offset = y * BYTE_W;
+            let bottom_offset = BUFFER_SIZE - top_offset - BYTE_W;
+            for bx in 0..BYTE_W {
                 self.data.swap(top_offset + bx, bottom_offset + bx);
             }
         }

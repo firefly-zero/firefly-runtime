@@ -113,6 +113,50 @@ fn test_get_point() {
 }
 
 #[test]
+fn test_flip_x() {
+    let mut store = make_store();
+    let draw_func = wasmi::Func::wrap(&mut store, draw_point);
+    let flip_func = wasmi::Func::wrap(&mut store, flip_x);
+
+    let inputs = wrap_input(&[237, 1, R]);
+    draw_func.call(&mut store, &inputs, &mut []).unwrap();
+
+    flip_func.call(&mut store, &[], &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "..R...", // y=1
+            "......", // y=2
+        ],
+    );
+}
+
+#[test]
+fn test_flip_y() {
+    let mut store = make_store();
+    let draw_func = wasmi::Func::wrap(&mut store, draw_point);
+    let flip_func = wasmi::Func::wrap(&mut store, flip_y);
+
+    let inputs = wrap_input(&[2, 158, R]);
+    draw_func.call(&mut store, &inputs, &mut []).unwrap();
+
+    flip_func.call(&mut store, &[], &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "..R...", // y=1
+            "......", // y=2
+        ],
+    );
+}
+
+#[test]
 fn test_draw_line() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_line);
