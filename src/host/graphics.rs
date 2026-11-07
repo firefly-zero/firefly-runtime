@@ -490,6 +490,7 @@ pub(crate) fn draw_text(
         return;
     }
 
+    // Parse font header.
     let encoding_index = font_bytes[1];
     let char_width = i32::from(font_bytes[2]);
     let char_height = i32::from(font_bytes[3]);
@@ -497,35 +498,35 @@ pub(crate) fn draw_text(
         state.log_error("unknown mapping");
         return;
     };
-
-    let mut base_x: i32 = x;
-    let mut base_y: i32 = y;
-    let char_size = (char_width as usize * char_height as usize).div_ceil(8) + 3;
     if color == 0 {
         state.log_error(HostError::NoneColor);
         return;
     }
     let luma = color as u8 - 1;
+
+    let mut cursor_x: i32 = x;
+    let mut cursor_y: i32 = y - char_height + 1;
+    let char_size = (char_width as usize * char_height as usize).div_ceil(8) + 3;
     for ch in text.chars() {
         if ch == '\n' {
-            base_y += char_height;
-            base_x = x;
+            cursor_y += char_height;
+            cursor_x = x;
             continue;
         }
         let idx = glyph_mapping.index(ch);
         let char_start = 4 + idx * char_size;
         let char_bytes = &font_bytes[char_start..char_start + char_size];
         if ch != ' ' {
-            let left = base_x + i32::from(char_bytes[0] as i8);
-            let top = base_y - i32::from(char_bytes[1] as i8);
+            let char_left = cursor_x + i32::from(char_bytes[0] as i8);
             let mut sx = 0;
-            let mut sy = 0;
+            let mut sy = cursor_y - i32::from(char_bytes[1] as i8);
             for byte in &char_bytes[3..] {
                 let mut byte = *byte;
                 for _ in 0..8 {
                     byte = byte.rotate_left(1);
                     if byte & 1 != 0 {
-                        state.frame.set_pixel(Point::new(left + sx, top + sy), luma);
+                        let p = Point::new(char_left + sx, sy);
+                        state.frame.set_pixel(p, luma);
                     }
                     sx += 1;
                     if sx == char_width {
@@ -535,7 +536,7 @@ pub(crate) fn draw_text(
                 }
             }
         }
-        base_x += i32::from(char_bytes[2]);
+        cursor_x += i32::from(char_bytes[2]);
     }
 }
 
