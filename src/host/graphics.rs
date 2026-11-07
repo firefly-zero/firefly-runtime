@@ -445,10 +445,7 @@ pub(crate) fn draw_text(
     let font_ptr = font_ptr as usize;
     let font_len = font_len as usize;
 
-    // The slices must be within memory.
-    // There also used to be a check that the slices don't intersect
-    // but on practice if font is statically allocated, LLVM can optimize
-    // the data section and find the text bytes within the font.
+    // Read raw font and text from memory;
     let Some(text_bytes) = &data.get(text_ptr..(text_ptr + text_len)) else {
         state.log_error(HostError::OomPointer);
         return;
@@ -461,27 +458,85 @@ pub(crate) fn draw_text(
         state.log_error(HostError::OomPointer);
         return;
     };
-    let font = match parse_font(font_bytes) {
-        Ok(font) => font,
-        Err(err) => {
-            state.log_error(err);
-            return;
-        }
-    };
-    let Some(color) = parse_color(color) else {
-        state.log_error(HostError::NoneColor);
-        return;
-    };
-    let style = MonoTextStyle::new(&font, color);
-    let point = Point::new(x, y);
     let Ok(text) = core::str::from_utf8(text_bytes) else {
         let msg = "the given text is not valid UTF-8";
         state.log_error(msg);
         return;
     };
-    let text = Text::new(text, point, style);
-    // TODO: support canvas
-    never_fails(text.draw(&mut state.frame));
+
+    // Support legacy mono font (v1).
+    if font_bytes[0] == 0x11 {
+        let font = match parse_font_v1(font_bytes) {
+            Ok(font) => font,
+            Err(err) => {
+                state.log_error(err);
+                return;
+            }
+        };
+        let Some(color) = parse_color(color) else {
+            state.log_error(HostError::NoneColor);
+            return;
+        };
+        let style = MonoTextStyle::new(&font, color);
+        let point = Point::new(x, y);
+        let text = Text::new(text, point, style);
+        // TODO: support canvas
+        never_fails(text.draw(&mut state.frame));
+        return;
+    }
+
+    if font_bytes[0] != 0x12 {
+        state.log_error("unsupported font format");
+        return;
+    }
+
+    let encoding_index = font_bytes[1];
+    let char_width = i32::from(font_bytes[2]);
+    let char_height = i32::from(font_bytes[3]);
+    let Some(glyph_mapping) = get_glyph_mapping(encoding_index) else {
+        state.log_error("unknown mapping");
+        return;
+    };
+
+    let mut base_x: i32 = x;
+    let mut base_y: i32 = y;
+    let char_size = (char_width as usize * char_height as usize).div_ceil(8) + 3;
+    if color == 0 {
+        state.log_error(HostError::NoneColor);
+        return;
+    }
+    let luma = color as u8 - 1;
+    for ch in text.chars() {
+        if ch == '\n' {
+            base_y += char_height;
+            base_x = x;
+            continue;
+        }
+        let idx = glyph_mapping.index(ch);
+        let char_start = 4 + idx * char_size;
+        let char_bytes = &font_bytes[char_start..char_start + char_size];
+        if ch != ' ' {
+            let left = base_x + i32::from(char_bytes[0] as i8);
+            let top = base_y - i32::from(char_bytes[1] as i8);
+            let mut sx = 0;
+            let mut sy = 0;
+            for byte in &char_bytes[3..] {
+                let mut byte = *byte;
+                for _ in 0..8 {
+                    byte = byte.rotate_left(1);
+                    if byte & 1 != 0 {
+                        state.frame.set_pixel(Point::new(left + sx, top + sy), luma);
+                    }
+                    sx += 1;
+                    if sx == char_width {
+                        sy += 1;
+                        sx = 0;
+                    }
+                }
+            }
+        }
+        base_x += i32::from(char_bytes[2]);
+    }
 }
 
 /// Set an image localted in the guest memory as the draw target for all graphic operations.
@@ -897,7 +952,7 @@ fn get_shape_style(fill_color: u32, stroke_color: u32, stroke_width: u32) -> Pri
 }
 
 /// Load mono font from the firefly format.
-fn parse_font(bytes: &'_ [u8]) -> Result<MonoFont<'_>, &'static str> {
+fn parse_font_v1(bytes: &'_ [u8]) -> Result<MonoFont<'_>, &'static str> {
     if bytes.len() < 10 {
         let msg = if bytes.is_empty() {
             "font is empty: make sure you load it with a correct name"
@@ -915,7 +970,23 @@ fn parse_font(bytes: &'_ [u8]) -> Result<MonoFont<'_>, &'static str> {
     let image_width = u32::from(read_u16(bytes, 5));
     let image = ImageRaw::new(&bytes[7..], image_width);
 
-    let glyph_mapping: &dyn mapping::GlyphMapping = match encoding_index {
+    let Some(glyph_mapping) = get_glyph_mapping(encoding_index) else {
+        return Err("unknown mapping");
+    };
+    let font = MonoFont {
+        image,
+        character_size: Size::new(char_width, char_height),
+        character_spacing: 0,
+        baseline,
+        strikethrough: DecorationDimensions::new(char_height / 2, 1),
+        underline: DecorationDimensions::new(baseline + 2, 1),
+        glyph_mapping,
+    };
+    Ok(font)
+}
+
+fn get_glyph_mapping(encoding_index: u8) -> Option<&'static dyn mapping::GlyphMapping> {
+    Some(match encoding_index {
         0x0 => &mapping::ASCII,       // ASCII
         0x1 => &mapping::ISO_8859_1,  // Latin-1, Western European.
         0x2 => &mapping::ISO_8859_2,  // Latin-2, Central European.
@@ -930,18 +1001,8 @@ fn parse_font(bytes: &'_ [u8]) -> Result<MonoFont<'_>, &'static str> {
         0xb => &mapping::ISO_8859_5,  // Latin/Cyrillic.
         0xc => &mapping::ISO_8859_7,  // Latin/Greek.
         0xd => &mapping::JIS_X0201,   // Japanese katakana (halfwidth).
-        _ => return Err("unknown mapping"),
-    };
-    let font = MonoFont {
-        image,
-        character_size: Size::new(char_width, char_height),
-        character_spacing: 0,
-        baseline,
-        strikethrough: DecorationDimensions::new(char_height / 2, 1),
-        underline: DecorationDimensions::new(baseline + 2, 1),
-        glyph_mapping,
-    };
-    Ok(font)
+        _ => return None,
+    })
 }
 
 /// Read little-endian u8 from the slice at the given index.
