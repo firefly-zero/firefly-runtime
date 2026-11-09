@@ -141,6 +141,12 @@ pub(crate) fn draw_line(
     let start = Point::new(p1_x, p1_y);
     let end = Point::new(p2_x, p2_y);
     let line = Line::new(start, end);
+
+    if stroke_width == 1 && state.canvas.is_none() {
+        draw_line1(&mut state.frame, color, line);
+        return;
+    }
+
     let style = PrimitiveStyle::with_stroke(color, stroke_width);
     let err = if let Some(canvas) = &state.canvas {
         let mut target = canvas.clone().as_target(&mut caller);
@@ -149,6 +155,40 @@ pub(crate) fn draw_line(
         line.draw_styled(&style, &mut state.frame)
     };
     never_fails(err);
+}
+
+fn draw_line1(frame: &mut crate::FrameBuffer, color: Gray4, line: Line) {
+    let delta = line.end - line.start;
+    let direction = Point::new(
+        if delta.x >= 0 { 1 } else { -1 },
+        if delta.y >= 0 { 1 } else { -1 },
+    );
+    let delta = delta.abs();
+    let (delta, position_step) = if delta.y >= delta.x {
+        ((delta.y, delta.x), (direction.y_axis(), direction.x_axis()))
+    } else {
+        ((delta.x, delta.y), (direction.x_axis(), direction.y_axis()))
+    };
+    let error_threshold = delta.0;
+    let error_step = (2 * delta.1, 2 * delta.0);
+
+    let length_delta = (line.end - line.start).abs();
+    let length = length_delta.x.max(length_delta.y) as u32 + 1;
+
+    let luma = color.luma();
+    let mut point = line.start;
+    let mut error = 0;
+    for _ in 0..length {
+        if error > error_threshold {
+            point += position_step.1;
+            error -= error_step.1;
+        }
+
+        frame.set_pixel(point, luma);
+
+        point += position_step.0;
+        error += error_step.0;
+    }
 }
 
 /// Draw a rectangle.

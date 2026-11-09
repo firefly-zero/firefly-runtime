@@ -178,6 +178,48 @@ fn test_draw_line() {
 }
 
 #[test]
+fn test_draw_line_2() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_line);
+
+    let inputs = wrap_input(&[2, 1, 3, 4, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "..R...", // y=1
+            "..R...", // y=2
+            "...R..", // y=3
+            "...R..", // y=4
+            "......", // y=4
+        ],
+    );
+}
+
+#[test]
+fn test_draw_line_3() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_line);
+
+    let inputs = wrap_input(&[2, 1, 5, 2, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "........", // y=0
+            "..RR....", // y=1
+            "....RR..", // y=2
+            "........", // y=3
+        ],
+    );
+}
+
+#[test]
 fn test_draw_hline() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_line);
