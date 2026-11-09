@@ -172,13 +172,14 @@ impl FrameBuffer {
         }
         let pixel_index = y * WIDTH + x;
         let byte_index = pixel_index / PPB;
-        let shift = if pixel_index.is_multiple_of(2) { 4 } else { 0 };
-        let mask = !(0b1111 << shift);
         // Safety: if y within WIDTH and HEIGHT (which we checked),
         // the byte_index is is within the buffer.
         let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
-        debug_assert!(luma < 16);
-        *byte = (luma << shift) | (*byte & mask);
+        *byte = if x.is_multiple_of(2) {
+            (luma << 4) | (*byte & 0x0f)
+        } else {
+            luma | (*byte & 0xf0)
+        };
     }
 
     pub(crate) fn get_pixel(&self, point: Point) -> Option<u8> {
