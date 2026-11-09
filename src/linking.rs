@@ -89,6 +89,8 @@ fn select_graphics_external<'a>(
     let func = match fn_name {
         "clear_screen" => Func::wrap(ctx, graphics::clear_screen),
         "set_color" => Func::wrap(ctx, graphics::set_color),
+        "replace_color" => Func::wrap(ctx, graphics::replace_color),
+        "swap_colors" => Func::wrap(ctx, graphics::swap_colors),
         "set_canvas" => Func::wrap(ctx, graphics::set_canvas),
         "unset_canvas" => Func::wrap(ctx, graphics::unset_canvas),
         "get_point" => Func::wrap(ctx, graphics::get_point),

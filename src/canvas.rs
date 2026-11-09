@@ -52,6 +52,10 @@ pub struct CanvasBuffer<'a> {
 }
 
 impl<'a> FireflyDrawTarget for CanvasBuffer<'a> {
+    fn iter_mut(&mut self) -> core::slice::IterMut<'_, u8> {
+        self.data.iter_mut()
+    }
+
     fn set_pixel(&mut self, point: Point, luma: u8) {
         let x = point.x as usize;
         let y = point.y as usize;

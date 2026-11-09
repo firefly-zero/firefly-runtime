@@ -46,6 +46,7 @@ const DEFAULT_PALETTE: [Rgb16; 16] = [
 
 /// Internal trait for operations shared between FrameBuffer and Canvas.
 pub(crate) trait FireflyDrawTarget: DrawTarget<Color = Gray4, Error = Infallible> {
+    fn iter_mut(&mut self) -> core::slice::IterMut<'_, u8>;
     fn set_pixel(&mut self, point: Point, luma: u8);
     fn get_pixel(&self, point: Point) -> Option<u8>;
 }
@@ -151,6 +152,11 @@ impl FrameBuffer {
 }
 
 impl FireflyDrawTarget for FrameBuffer {
+    fn iter_mut(&mut self) -> core::slice::IterMut<'_, u8> {
+        self.dirty = true;
+        self.data.iter_mut()
+    }
+
     /// Set color of a single pixel at the given coordinates.
     ///
     /// Does NOT mark the buffer as dirty. This must be done by the caller.

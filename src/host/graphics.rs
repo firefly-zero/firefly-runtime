@@ -69,6 +69,72 @@ pub(crate) fn set_color(mut caller: C, index: u32, r: u32, g: u32, b: u32) {
     state.frame.palette[index as usize - 1] = Rgb16::from_rgb(r as u16, g as u16, b as u16);
 }
 
+pub(crate) fn replace_color(mut caller: C, c1: i32, c2: i32) {
+    let state = caller.data_mut();
+    state.called = "graphics.replace_color";
+    if c1 == 0 || c2 == 0 {
+        state.log_error(HostError::NoneColor);
+        return;
+    }
+    let luma1 = c1 as u8 - 1;
+    let luma2 = c2 as u8 - 1;
+    if let Some(canvas) = &state.canvas {
+        let mut target = canvas.clone().as_target(&mut caller);
+        replace_color_in(&mut target, luma1, luma2);
+    } else {
+        replace_color_in(&mut state.frame, luma1, luma2);
+    };
+}
+
+fn replace_color_in<D: FireflyDrawTarget>(target: &mut D, old: u8, new: u8) {
+    const MASK: u8 = 0b1111;
+    for byte_addr in target.iter_mut() {
+        let mut byte = *byte_addr;
+        if byte & MASK == old {
+            byte = byte & !MASK | new;
+        }
+        if byte >> 4 == old {
+            byte = byte & MASK | (new << 4);
+        }
+        *byte_addr = byte;
+    }
+}
+
+pub(crate) fn swap_colors(mut caller: C, c1: i32, c2: i32) {
+    let state = caller.data_mut();
+    state.called = "graphics.swap_colors";
+    if c1 == 0 || c2 == 0 {
+        state.log_error(HostError::NoneColor);
+        return;
+    }
+    let luma1 = c1 as u8 - 1;
+    let luma2 = c2 as u8 - 1;
+    if let Some(canvas) = &state.canvas {
+        let mut target = canvas.clone().as_target(&mut caller);
+        swap_colors_in(&mut target, luma1, luma2);
+    } else {
+        swap_colors_in(&mut state.frame, luma1, luma2);
+    };
+}
+
+fn swap_colors_in<D: FireflyDrawTarget>(target: &mut D, c1: u8, c2: u8) {
+    const MASK: u8 = 0b1111;
+    for byte_addr in target.iter_mut() {
+        let mut byte = *byte_addr;
+        if byte & MASK == c1 {
+            byte = byte & !MASK | c2;
+        } else if byte & MASK == c2 {
+            byte = byte & !MASK | c1;
+        }
+        if byte >> 4 == c1 {
+            byte = byte & MASK | (c2 << 4);
+        } else if byte >> 4 == c2 {
+            byte = byte & MASK | (c1 << 4);
+        }
+        *byte_addr = byte;
+    }
+}
+
 /// Draw a single point.
 ///
 /// Without scailing, sets a single pixel.
