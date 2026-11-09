@@ -130,16 +130,18 @@ impl ParsedImage<'_> {
         }
 
         // Adjust bottom boundaries.
-        let img_height = self.bytes.len() * PPB / self.width as usize;
-        let max_height = img_height as i32 - top;
-        if height > max_height {
-            height = max_height;
-        }
-        let oob_bottom = (p.y + height) - HEIGHT as i32;
-        if oob_bottom > 0 {
-            height -= oob_bottom;
-            if height <= 0 {
-                return;
+        {
+            let img_height = self.bytes.len() * PPB / self.width as usize;
+            let max_height = img_height as i32 - top;
+            if height > max_height {
+                height = max_height;
+            }
+            let oob_bottom = (p.y + height) - HEIGHT as i32;
+            if oob_bottom > 0 {
+                height -= oob_bottom;
+                if height <= 0 {
+                    return;
+                }
             }
         }
         let bottom = top + height;
@@ -155,15 +157,17 @@ impl ParsedImage<'_> {
         }
 
         // Adjust right boundaries.
-        let max_width = self.width as i32 - left;
-        if width > max_width {
-            width = max_width;
-        }
-        let oob_right = (p.x + width) - WIDTH as i32;
-        if oob_right > 0 {
-            width -= oob_right;
-            if width <= 0 {
-                return;
+        {
+            let max_width = self.width as i32 - left;
+            if width > max_width {
+                width = max_width;
+            }
+            let oob_right = (p.x + width) - WIDTH as i32;
+            if oob_right > 0 {
+                width -= oob_right;
+                if width <= 0 {
+                    return;
+                }
             }
         }
         let right = left + width;
@@ -172,8 +176,9 @@ impl ParsedImage<'_> {
         }
 
         for iy in top..bottom {
+            let line_offset = iy * self.width as i32;
             for ix in left..right {
-                let offset = (iy * self.width as i32 + ix) as usize;
+                let offset = (line_offset + ix) as usize;
                 let bytes_offset = offset / PPB;
                 let byte = self.bytes[bytes_offset];
                 let pixel_offset = 8 - BPP * (1 + offset % PPB);
