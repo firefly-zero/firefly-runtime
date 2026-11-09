@@ -1,7 +1,7 @@
 use crate::canvas::Canvas;
 use crate::color::Rgb16;
 use crate::error::HostError;
-use crate::frame_buffer::{HEIGHT, WIDTH};
+use crate::frame_buffer::{FireflyDrawTarget, HEIGHT, WIDTH};
 use crate::image::ParsedImage;
 use crate::state::State;
 use alloc::boxed::Box;
@@ -99,7 +99,6 @@ pub(crate) fn get_point(mut caller: C, x: i32, y: i32) -> i32 {
         let target = canvas.clone().as_target(&mut caller);
         target.get_pixel(point)
     } else {
-        state.frame.dirty = true;
         state.frame.get_pixel(point)
     };
     if let Some(c) = luma {
@@ -126,24 +125,36 @@ pub(crate) fn draw_line(
         state.log_error(HostError::NoneColor);
         return;
     };
-    if state.canvas.is_none() {
-        let frame = &mut state.frame;
-        if p1_y == p2_y {
-            frame.draw_hline(p1_x, p2_x, p1_y, stroke_width, color);
-            return;
+    if p1_y == p2_y {
+        if let Some(canvas) = &state.canvas {
+            let mut target = canvas.clone().as_target(&mut caller);
+            draw_hline(&mut target, p1_x, p2_x, p1_y, stroke_width, color);
+        } else {
+            draw_hline(&mut state.frame, p1_x, p2_x, p1_y, stroke_width, color);
         }
-        if p1_x == p2_x {
-            frame.draw_vline(p1_x, p1_y, p2_y, stroke_width, color);
-            return;
+        return;
+    }
+    if p1_x == p2_x {
+        if let Some(canvas) = &state.canvas {
+            let mut target = canvas.clone().as_target(&mut caller);
+            draw_vline(&mut target, p1_x, p1_y, p2_y, stroke_width, color);
+        } else {
+            draw_vline(&mut state.frame, p1_x, p1_y, p2_y, stroke_width, color);
         }
+        return;
     }
 
     let start = Point::new(p1_x, p1_y);
     let end = Point::new(p2_x, p2_y);
     let line = Line::new(start, end);
 
-    if stroke_width == 1 && state.canvas.is_none() {
-        draw_line1(&mut state.frame, color, line);
+    if stroke_width == 1 {
+        if let Some(canvas) = &state.canvas {
+            let mut target = canvas.clone().as_target(&mut caller);
+            draw_line1(&mut target, color, line);
+        } else {
+            draw_line1(&mut state.frame, color, line);
+        }
         return;
     }
 
@@ -157,7 +168,52 @@ pub(crate) fn draw_line(
     never_fails(err);
 }
 
-fn draw_line1(frame: &mut crate::FrameBuffer, color: Gray4, line: Line) {
+/// Optimized rendering of horizontal line.
+///
+/// Behaves exactly like embedded-graphics with the same parameters but faster.
+fn draw_hline<D: FireflyDrawTarget>(target: &mut D, x1: i32, x2: i32, y: i32, w: u32, c: Gray4) {
+    let mut left = x1;
+    let mut right = x2;
+    let mut y = y - (w / 2) as i32;
+    if left > right {
+        (left, right) = (right, left);
+        if w.is_multiple_of(2) {
+            y += 1;
+        }
+    }
+    let area = Rectangle {
+        top_left: Point::new(left, y),
+        size: Size::new((right - left + 1) as u32, w),
+    };
+    _ = target.fill_solid(&area, c);
+}
+
+/// Optimized rendering of vertical line.
+///
+/// Behaves exactly like embedded-graphics with the same parameters but faster.
+fn draw_vline<D: FireflyDrawTarget>(target: &mut D, x: i32, y1: i32, y2: i32, w: u32, c: Gray4) {
+    let mut top = y1;
+    let mut down = y2;
+    let mut x = x - (w / 2) as i32;
+    if top > down {
+        (down, top) = (top, down);
+        if w.is_multiple_of(2) {
+            x += 1;
+        }
+    }
+    let area = Rectangle {
+        top_left: Point::new(x, top),
+        size: Size::new(w, (down - top + 1) as u32),
+    };
+    _ = target.fill_solid(&area, c);
+}
+
+/// Optimized rendering of 1px line.
+///
+/// Uses Bresenham's line algorithm copied and adapted from embedded-graphics.
+///
+/// Behaves exactly like embedded-graphics with the same parameters but faster.
+fn draw_line1<D: FireflyDrawTarget>(target: &mut D, color: Gray4, line: Line) {
     let delta = line.end - line.start;
     let direction = Point::new(
         if delta.x >= 0 { 1 } else { -1 },
@@ -183,9 +239,7 @@ fn draw_line1(frame: &mut crate::FrameBuffer, color: Gray4, line: Line) {
             point += position_step.1;
             error -= error_step.1;
         }
-
-        frame.set_pixel(point, luma);
-
+        target.set_pixel(point, luma);
         point += position_step.0;
         error += error_step.0;
     }

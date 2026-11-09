@@ -1,3 +1,4 @@
+use crate::frame_buffer::FireflyDrawTarget;
 use crate::state::State;
 use alloc::boxed::Box;
 use core::convert::Infallible;
@@ -6,6 +7,7 @@ use embedded_graphics::pixelcolor::Gray4;
 use embedded_graphics::prelude::*;
 
 const PPB: usize = 2;
+const MASK: u8 = 0b1111;
 
 /// A draw target backed by the guest memory.
 #[derive(Clone)]
@@ -49,6 +51,44 @@ pub struct CanvasBuffer<'a> {
     height: usize,
 }
 
+impl<'a> FireflyDrawTarget for CanvasBuffer<'a> {
+    fn set_pixel(&mut self, point: Point, luma: u8) {
+        let x = point.x as usize;
+        let y = point.y as usize;
+        if y >= self.height || x >= self.width {
+            return; // the pixel is out of bounds
+        }
+        let pixel_index = y * self.width + x;
+        let byte_index = pixel_index / PPB;
+        let shift: u8 = if pixel_index.is_multiple_of(2) { 4 } else { 0 };
+        let mask = !(MASK << shift);
+        // Safety: if y within self.width and self.height (which we checked),
+        // the byte_index is is within the buffer.
+        let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
+        debug_assert!(luma < 16);
+        *byte = (luma << shift) | (*byte & mask);
+    }
+
+    fn get_pixel(&self, point: Point) -> Option<u8> {
+        let x = point.x as usize;
+        let y = point.y as usize;
+        if y >= self.height || x >= self.width {
+            return None; // the pixel is out of bounds
+        }
+        let pixel_index = y * self.width + x;
+        let byte_index = pixel_index / PPB;
+        // Safety: if y within self.width and self.height (which we checked),
+        // the byte_index is is within the buffer.
+        let byte = unsafe { self.data.get_unchecked(byte_index) };
+        let c = if pixel_index.is_multiple_of(2) {
+            byte >> 4
+        } else {
+            byte & MASK
+        };
+        Some(c)
+    }
+}
+
 impl OriginDimensions for CanvasBuffer<'_> {
     fn size(&self) -> Size {
         Size {
@@ -76,42 +116,6 @@ impl DrawTarget for CanvasBuffer<'_> {
 }
 
 impl CanvasBuffer<'_> {
-    pub(crate) fn set_pixel(&mut self, point: Point, luma: u8) {
-        let x = point.x as usize;
-        let y = point.y as usize;
-        if y >= self.height || x >= self.width {
-            return; // the pixel is out of bounds
-        }
-        let pixel_index = y * self.width + x;
-        let byte_index = pixel_index / PPB;
-        let shift = if pixel_index.is_multiple_of(2) { 4 } else { 0 };
-        let mask = !(0b1111 << shift);
-        // Safety: if y within self.width and self.height (which we checked),
-        // the byte_index is is within the buffer.
-        let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
-        debug_assert!(luma < 16);
-        *byte = (luma << shift) | (*byte & mask);
-    }
-
-    pub(crate) fn get_pixel(&self, point: Point) -> Option<u8> {
-        let x = point.x as usize;
-        let y = point.y as usize;
-        if y >= self.height || x >= self.width {
-            return None; // the pixel is out of bounds
-        }
-        let pixel_index = y * self.width + x;
-        let byte_index = pixel_index / PPB;
-        // Safety: if y within self.width and self.height (which we checked),
-        // the byte_index is is within the buffer.
-        let byte = unsafe { self.data.get_unchecked(byte_index) };
-        let c = if pixel_index.is_multiple_of(2) {
-            byte >> 4
-        } else {
-            byte & 0b1111
-        };
-        Some(c)
-    }
-
     pub(crate) fn flip_x(&mut self) {
         let byte_w = self.width / 2;
         for y in 0..self.height {

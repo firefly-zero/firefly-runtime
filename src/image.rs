@@ -1,3 +1,4 @@
+use crate::frame_buffer::FireflyDrawTarget;
 use crate::{FrameBuffer, HEIGHT, WIDTH};
 use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::Rectangle;

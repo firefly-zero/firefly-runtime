@@ -44,6 +44,12 @@ const DEFAULT_PALETTE: [Rgb16; 16] = [
     Rgb16::from_rgb(0x33, 0x3c, 0x57), // #333c57, dark gray
 ];
 
+/// Internal trait for operations shared between FrameBuffer and Canvas.
+pub(crate) trait FireflyDrawTarget: DrawTarget<Color = Gray4, Error = Infallible> {
+    fn set_pixel(&mut self, point: Point, luma: u8);
+    fn get_pixel(&self, point: Point) -> Option<u8>;
+}
+
 pub trait FireflyDisplay {
     type Error: core::fmt::Debug;
     fn render_fb(&mut self, frame: &mut FrameBuffer) -> Result<(), Self::Error>;
@@ -75,48 +81,6 @@ impl FrameBuffer {
             let right = self.palette[usize::from(b & 0xf)];
             (left, right)
         })
-    }
-
-    /// Optimized rendering of horizontal line.
-    ///
-    /// Must behave exactly like embedded-graphics with the same parameters
-    /// but damn faster.
-    pub(crate) fn draw_hline(&mut self, x1: i32, x2: i32, y: i32, w: u32, c: Gray4) {
-        let mut left = x1;
-        let mut right = x2;
-        let mut y = y - (w / 2) as i32;
-        if left > right {
-            (left, right) = (right, left);
-            if w.is_multiple_of(2) {
-                y += 1;
-            }
-        }
-        let area = Rectangle {
-            top_left: Point::new(left, y),
-            size: Size::new((right - left + 1) as u32, w),
-        };
-        _ = self.fill_solid(&area, c);
-    }
-
-    /// Optimized rendering of vertical line.
-    ///
-    /// Must behave exactly like embedded-graphics with the same parameters
-    /// but damn faster.
-    pub(crate) fn draw_vline(&mut self, x: i32, y1: i32, y2: i32, w: u32, c: Gray4) {
-        let mut top = y1;
-        let mut down = y2;
-        let mut x = x - (w / 2) as i32;
-        if top > down {
-            (down, top) = (top, down);
-            if w.is_multiple_of(2) {
-                x += 1;
-            }
-        }
-        let area = Rectangle {
-            top_left: Point::new(x, top),
-            size: Size::new(w, (down - top + 1) as u32),
-        };
-        _ = self.fill_solid(&area, c);
     }
 
     /// Render 1-pixel-wide vertical line.
@@ -159,48 +123,6 @@ impl FrameBuffer {
         target.fill_contiguous(&area, colors)
     }
 
-    /// Set color of a single pixel at the given coordinates.
-    ///
-    /// Does NOT mark the buffer as dirty. This must be done by the caller.
-    pub(crate) fn set_pixel(&mut self, point: Point, luma: u8) {
-        // Negative values will be wrapped and filtered out
-        // because any wrapped value is bigger than WIDTH/HEIGHT.
-        let x = point.x as usize;
-        let y = point.y as usize;
-        if y >= HEIGHT || x >= WIDTH {
-            return; // the pixel is out of bounds
-        }
-        let pixel_index = y * WIDTH + x;
-        let byte_index = pixel_index / PPB;
-        // Safety: if y within WIDTH and HEIGHT (which we checked),
-        // the byte_index is is within the buffer.
-        let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
-        *byte = if x.is_multiple_of(2) {
-            (luma << 4) | (*byte & 0x0f)
-        } else {
-            luma | (*byte & 0xf0)
-        };
-    }
-
-    pub(crate) fn get_pixel(&self, point: Point) -> Option<u8> {
-        let x = point.x as usize;
-        let y = point.y as usize;
-        if y >= HEIGHT || x >= WIDTH {
-            return None; // the pixel is out of bounds
-        }
-        let pixel_index = y * WIDTH + x;
-        let byte_index = pixel_index / PPB;
-        // Safety: if y within WIDTH and HEIGHT (which we checked),
-        // the byte_index is is within the buffer.
-        let byte = unsafe { self.data.get_unchecked(byte_index) };
-        let c = if pixel_index.is_multiple_of(2) {
-            byte >> 4
-        } else {
-            byte & 0b1111
-        };
-        Some(c)
-    }
-
     pub(crate) fn flip_x(&mut self) {
         const BYTE_W: usize = WIDTH / 2;
         for y in 0..HEIGHT {
@@ -225,6 +147,50 @@ impl FrameBuffer {
                 self.data.swap(top_offset + bx, bottom_offset + bx);
             }
         }
+    }
+}
+
+impl FireflyDrawTarget for FrameBuffer {
+    /// Set color of a single pixel at the given coordinates.
+    ///
+    /// Does NOT mark the buffer as dirty. This must be done by the caller.
+    fn set_pixel(&mut self, point: Point, luma: u8) {
+        // Negative values will be wrapped and filtered out
+        // because any wrapped value is bigger than WIDTH/HEIGHT.
+        let x = point.x as usize;
+        let y = point.y as usize;
+        if y >= HEIGHT || x >= WIDTH {
+            return; // the pixel is out of bounds
+        }
+        let pixel_index = y * WIDTH + x;
+        let byte_index = pixel_index / PPB;
+        // Safety: if y within WIDTH and HEIGHT (which we checked),
+        // the byte_index is is within the buffer.
+        let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
+        *byte = if x.is_multiple_of(2) {
+            (luma << 4) | (*byte & 0x0f)
+        } else {
+            luma | (*byte & 0xf0)
+        };
+    }
+
+    fn get_pixel(&self, point: Point) -> Option<u8> {
+        let x = point.x as usize;
+        let y = point.y as usize;
+        if y >= HEIGHT || x >= WIDTH {
+            return None; // the pixel is out of bounds
+        }
+        let pixel_index = y * WIDTH + x;
+        let byte_index = pixel_index / PPB;
+        // Safety: if y within WIDTH and HEIGHT (which we checked),
+        // the byte_index is is within the buffer.
+        let byte = unsafe { self.data.get_unchecked(byte_index) };
+        let c = if pixel_index.is_multiple_of(2) {
+            byte >> 4
+        } else {
+            byte & 0b1111
+        };
+        Some(c)
     }
 }
 
