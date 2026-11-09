@@ -640,7 +640,6 @@ pub(crate) fn draw_text(
         let style = MonoTextStyle::new(&font, color);
         let point = Point::new(x, y);
         let text = Text::new(text, point, style);
-        // TODO: support canvas
         never_fails(text.draw(&mut state.frame));
         return;
     }
@@ -649,20 +648,35 @@ pub(crate) fn draw_text(
         state.log_error("unsupported font format");
         return;
     }
-
-    // Parse font header.
-    let encoding_index = font_bytes[1];
-    let char_width = i32::from(font_bytes[2]);
-    let char_height = i32::from(font_bytes[3]);
-    let Some(glyph_mapping) = get_glyph_mapping(encoding_index) else {
-        state.log_error("unknown mapping");
-        return;
-    };
     if color == 0 {
         state.log_error(HostError::NoneColor);
         return;
     }
     let luma = color as u8 - 1;
+
+    if let Some(canvas) = &state.canvas {
+        // let mut target = canvas.clone().as_target(&mut caller);
+        // draw_text_on(&mut target, x, y, font_bytes, text, luma);
+    } else {
+        draw_text_on(&mut state.frame, x, y, font_bytes, text, luma);
+    }
+}
+
+fn draw_text_on<D: FireflyDrawTarget>(
+    target: &mut D,
+    x: i32,
+    y: i32,
+    font_bytes: &[u8],
+    text: &str,
+    luma: u8,
+) {
+    // Parse font header.
+    let encoding_index = font_bytes[1];
+    let char_width = i32::from(font_bytes[2]);
+    let char_height = i32::from(font_bytes[3]);
+    let Some(glyph_mapping) = get_glyph_mapping(encoding_index) else {
+        return;
+    };
 
     let mut cursor_x: i32 = x;
     let mut cursor_y: i32 = y - char_height + 1;
@@ -686,7 +700,7 @@ pub(crate) fn draw_text(
                     byte = byte.rotate_left(1);
                     if byte & 1 != 0 {
                         let p = Point::new(char_left + sx, sy);
-                        state.frame.set_pixel(p, luma);
+                        target.set_pixel(p, luma);
                     }
                     sx += 1;
                     if sx == char_width {
