@@ -88,20 +88,26 @@ impl FrameBuffer {
 
     /// Render 1-pixel-wide vertical line.
     ///
-    /// SAFETY: HEIGHT > bottom_y >= top_y.
+    /// # Safety
+    ///
+    /// It's up to the caller to ensure that
+    /// `top_y <= bottom_y < HEIGHT` and `x < WIDTH`.
     fn draw_vline1(&mut self, x: usize, top_y: usize, bottom_y: usize, c: Gray4) {
         let color = c.into_storage();
         debug_assert!(color < 16);
-        let shift = if x.is_multiple_of(2) { 4 } else { 0 };
-        let mask = !(0b1111 << shift);
         let start_i = (top_y * WIDTH + x) / PPB;
         let end_i = (bottom_y * WIDTH + x) / PPB;
-        for pixel_index in (start_i..end_i).step_by(WIDTH / PPB) {
-            let byte_index = pixel_index;
-            // Safety: It's up to the caller to ensure that
-            // y within WIDTH and HEIGHT.
-            let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
-            *byte = (color << shift) | (*byte & mask);
+
+        if x.is_multiple_of(2) {
+            for byte_index in (start_i..end_i).step_by(WIDTH / PPB) {
+                let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
+                *byte = (color << 4) | (*byte & 0x0f);
+            }
+        } else {
+            for byte_index in (start_i..end_i).step_by(WIDTH / PPB) {
+                let byte = unsafe { self.data.get_unchecked_mut(byte_index) };
+                *byte = color | (*byte & 0xf0);
+            }
         }
     }
 
