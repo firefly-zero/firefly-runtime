@@ -49,6 +49,8 @@ pub(crate) trait FireflyDrawTarget: DrawTarget<Color = Gray4, Error = Infallible
     fn iter_mut(&mut self) -> core::slice::IterMut<'_, u8>;
     fn set_pixel(&mut self, point: Point, luma: u8);
     fn get_pixel(&self, point: Point) -> Option<u8>;
+    fn flip_x(&mut self);
+    fn flip_y(&mut self);
 }
 
 pub trait FireflyDisplay {
@@ -123,32 +125,6 @@ impl FrameBuffer {
         let area = Rectangle::new(Point::zero(), size);
         target.fill_contiguous(&area, colors)
     }
-
-    pub(crate) fn flip_x(&mut self) {
-        const BYTE_W: usize = WIDTH / 2;
-        for y in 0..HEIGHT {
-            let line_offset = y * BYTE_W;
-            let next_line_offset = line_offset + BYTE_W;
-            for bx in 0..BYTE_W / 2 {
-                let left_idx = line_offset + bx;
-                let right_idx = next_line_offset - bx - 1;
-                let left = self.data[left_idx];
-                self.data[left_idx] = self.data[right_idx].rotate_left(4);
-                self.data[right_idx] = left.rotate_left(4);
-            }
-        }
-    }
-
-    pub(crate) fn flip_y(&mut self) {
-        const BYTE_W: usize = WIDTH / 2;
-        for y in 0..HEIGHT / 2 {
-            let top_offset = y * BYTE_W;
-            let bottom_offset = BUFFER_SIZE - top_offset - BYTE_W;
-            for bx in 0..BYTE_W {
-                self.data.swap(top_offset + bx, bottom_offset + bx);
-            }
-        }
-    }
 }
 
 impl FireflyDrawTarget for FrameBuffer {
@@ -197,6 +173,32 @@ impl FireflyDrawTarget for FrameBuffer {
             byte & 0b1111
         };
         Some(c)
+    }
+
+    fn flip_x(&mut self) {
+        const BYTE_W: usize = WIDTH / 2;
+        for y in 0..HEIGHT {
+            let line_offset = y * BYTE_W;
+            let next_line_offset = line_offset + BYTE_W;
+            for bx in 0..BYTE_W / 2 {
+                let left_idx = line_offset + bx;
+                let right_idx = next_line_offset - bx - 1;
+                let left = self.data[left_idx];
+                self.data[left_idx] = self.data[right_idx].rotate_left(4);
+                self.data[right_idx] = left.rotate_left(4);
+            }
+        }
+    }
+
+    fn flip_y(&mut self) {
+        const BYTE_W: usize = WIDTH / 2;
+        for y in 0..HEIGHT / 2 {
+            let top_offset = y * BYTE_W;
+            let bottom_offset = BUFFER_SIZE - top_offset - BYTE_W;
+            for bx in 0..BYTE_W {
+                self.data.swap(top_offset + bx, bottom_offset + bx);
+            }
+        }
     }
 }
 

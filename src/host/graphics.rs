@@ -207,9 +207,9 @@ pub(crate) fn draw_line(
 
     if stroke_width == 1 {
         if let Some(canvas) = &mut state.canvas {
-            draw_line1(canvas, color, line);
+            draw_1px_line(canvas, color, line);
         } else {
-            draw_line1(&mut state.frame, color, line);
+            draw_1px_line(&mut state.frame, color, line);
         }
         return;
     }
@@ -268,7 +268,7 @@ fn draw_vline<D: FireflyDrawTarget>(target: &mut D, x: i32, y1: i32, y2: i32, w:
 /// Uses Bresenham's line algorithm copied and adapted from embedded-graphics.
 ///
 /// Behaves exactly like embedded-graphics with the same parameters but faster.
-fn draw_line1<D: FireflyDrawTarget>(target: &mut D, color: Gray4, line: Line) {
+fn draw_1px_line<D: FireflyDrawTarget>(target: &mut D, color: Gray4, line: Line) {
     let delta = line.end - line.start;
     let direction = Point::new(
         if delta.x >= 0 { 1 } else { -1 },
