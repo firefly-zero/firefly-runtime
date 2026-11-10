@@ -23,9 +23,8 @@ pub(crate) fn clear_screen(mut caller: C, color: i32) {
         return;
     }
     let color = Gray4::new(color as u8 - 1);
-    let err = if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        target.clear(color)
+    let err = if let Some(canvas) = &mut state.canvas {
+        canvas.clear(color)
     } else {
         state.frame.clear(color)
     };
@@ -35,9 +34,8 @@ pub(crate) fn clear_screen(mut caller: C, color: i32) {
 pub(crate) fn flip_x(mut caller: C) {
     let state = caller.data_mut();
     state.called = "graphics.flip_x";
-    if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        target.flip_x();
+    if let Some(canvas) = &mut state.canvas {
+        canvas.flip_x();
     } else {
         state.frame.flip_x();
     }
@@ -46,9 +44,8 @@ pub(crate) fn flip_x(mut caller: C) {
 pub(crate) fn flip_y(mut caller: C) {
     let state = caller.data_mut();
     state.called = "graphics.flip_y";
-    if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        target.flip_y();
+    if let Some(canvas) = &mut state.canvas {
+        canvas.flip_y();
     } else {
         state.frame.flip_y();
     }
@@ -78,9 +75,8 @@ pub(crate) fn replace_color(mut caller: C, c1: i32, c2: i32) {
     }
     let luma1 = c1 as u8 - 1;
     let luma2 = c2 as u8 - 1;
-    if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        replace_color_in(&mut target, luma1, luma2);
+    if let Some(canvas) = &mut state.canvas {
+        replace_color_in(canvas, luma1, luma2);
     } else {
         replace_color_in(&mut state.frame, luma1, luma2);
     };
@@ -109,9 +105,8 @@ pub(crate) fn swap_colors(mut caller: C, c1: i32, c2: i32) {
     }
     let luma1 = c1 as u8 - 1;
     let luma2 = c2 as u8 - 1;
-    if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        swap_colors_in(&mut target, luma1, luma2);
+    if let Some(canvas) = &mut state.canvas {
+        swap_colors_in(canvas, luma1, luma2);
     } else {
         swap_colors_in(&mut state.frame, luma1, luma2);
     };
@@ -147,9 +142,8 @@ pub(crate) fn draw_point(mut caller: C, x: i32, y: i32, color: i32) {
     }
     let point = Point::new(x, y);
     let luma = color as u8 - 1;
-    if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        target.set_pixel(point, luma);
+    if let Some(canvas) = &mut state.canvas {
+        canvas.set_pixel(point, luma);
     } else {
         state.frame.dirty = true;
         state.frame.set_pixel(point, luma);
@@ -161,9 +155,8 @@ pub(crate) fn get_point(mut caller: C, x: i32, y: i32) -> i32 {
     let state = caller.data_mut();
     state.called = "graphics.get_point";
     let point = Point::new(x, y);
-    let luma = if let Some(canvas) = &state.canvas {
-        let target = canvas.clone().as_target(&mut caller);
-        target.get_pixel(point)
+    let luma = if let Some(canvas) = &mut state.canvas {
+        canvas.get_pixel(point)
     } else {
         state.frame.get_pixel(point)
     };
@@ -192,18 +185,16 @@ pub(crate) fn draw_line(
         return;
     };
     if p1_y == p2_y {
-        if let Some(canvas) = &state.canvas {
-            let mut target = canvas.clone().as_target(&mut caller);
-            draw_hline(&mut target, p1_x, p2_x, p1_y, stroke_width, color);
+        if let Some(canvas) = &mut state.canvas {
+            draw_hline(canvas, p1_x, p2_x, p1_y, stroke_width, color);
         } else {
             draw_hline(&mut state.frame, p1_x, p2_x, p1_y, stroke_width, color);
         }
         return;
     }
     if p1_x == p2_x {
-        if let Some(canvas) = &state.canvas {
-            let mut target = canvas.clone().as_target(&mut caller);
-            draw_vline(&mut target, p1_x, p1_y, p2_y, stroke_width, color);
+        if let Some(canvas) = &mut state.canvas {
+            draw_vline(canvas, p1_x, p1_y, p2_y, stroke_width, color);
         } else {
             draw_vline(&mut state.frame, p1_x, p1_y, p2_y, stroke_width, color);
         }
@@ -215,9 +206,8 @@ pub(crate) fn draw_line(
     let line = Line::new(start, end);
 
     if stroke_width == 1 {
-        if let Some(canvas) = &state.canvas {
-            let mut target = canvas.clone().as_target(&mut caller);
-            draw_line1(&mut target, color, line);
+        if let Some(canvas) = &mut state.canvas {
+            draw_line1(canvas, color, line);
         } else {
             draw_line1(&mut state.frame, color, line);
         }
@@ -225,9 +215,8 @@ pub(crate) fn draw_line(
     }
 
     let style = PrimitiveStyle::with_stroke(color, stroke_width);
-    let err = if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        line.draw_styled(&style, &mut target)
+    let err = if let Some(canvas) = &mut state.canvas {
+        line.draw_styled(&style, canvas)
     } else {
         line.draw_styled(&style, &mut state.frame)
     };
@@ -331,9 +320,8 @@ pub(crate) fn draw_rect(
     let size = Size::new(width, height);
     let rect = Rectangle::new(point, size);
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
-    let err = if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        rect.draw_styled(&style, &mut target)
+    let err = if let Some(canvas) = &mut state.canvas {
+        rect.draw_styled(&style, canvas)
     } else {
         rect.draw_styled(&style, &mut state.frame)
     };
@@ -361,9 +349,8 @@ pub(crate) fn draw_rounded_rect(
     let corner = Size::new(corner_width, corner_height);
     let rounded = RoundedRectangle::with_equal_corners(rect, corner);
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
-    let err = if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        rounded.draw_styled(&style, &mut target)
+    let err = if let Some(canvas) = &mut state.canvas {
+        rounded.draw_styled(&style, canvas)
     } else {
         rounded.draw_styled(&style, &mut state.frame)
     };
@@ -385,9 +372,8 @@ pub(crate) fn draw_circle(
     let top_left = Point::new(x, y);
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let circle = Circle::new(top_left, diameter);
-    let err = if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        circle.draw_styled(&style, &mut target)
+    let err = if let Some(canvas) = &mut state.canvas {
+        circle.draw_styled(&style, canvas)
     } else {
         circle.draw_styled(&style, &mut state.frame)
     };
@@ -411,9 +397,8 @@ pub(crate) fn draw_ellipse(
     let size = Size::new(width, height);
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let ellipse = Ellipse::new(top_left, size);
-    let err = if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        ellipse.draw_styled(&style, &mut target)
+    let err = if let Some(canvas) = &mut state.canvas {
+        ellipse.draw_styled(&style, canvas)
     } else {
         ellipse.draw_styled(&style, &mut state.frame)
     };
@@ -440,9 +425,8 @@ pub(crate) fn draw_triangle(
     let vertex3 = Point::new(p3_x, p3_y);
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let triangle = Triangle::new(vertex1, vertex2, vertex3);
-    let err = if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        triangle.draw_styled(&style, &mut target)
+    let err = if let Some(canvas) = &mut state.canvas {
+        triangle.draw_styled(&style, canvas)
     } else {
         triangle.draw_styled(&style, &mut state.frame)
     };
@@ -468,9 +452,8 @@ pub(crate) fn draw_arc(
     let angle_sweep = Angle::from_radians(angle_sweep.into());
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let arc = Arc::new(point, diameter, angle_start, angle_sweep);
-    let err = if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        arc.draw_styled(&style, &mut target)
+    let err = if let Some(canvas) = &mut state.canvas {
+        arc.draw_styled(&style, canvas)
     } else {
         arc.draw_styled(&style, &mut state.frame)
     };
@@ -496,9 +479,8 @@ pub(crate) fn draw_sector(
     let angle_sweep = Angle::from_radians(angle_sweep.into());
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let sector = Sector::new(point, diameter, angle_start, angle_sweep);
-    let err = if let Some(canvas) = &state.canvas {
-        let mut target = canvas.clone().as_target(&mut caller);
-        sector.draw_styled(&style, &mut target)
+    let err = if let Some(canvas) = &mut state.canvas {
+        sector.draw_styled(&style, canvas)
     } else {
         sector.draw_styled(&style, &mut state.frame)
     };
@@ -654,9 +636,8 @@ pub(crate) fn draw_text(
     }
     let luma = color as u8 - 1;
 
-    if let Some(canvas) = &state.canvas {
-        // let mut target = canvas.clone().as_target(&mut caller);
-        // draw_text_on(&mut target, x, y, font_bytes, text, luma);
+    if let Some(canvas) = &mut state.canvas {
+        draw_text_on(canvas, x, y, font_bytes, text, luma);
     } else {
         draw_text_on(&mut state.frame, x, y, font_bytes, text, luma);
     }
@@ -726,10 +707,10 @@ pub(crate) fn set_canvas(mut caller: C, ptr: u32, len: u32) {
         return;
     };
     let (data, state) = memory.data_and_store_mut(&mut caller);
-    let uptr = ptr as usize;
-    let ulen = len as usize;
-    let maybe_buf = data.get(uptr..(uptr + ulen));
-    let Some(image_bytes) = &maybe_buf else {
+    let ptr = ptr as usize;
+    let len = len as usize;
+    let mut maybe_buf = data.get_mut(ptr..(ptr + len));
+    let Some(image_bytes) = &mut maybe_buf else {
         state.log_error(HostError::OomPointer);
         return;
     };
@@ -743,12 +724,12 @@ pub(crate) fn set_canvas(mut caller: C, ptr: u32, len: u32) {
     }
 
     let width = u16::from_le_bytes([image_bytes[1], image_bytes[2]]);
-    let image_bytes = &image_bytes[HEADER as usize..];
+    let image_bytes = &mut image_bytes[HEADER as usize..];
     if !(image_bytes.len() * 2).is_multiple_of(width as usize) {
         state.log_error(HostError::InvalidWidth);
         return;
     }
-    let canvas = Canvas::new(ptr + HEADER, len - HEADER, width);
+    let canvas = Canvas::new(image_bytes, width);
     state.canvas = Some(canvas)
 }
 

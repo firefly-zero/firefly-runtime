@@ -1,6 +1,4 @@
 use crate::frame_buffer::FireflyDrawTarget;
-use crate::state::State;
-use alloc::boxed::Box;
 use core::convert::Infallible;
 use embedded_graphics::Pixel;
 use embedded_graphics::pixelcolor::Gray4;
@@ -10,48 +8,36 @@ const PPB: usize = 2;
 const MASK: u8 = 0b1111;
 
 /// A draw target backed by the guest memory.
-#[derive(Clone)]
+///
+/// # Safety
+///
+/// We're bypassing the compiler safety checks here by creating a static
+/// reference to a dynamically allocate slice (the app's guest memory).
+/// In theory, Canvas may outlive the app and start referencing random memory.
+/// In practice, Canvas and Memory are both stored in State which is destroyed
+/// when the app exits.
 pub struct Canvas {
-    start: usize,
-    end: usize,
-    width: usize,
+    data: &'static mut [u8],
+    pub width: usize,
+    pub height: usize,
 }
 
 impl Canvas {
-    pub fn new(start: u32, size: u32, width: u16) -> Self {
+    pub fn new(data: &mut [u8], width: u16) -> Self {
+        let ptr = data.as_mut_ptr();
+        let len = data.len();
+        let data = unsafe { core::slice::from_raw_parts_mut(ptr, len) };
+        let width = width as usize;
+        let height = data.len() * 2 / width;
         Self {
-            start: start as usize,
-            end: (start + size) as usize,
-            width: width as usize,
-        }
-    }
-
-    /// Make a draw target that modifies the data inside the canvas.
-    pub fn as_target<'a>(&self, caller: &'a mut wasmi::Caller<'_, Box<State>>) -> CanvasBuffer<'a> {
-        let state = caller.data();
-        // safety: memory presence is ensured in set_canvas
-        let memory = state.memory.unwrap();
-        let memory = memory.data_mut(caller);
-        let data = &mut memory[self.start..self.end];
-        let height = data.len() * 2 / self.width;
-        CanvasBuffer {
             data,
-            width: self.width,
+            width,
             height,
         }
     }
 }
 
-/// A wrapper for drawing onto the canvas.
-///
-/// It works just like the frame buffer but the width and height are defined at runtime.
-pub struct CanvasBuffer<'a> {
-    data: &'a mut [u8],
-    width: usize,
-    height: usize,
-}
-
-impl<'a> FireflyDrawTarget for CanvasBuffer<'a> {
+impl FireflyDrawTarget for Canvas {
     fn iter_mut(&mut self) -> core::slice::IterMut<'_, u8> {
         self.data.iter_mut()
     }
@@ -93,7 +79,7 @@ impl<'a> FireflyDrawTarget for CanvasBuffer<'a> {
     }
 }
 
-impl OriginDimensions for CanvasBuffer<'_> {
+impl OriginDimensions for Canvas {
     fn size(&self) -> Size {
         Size {
             width: self.width as u32,
@@ -102,7 +88,7 @@ impl OriginDimensions for CanvasBuffer<'_> {
     }
 }
 
-impl DrawTarget for CanvasBuffer<'_> {
+impl DrawTarget for Canvas {
     type Color = Gray4;
     type Error = Infallible;
 
@@ -119,7 +105,7 @@ impl DrawTarget for CanvasBuffer<'_> {
     }
 }
 
-impl CanvasBuffer<'_> {
+impl Canvas {
     pub(crate) fn flip_x(&mut self) {
         let byte_w = self.width / 2;
         for y in 0..self.height {
