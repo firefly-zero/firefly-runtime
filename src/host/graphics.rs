@@ -215,12 +215,11 @@ pub(crate) fn draw_line(
     }
 
     let style = PrimitiveStyle::with_stroke(color, stroke_width);
-    let err = if let Some(canvas) = &mut state.canvas {
-        line.draw_styled(&style, canvas)
+    if let Some(canvas) = &mut state.canvas {
+        never_fails(line.draw_styled(&style, canvas));
     } else {
-        line.draw_styled(&style, &mut state.frame)
+        never_fails(line.draw_styled(&style, &mut state.frame));
     };
-    never_fails(err);
 }
 
 /// Optimized rendering of horizontal line.
@@ -320,12 +319,97 @@ pub(crate) fn draw_rect(
     let size = Size::new(width, height);
     let rect = Rectangle::new(point, size);
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
-    let err = if let Some(canvas) = &mut state.canvas {
-        rect.draw_styled(&style, canvas)
+
+    if let Some(canvas) = &mut state.canvas {
+        draw_rect_in(canvas, rect, style);
     } else {
-        rect.draw_styled(&style, &mut state.frame)
-    };
-    never_fails(err);
+        draw_rect_in(&mut state.frame, rect, style);
+    }
+}
+
+fn draw_rect_in<D: FireflyDrawTarget>(
+    target: &mut D,
+    rect: Rectangle,
+    style: PrimitiveStyle<Gray4>,
+) {
+    // Solid (filled without stroke).
+    if let Some(color) = style.fill_color
+        && style.stroke_width == 0
+    {
+        never_fails(target.fill_solid(&rect, color));
+        return;
+    }
+
+    let offset = style.stroke_width.div_ceil(2);
+    let fill_area = Rectangle::new(
+        Point::new(
+            rect.top_left.x + offset as i32,
+            rect.top_left.y + offset as i32,
+        ),
+        rect.size.saturating_sub(Size::new_equal(offset * 2)),
+    );
+
+    // Filled.
+    if let Some(color) = style.fill_color {
+        never_fails(target.fill_solid(&fill_area, color));
+    }
+
+    let stroke_color = style.stroke_color.unwrap();
+    let stroke_width = style.stroke_width;
+    let offset = style.stroke_width / 2;
+    let stroke_area = Rectangle::new(
+        Point::new(
+            rect.top_left.x - offset as i32,
+            rect.top_left.y - offset as i32,
+        ),
+        Size::new(rect.size.width + offset * 2, rect.size.height + offset * 2),
+    );
+
+    let top_border = Rectangle::new(
+        stroke_area.top_left,
+        Size::new(
+            stroke_area.size.width,
+            stroke_width.min(stroke_area.size.height / 2),
+        ),
+    );
+
+    // Top and bottom strokes.
+    {
+        let bottom_stroke_w = stroke_width.min(stroke_area.size.height - top_border.size.height);
+        let bottom_border = Rectangle::new(
+            Point::new(
+                top_border.top_left.x,
+                top_border.top_left.y
+                    + stroke_area.size.height.saturating_sub(bottom_stroke_w) as i32,
+            ),
+            Size::new(stroke_area.size.width, bottom_stroke_w),
+        );
+
+        never_fails(target.fill_solid(&top_border, stroke_color));
+        never_fails(target.fill_solid(&bottom_border, stroke_color));
+    }
+
+    // Left and right strokes.
+    if fill_area.size.height > 0 {
+        let left_border = Rectangle::new(
+            stroke_area.top_left + top_border.size.y_axis(),
+            Size::new(
+                (stroke_width * 2).min(stroke_area.size.width + 1) / 2,
+                fill_area.size.height,
+            ),
+        );
+
+        let right_border = left_border.translate(Point::new(
+            stroke_area
+                .size
+                .width
+                .saturating_sub(left_border.size.width) as i32,
+            0,
+        ));
+
+        never_fails(target.fill_solid(&left_border, stroke_color));
+        never_fails(target.fill_solid(&right_border, stroke_color));
+    }
 }
 
 /// Draw a rectangle with rounded corners.

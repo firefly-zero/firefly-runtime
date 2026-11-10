@@ -243,13 +243,13 @@ impl DrawTarget for FrameBuffer {
         self.dirty = true;
         let new_byte = color_to_byte(&color);
 
-        let left_x = area.top_left.x.clamp(0, WIDTH as i32 - 1) as usize;
+        let left_x = area.top_left.x.clamp(0, WIDTH as i32) as usize;
         let right_x = area.top_left.x + area.size.width as i32;
-        let right_x = right_x.clamp(0, WIDTH as i32 - 1) as usize;
+        let right_x = right_x.clamp(0, WIDTH as i32) as usize;
 
-        let top_y = area.top_left.y.clamp(0, HEIGHT as i32 - 1) as usize;
+        let top_y = area.top_left.y.clamp(0, HEIGHT as i32) as usize;
         let bottom_y = area.top_left.y + area.size.height as i32;
-        let bottom_y = bottom_y.clamp(0, HEIGHT as i32 - 1) as usize;
+        let bottom_y = bottom_y.clamp(0, HEIGHT as i32) as usize;
 
         if right_x - left_x <= 4 {
             for x in left_x..right_x {
@@ -268,7 +268,6 @@ impl DrawTarget for FrameBuffer {
         for y in top_y..bottom_y {
             let start_i = y * WIDTH / 2 + start_x / 2;
             let end_i = start_i + width / 2;
-            // TODO: IT PANICS (end_i overflows)
             self.data[start_i..end_i].fill(new_byte);
         }
 
