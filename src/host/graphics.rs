@@ -5,7 +5,6 @@ use crate::frame_buffer::{FireflyDrawTarget, HEIGHT, WIDTH};
 use crate::image::ParsedImage;
 use crate::state::State;
 use alloc::boxed::Box;
-use core::convert::Infallible;
 use embedded_graphics::image::ImageRaw;
 use embedded_graphics::mono_font::{DecorationDimensions, MonoFont, MonoTextStyle, mapping};
 use embedded_graphics::pixelcolor::Gray4;
@@ -23,12 +22,11 @@ pub(crate) fn clear_screen(mut caller: C, color: i32) {
         return;
     }
     let color = Gray4::new(color as u8 - 1);
-    let err = if let Some(canvas) = &mut state.canvas {
-        canvas.clear(color)
+    if let Some(canvas) = &mut state.canvas {
+        canvas.clear(color);
     } else {
-        state.frame.clear(color)
+        state.frame.clear(color);
     };
-    never_fails(err);
 }
 
 pub(crate) fn flip_x(mut caller: C) {
@@ -216,9 +214,9 @@ pub(crate) fn draw_line(
 
     let style = PrimitiveStyle::with_stroke(color, stroke_width);
     if let Some(canvas) = &mut state.canvas {
-        never_fails(line.draw_styled(&style, canvas));
+        line.draw_styled(&style, canvas);
     } else {
-        never_fails(line.draw_styled(&style, &mut state.frame));
+        line.draw_styled(&style, &mut state.frame);
     };
 }
 
@@ -336,7 +334,7 @@ fn draw_rect_in<D: FireflyDrawTarget>(
     if let Some(color) = style.fill_color
         && style.stroke_width == 0
     {
-        never_fails(target.fill_solid(&rect, color));
+        target.fill_solid(&rect, color);
         return;
     }
 
@@ -351,7 +349,7 @@ fn draw_rect_in<D: FireflyDrawTarget>(
 
     // Filled.
     if let Some(color) = style.fill_color {
-        never_fails(target.fill_solid(&fill_area, color));
+        target.fill_solid(&fill_area, color);
     }
 
     let Some(stroke_color) = style.stroke_color else {
@@ -387,8 +385,8 @@ fn draw_rect_in<D: FireflyDrawTarget>(
             Size::new(stroke_area.size.width, bottom_stroke_w),
         );
 
-        never_fails(target.fill_solid(&top_border, stroke_color));
-        never_fails(target.fill_solid(&bottom_border, stroke_color));
+        target.fill_solid(&top_border, stroke_color);
+        target.fill_solid(&bottom_border, stroke_color);
     }
 
     // Left and right strokes.
@@ -409,8 +407,8 @@ fn draw_rect_in<D: FireflyDrawTarget>(
             0,
         ));
 
-        never_fails(target.fill_solid(&left_border, stroke_color));
-        never_fails(target.fill_solid(&right_border, stroke_color));
+        target.fill_solid(&left_border, stroke_color);
+        target.fill_solid(&right_border, stroke_color);
     }
 }
 
@@ -435,12 +433,11 @@ pub(crate) fn draw_rounded_rect(
     let corner = Size::new(corner_width, corner_height);
     let rounded = RoundedRectangle::with_equal_corners(rect, corner);
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
-    let err = if let Some(canvas) = &mut state.canvas {
-        rounded.draw_styled(&style, canvas)
+    if let Some(canvas) = &mut state.canvas {
+        rounded.draw_styled(&style, canvas);
     } else {
-        rounded.draw_styled(&style, &mut state.frame)
+        rounded.draw_styled(&style, &mut state.frame);
     };
-    never_fails(err);
 }
 
 /// Draw a circle.
@@ -458,12 +455,11 @@ pub(crate) fn draw_circle(
     let top_left = Point::new(x, y);
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let circle = Circle::new(top_left, diameter);
-    let err = if let Some(canvas) = &mut state.canvas {
-        circle.draw_styled(&style, canvas)
+    if let Some(canvas) = &mut state.canvas {
+        circle.draw_styled(&style, canvas);
     } else {
-        circle.draw_styled(&style, &mut state.frame)
+        circle.draw_styled(&style, &mut state.frame);
     };
-    never_fails(err);
 }
 
 /// Draw an ellipse.
@@ -483,12 +479,11 @@ pub(crate) fn draw_ellipse(
     let size = Size::new(width, height);
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let ellipse = Ellipse::new(top_left, size);
-    let err = if let Some(canvas) = &mut state.canvas {
-        ellipse.draw_styled(&style, canvas)
+    if let Some(canvas) = &mut state.canvas {
+        ellipse.draw_styled(&style, canvas);
     } else {
-        ellipse.draw_styled(&style, &mut state.frame)
+        ellipse.draw_styled(&style, &mut state.frame);
     };
-    never_fails(err);
 }
 
 /// Draw a line between two points.
@@ -511,12 +506,11 @@ pub(crate) fn draw_triangle(
     let vertex3 = Point::new(p3_x, p3_y);
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let triangle = Triangle::new(vertex1, vertex2, vertex3);
-    let err = if let Some(canvas) = &mut state.canvas {
-        triangle.draw_styled(&style, canvas)
+    if let Some(canvas) = &mut state.canvas {
+        triangle.draw_styled(&style, canvas);
     } else {
-        triangle.draw_styled(&style, &mut state.frame)
+        triangle.draw_styled(&style, &mut state.frame);
     };
-    never_fails(err);
 }
 
 /// Draw an arc.
@@ -538,12 +532,11 @@ pub(crate) fn draw_arc(
     let angle_sweep = Angle::from_radians(angle_sweep.into());
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let arc = Arc::new(point, diameter, angle_start, angle_sweep);
-    let err = if let Some(canvas) = &mut state.canvas {
-        arc.draw_styled(&style, canvas)
+    if let Some(canvas) = &mut state.canvas {
+        arc.draw_styled(&style, canvas);
     } else {
-        arc.draw_styled(&style, &mut state.frame)
+        arc.draw_styled(&style, &mut state.frame);
     };
-    never_fails(err);
 }
 
 /// Draw a sector.
@@ -565,12 +558,11 @@ pub(crate) fn draw_sector(
     let angle_sweep = Angle::from_radians(angle_sweep.into());
     let style = get_shape_style(fill_color, stroke_color, stroke_width);
     let sector = Sector::new(point, diameter, angle_start, angle_sweep);
-    let err = if let Some(canvas) = &mut state.canvas {
-        sector.draw_styled(&style, canvas)
+    if let Some(canvas) = &mut state.canvas {
+        sector.draw_styled(&style, canvas);
     } else {
-        sector.draw_styled(&style, &mut state.frame)
+        sector.draw_styled(&style, &mut state.frame);
     };
-    never_fails(err);
 }
 
 pub(crate) fn draw_qr(
@@ -635,7 +627,7 @@ pub(crate) fn draw_qr(
             ' ' => Some(white),
             _ => None,
         });
-        never_fails(state.frame.fill_contiguous(&area, colors));
+        state.frame.fill_contiguous(&area, colors);
     } else {
         let pixels = ascii_img
             .chars()
@@ -645,7 +637,7 @@ pub(crate) fn draw_qr(
                 let color = if ch == '#' { black } else { white };
                 color.map(|color| Pixel(point, color))
             });
-        never_fails(state.frame.draw_iter(pixels));
+        state.frame.draw_iter(pixels);
     }
 }
 
@@ -708,7 +700,7 @@ pub(crate) fn draw_text(
         let style = MonoTextStyle::new(&font, color);
         let point = Point::new(x, y);
         let text = Text::new(text, point, style);
-        never_fails(text.draw(&mut state.frame));
+        text.draw(&mut state.frame);
         return;
     }
 
@@ -1264,6 +1256,3 @@ fn parse_color(c: i32) -> Option<Gray4> {
         Some(Gray4::new(c as u8 - 1))
     }
 }
-
-/// Statically ensure that the given Result cannot have an error.
-fn never_fails<T>(_: Result<T, Infallible>) {}

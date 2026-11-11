@@ -673,6 +673,28 @@ fn test_draw_qr() {
 }
 
 #[test]
+fn test_draw_qr_no_white() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_qr);
+    write_mem(&mut store, 5, b"hi");
+    let inputs = wrap_input(&[5, 2, 1, 2, R, N]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "........", // y=0
+            "........", // y=1
+            "........", // y=2
+            "........", // y=3
+            "........", // y=4
+            "........", // y=5
+            ".....RRR", // y=6
+        ],
+    );
+}
+
+#[test]
 fn test_draw_image() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_image);
