@@ -354,7 +354,9 @@ fn draw_rect_in<D: FireflyDrawTarget>(
         never_fails(target.fill_solid(&fill_area, color));
     }
 
-    let stroke_color = style.stroke_color.unwrap();
+    let Some(stroke_color) = style.stroke_color else {
+        return;
+    };
     let stroke_width = style.stroke_width;
     let offset = style.stroke_width / 2;
     let stroke_area = Rectangle::new(

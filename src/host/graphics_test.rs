@@ -42,7 +42,7 @@ fn test_clear_screen() {
     // check that all pixel in the frame buffer are set to 1.
     let state = store.data();
     for byte in &*state.frame.data {
-        assert_eq!(byte, &0b_0001_0001);
+        assert_eq!(*byte, 0x11);
     }
 }
 
@@ -151,6 +151,60 @@ fn test_flip_y() {
         &[
             "......", // y=0
             "..R...", // y=1
+            "......", // y=2
+        ],
+    );
+}
+
+#[test]
+fn test_replace_color() {
+    let mut store = make_store();
+    let draw_func = wasmi::Func::wrap(&mut store, draw_point);
+    let replace_func = wasmi::Func::wrap(&mut store, replace_color);
+
+    let inputs = wrap_input(&[2, 1, R]);
+    draw_func.call(&mut store, &inputs, &mut []).unwrap();
+    let inputs = wrap_input(&[3, 1, O]);
+    draw_func.call(&mut store, &inputs, &mut []).unwrap();
+    let inputs = wrap_input(&[4, 1, P]);
+    draw_func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let inputs = wrap_input(&[R, P]);
+    replace_func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "..POP.", // y=1
+            "......", // y=2
+        ],
+    );
+}
+
+#[test]
+fn test_swap_colors() {
+    let mut store = make_store();
+    let draw_func = wasmi::Func::wrap(&mut store, draw_point);
+    let replace_func = wasmi::Func::wrap(&mut store, swap_colors);
+
+    let inputs = wrap_input(&[2, 1, R]);
+    draw_func.call(&mut store, &inputs, &mut []).unwrap();
+    let inputs = wrap_input(&[3, 1, O]);
+    draw_func.call(&mut store, &inputs, &mut []).unwrap();
+    let inputs = wrap_input(&[4, 1, P]);
+    draw_func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let inputs = wrap_input(&[R, P]);
+    replace_func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "..POR.", // y=1
             "......", // y=2
         ],
     );
@@ -305,6 +359,73 @@ fn test_draw_rect_filled() {
 }
 
 #[test]
+fn test_draw_rect_filled_w2() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_rect);
+
+    let inputs = wrap_input(&[2, 3, 4, 3, P, O, 2]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            ".........", // y=0
+            ".........", // y=1
+            ".OOOOOO..", // y=2
+            ".OOOOOO..", // y=3
+            ".OOPPOO..", // y=4
+            ".OOOOOO..", // y=5
+            ".OOOOOO..", // y=6
+            ".........", // y=7
+        ],
+    );
+}
+
+#[test]
+fn test_draw_rect_solid_w3() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_rect);
+
+    let inputs = wrap_input(&[1, 2, 3, 4, P, N, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".PPP..", // y=2
+            ".PPP..", // y=3
+            ".PPP..", // y=4
+            ".PPP..", // y=5
+            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_rect_solid_oob() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_rect);
+
+    let inputs = wrap_input(&[-1, -2, 3, 5, P, N, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "PP..", // y=0
+            "PP..", // y=1
+            "PP..", // y=2
+            "....", // y=3
+        ],
+    );
+}
+
+#[test]
 fn test_draw_rect_solid_w4() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rect);
@@ -349,7 +470,29 @@ fn test_draw_rect_solid_w5() {
 }
 
 #[test]
-fn test_draw_rounded_rect() {
+fn test_draw_rect_outlined() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_rect);
+
+    let inputs = wrap_input(&[1, 2, 4, 3, N, P, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            ".PPPP.", // y=2
+            ".P..P.", // y=3
+            ".PPPP.", // y=4
+            "......", // y=5
+        ],
+    );
+}
+
+#[test]
+fn test_draw_rounded_rect_filled() {
     let mut store = make_store();
     let func = wasmi::Func::wrap(&mut store, draw_rounded_rect);
 
@@ -367,6 +510,74 @@ fn test_draw_rounded_rect() {
             ".OPPO.", // y=4
             "..OO..", // y=5
             "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_rounded_rect_solid() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_rounded_rect);
+
+    let inputs = wrap_input(&[1, 2, 4, 4, 2, 2, O, N, 0]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            "..OO..", // y=2
+            ".OOOO.", // y=3
+            ".OOOO.", // y=4
+            "..OO..", // y=5
+            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_rounded_rect_outlined() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_rounded_rect);
+
+    let inputs = wrap_input(&[1, 2, 4, 4, 2, 2, N, O, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "......", // y=0
+            "......", // y=1
+            "..OO..", // y=2
+            ".O..O.", // y=3
+            ".O..O.", // y=4
+            "..OO..", // y=5
+            "......", // y=6
+        ],
+    );
+}
+
+#[test]
+fn test_draw_triangle_filled() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_triangle);
+
+    let inputs = wrap_input(&[3, 2, 1, 4, 5, 4, P, R, 1]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            ".......", // y=0
+            ".......", // y=1
+            "...R...", // y=2
+            "..RPR..", // y=3
+            ".RRRRR.", // y=4
+            ".......", // y=5
         ],
     );
 }
@@ -435,6 +646,28 @@ fn test_draw_circle_oob_top() {
             ".RPPR.", // y=1
             "..RR..", // y=2
             "......", // y=3
+        ],
+    );
+}
+
+#[test]
+fn test_draw_qr() {
+    let mut store = make_store();
+    let func = wasmi::Func::wrap(&mut store, draw_qr);
+    write_mem(&mut store, 5, b"hi");
+    let inputs = wrap_input(&[5, 2, 1, 2, R, O]);
+    func.call(&mut store, &inputs, &mut []).unwrap();
+    let state = store.data_mut();
+    check_display(
+        &state.frame,
+        &[
+            "........", // y=0
+            "........", // y=1
+            ".OOOOOOO", // y=2
+            ".OOOOOOO", // y=3
+            ".OOOOOOO", // y=4
+            ".OOOOOOO", // y=5
+            ".OOOORRR", // y=6
         ],
     );
 }
