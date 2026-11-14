@@ -199,8 +199,6 @@ fn select_fs_external<'a>(
     fn_name: &str,
 ) -> Option<wasmi::Func> {
     let func = match fn_name {
-        "get_rom_file_size" => Func::wrap(ctx, fs::get_rom_file_size),
-        "load_rom_file" => Func::wrap(ctx, fs::load_rom_file),
         "get_file_size" => Func::wrap(ctx, fs::get_file_size),
         "load_file" => Func::wrap(ctx, fs::load_file),
         "dump_file" => Func::wrap(ctx, fs::dump_file),
