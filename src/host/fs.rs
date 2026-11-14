@@ -9,13 +9,6 @@ use firefly_types::validate_path_part;
 
 type C<'a, 'b> = wasmi::Caller<'a, Box<State<'b>>>;
 
-/// DEPRECATED
-pub(crate) fn get_rom_file_size(caller: C, path_ptr: u32, path_len: u32) -> u32 {
-    // let state = caller.data_mut();
-    // state.log_error("get_rom_file_size is deprecated");
-    get_file_size(caller, path_ptr, path_len)
-}
-
 /// Get file size in bytes for a file.
 ///
 /// It is used by the apps to allocate the buffer for loading the file.
@@ -54,19 +47,6 @@ pub(crate) fn get_file_size(mut caller: C, path_ptr: u32, path_len: u32) -> u32 
             0
         }
     }
-}
-
-/// DEPRECATED
-pub(crate) fn load_rom_file(
-    caller: C,
-    path_ptr: u32,
-    path_len: u32,
-    buf_ptr: u32,
-    buf_len: u32,
-) -> u32 {
-    // let state = caller.data_mut();
-    // state.log_error("get_rom_file_size is deprecated");
-    load_file(caller, path_ptr, path_len, buf_ptr, buf_len)
 }
 
 /// Read contents of the file and write them into the buffer.
