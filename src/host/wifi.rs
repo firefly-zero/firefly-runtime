@@ -1,4 +1,5 @@
-use crate::{error::HostError, state::State};
+use crate::error::HostError;
+use crate::state::State;
 use alloc::boxed::Box;
 use firefly_hal::Wifi;
 

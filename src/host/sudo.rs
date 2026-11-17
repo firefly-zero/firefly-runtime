@@ -1,7 +1,7 @@
+use crate::config::FullID;
 use crate::error::HostError;
 use crate::state::{NextApp, State};
-use crate::utils::read_into;
-use crate::{config::FullID, utils::write_all};
+use crate::utils::{read_into, write_all};
 use alloc::boxed::Box;
 use embedded_io::Write;
 use firefly_hal::{Device, Dir, EntryKind, FSError};

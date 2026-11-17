@@ -1,7 +1,7 @@
+use crate::color::FromRGB;
 use crate::error::Error;
-use crate::state::NetHandler;
+use crate::state::{NetHandler, load_settings};
 use crate::{FireflyDisplay, NextApp};
-use crate::{color::FromRGB, state::load_settings};
 use core::fmt;
 use embedded_graphics::draw_target::DrawTarget;
 use embedded_graphics::geometry::OriginDimensions;
