@@ -426,7 +426,7 @@ impl<'a> State<'a> {
     /// in a single session. So we want to detect when the time wraps
     /// based on the previous time value.
     pub fn convert_now(&self, now: u32) -> u64 {
-        let should_wrap = now < 0x4000_0000 && self.now as u32 > 0xB000_0000;
+        let should_wrap = now < 0x4000_0000 && self.now as u32 > 0xb000_0000;
         let mut result = self.now & 0xffff_ffff_0000_0000;
         if should_wrap {
             result += 0x1_0000_0000;
